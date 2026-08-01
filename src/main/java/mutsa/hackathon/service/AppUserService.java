@@ -8,6 +8,7 @@ import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AppUserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 
 @Service
@@ -21,7 +22,10 @@ public class AppUserService {
         return appUserRepository.findByProviderAndProviderId(provider, providerId).map(existingUser -> {
             existingUser.updateProfile(nickname, email, profileImage);
             return KakaoUserProfile.from(existingUser, false);
-        }).orElseGet(() -> KakaoUserProfile.from(appUserRepository.save(new AppUser(provider, providerId, nickname, email, profileImage)), true));
+        }).orElseGet(() -> {
+            AppUser newUser = AppUser.createKakaoUser(providerId, nickname, email, profileImage);
+            return KakaoUserProfile.from(appUserRepository.save(newUser), true);
+        });
     }
 
     @Transactional(readOnly = true)
@@ -37,7 +41,7 @@ public class AppUserService {
     @Transactional
     public void updateRefreshToken(Long userId, String refreshToken, LocalDateTime expiresAt) {
         appUserRepository.findById(userId)
-                .orElseThrow(() -> new ProjectException(ErrorCode.USER_NOT_FOUND)) // 명확한 커스텀 예외 지정
+                .orElseThrow(() -> new ProjectException(ErrorCode.USER_NOT_FOUND))
                 .updateRefreshToken(refreshToken, expiresAt);
     }
 
