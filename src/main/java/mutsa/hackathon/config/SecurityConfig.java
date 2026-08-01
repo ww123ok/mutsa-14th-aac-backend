@@ -5,6 +5,7 @@ import mutsa.hackathon.handler.CustomLogoutSuccessHandler;
 import mutsa.hackathon.handler.OAuth2AuthenticationFailureHandler;
 import mutsa.hackathon.handler.OAuth2AuthenticationSuccessHandler;
 import mutsa.hackathon.security.CustomOAuth2UserService;
+import mutsa.hackathon.security.JwtAuthenticationEntryPoint;
 import mutsa.hackathon.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,7 +29,8 @@ public class SecurityConfig {
             OAuth2AuthenticationSuccessHandler successHandler,
             OAuth2AuthenticationFailureHandler failureHandler,
             CustomLogoutHandler customLogoutHandler,
-            CustomLogoutSuccessHandler customLogoutSuccessHandler
+            CustomLogoutSuccessHandler customLogoutSuccessHandler,
+            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint // 🚨 EntryPoint 주입
     ) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(request -> {
@@ -41,6 +43,11 @@ public class SecurityConfig {
                 }))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                )
+
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/", "/api/auth/refresh", "/error").permitAll()
                         .anyRequest().authenticated()

@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mutsa.hackathon.domain.KakaoUserProfile;
 import mutsa.hackathon.dto.AuthTokenResponse;
+import mutsa.hackathon.global.ApiResponse;
 import mutsa.hackathon.security.CustomOAuth2User;
 import mutsa.hackathon.service.JwtAuthService;
 import mutsa.hackathon.util.JwtCookieUtils;
@@ -27,18 +28,19 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public KakaoUserProfile me(@AuthenticationPrincipal CustomOAuth2User user) {
-        return user.getKakaoUserProfile();
+    public ApiResponse<KakaoUserProfile> me(@AuthenticationPrincipal CustomOAuth2User user) {
+        return ApiResponse.onSuccess(user.getKakaoUserProfile());
     }
 
     @PostMapping("/auth/refresh")
-    public AuthTokenResponse refresh(HttpServletRequest request, HttpServletResponse response) {
+    public ApiResponse<AuthTokenResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         Cookie refreshTokenCookie = JwtCookieUtils.getCookie(request, JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME);
         if (refreshTokenCookie == null) throw new IllegalArgumentException("Refresh token cookie is missing");
 
         AuthTokenResponse tokenResponse = jwtAuthService.refresh(refreshTokenCookie.getValue());
         JwtCookieUtils.addTokenCookie(response, JwtCookieUtils.ACCESS_TOKEN_COOKIE_NAME, tokenResponse.accessToken(), tokenResponse.accessTokenExpiresIn() / 1000, cookieSecure);
         JwtCookieUtils.addTokenCookie(response, JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME, tokenResponse.refreshToken(), tokenResponse.refreshTokenExpiresIn() / 1000, cookieSecure);
-        return tokenResponse;
+
+        return ApiResponse.onSuccess(tokenResponse);
     }
 }
