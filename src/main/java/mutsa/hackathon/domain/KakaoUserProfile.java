@@ -3,9 +3,31 @@ package mutsa.hackathon.domain;
 import java.time.LocalDateTime;
 
 public record KakaoUserProfile(
-        Long id, String provider, String providerId, String nickname, String email, String profileImage, LocalDateTime lastLoginAt, boolean newlyRegistered
+        Long id,
+        String provider,
+        String providerId,
+        String nickname,
+        String email,
+        String profileImage,
+        LocalDateTime lastLoginAt,
+        boolean newlyRegistered,
+        String job,
+        int credit,
+        boolean onboardingCompleted
 ) {
     public static KakaoUserProfile from(AppUser user, boolean newlyRegistered) {
-        return new KakaoUserProfile(user.getId(), user.getProvider(), user.getProviderId(), user.getNickname(), user.getEmail(), user.getProfileImage(), user.getLastLoginAt(), newlyRegistered);
+        return new KakaoUserProfile(
+                user.getId(),
+                user.getProvider(),
+                user.getProviderId(),
+                user.getNickname(),
+                user.getEmail(),
+                user.getProfileImage(),
+                user.getLastLoginAt(),
+                newlyRegistered,
+                user.getJob(),
+                user.getCredit(),
+                user.isOnboardingCompleted()
+        );
     }
 }
