@@ -5,19 +5,24 @@ server:
 spring:
   profiles:
     include: secret
+
   application:
     name: hackathon
+
   datasource:
     url: jdbc:h2:mem:aacdb;MODE=MySQL
     driver-class-name: org.h2.Driver
     username: sa
     password:
+
   h2:
     console:
       enabled: true
+
   jpa:
     hibernate:
       ddl-auto: update
+
   security:
     oauth2:
       client:
@@ -30,6 +35,7 @@ spring:
             scope:
               - profile_nickname
               - profile_image
+
         provider:
           kakao:
             authorization-uri: https://kauth.kakao.com/oauth/authorize
@@ -38,6 +44,10 @@ spring:
             user-name-attribute: id
 
 app:
+  oauth2:
+    success-redirect-uri: ${FRONTEND_OAUTH_SUCCESS_URL:http://localhost:3000/oauth2/callback/kakao}
+    failure-redirect-uri: ${FRONTEND_OAUTH_FAILURE_URL:http://localhost:3000/?error=oauth2_login_failed}
+
   jwt:
     access-token-expiration: 1800000
     refresh-token-expiration: 1209600000
