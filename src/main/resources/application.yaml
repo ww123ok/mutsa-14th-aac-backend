@@ -51,4 +51,5 @@ app:
   jwt:
     access-token-expiration: 1800000
     refresh-token-expiration: 1209600000
-    cookie-secure: false
+    cookie-secure: ${JWT_COOKIE_SECURE:false}
+    cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}

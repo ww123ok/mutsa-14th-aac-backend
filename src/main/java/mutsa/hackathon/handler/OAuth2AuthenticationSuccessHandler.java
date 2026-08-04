@@ -15,60 +15,24 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 @Component
-public class OAuth2AuthenticationSuccessHandler
-        extends SimpleUrlAuthenticationSuccessHandler {
-
+public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
     private final JwtAuthService jwtAuthService;
-    private final boolean cookieSecure;
-    private final String successRedirectUri;
+    @Value("${app.jwt.cookie-secure:false}") private boolean cookieSecure;
+    @Value("${app.jwt.cookie-same-site:Lax}") private String cookieSameSite;
+    @Value("${app.oauth2.success-redirect-uri}") private String successRedirectUri;
 
-    public OAuth2AuthenticationSuccessHandler(
-            JwtAuthService jwtAuthService,
-            @Value("${app.jwt.cookie-secure:false}")
-            boolean cookieSecure,
-            @Value("${app.oauth2.success-redirect-uri}")
-            String successRedirectUri
-    ) {
+    public OAuth2AuthenticationSuccessHandler(JwtAuthService jwtAuthService) {
         this.jwtAuthService = jwtAuthService;
-        this.cookieSecure = cookieSecure;
-        this.successRedirectUri = successRedirectUri;
     }
 
     @Override
-    public void onAuthenticationSuccess(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            Authentication authentication
-    ) throws IOException, ServletException {
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+        CustomOAuth2User principal = (CustomOAuth2User) authentication.getPrincipal();
+        AuthTokenResponse tokenResponse = jwtAuthService.issueTokens(principal.getKakaoUserProfile());
 
-        CustomOAuth2User principal =
-                (CustomOAuth2User) authentication.getPrincipal();
+        JwtCookieUtils.addTokenCookie(response, JwtCookieUtils.ACCESS_TOKEN_COOKIE_NAME, tokenResponse.accessToken(), tokenResponse.accessTokenExpiresIn() / 1000, cookieSecure, cookieSameSite);
+        JwtCookieUtils.addTokenCookie(response, JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME, tokenResponse.refreshToken(), tokenResponse.refreshTokenExpiresIn() / 1000, cookieSecure, cookieSameSite);
 
-        AuthTokenResponse tokenResponse =
-                jwtAuthService.issueTokens(
-                        principal.getKakaoUserProfile()
-                );
-
-        JwtCookieUtils.addTokenCookie(
-                response,
-                JwtCookieUtils.ACCESS_TOKEN_COOKIE_NAME,
-                tokenResponse.accessToken(),
-                tokenResponse.accessTokenExpiresIn() / 1000,
-                cookieSecure
-        );
-
-        JwtCookieUtils.addTokenCookie(
-                response,
-                JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME,
-                tokenResponse.refreshToken(),
-                tokenResponse.refreshTokenExpiresIn() / 1000,
-                cookieSecure
-        );
-
-        getRedirectStrategy().sendRedirect(
-                request,
-                response,
-                successRedirectUri
-        );
+        getRedirectStrategy().sendRedirect(request, response, successRedirectUri);
     }
 }
