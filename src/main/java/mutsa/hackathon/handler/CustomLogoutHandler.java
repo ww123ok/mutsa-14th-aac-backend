@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 public class CustomLogoutHandler implements LogoutHandler {
     private final AppUserService appUserService;
     @Value("${app.jwt.cookie-secure:false}") private boolean cookieSecure;
+    @Value("${app.jwt.cookie-same-site:Lax}") private String cookieSameSite;
 
     public CustomLogoutHandler(AppUserService appUserService) { this.appUserService = appUserService; }
 
@@ -22,7 +23,7 @@ public class CustomLogoutHandler implements LogoutHandler {
         if (authentication != null && authentication.getPrincipal() instanceof CustomOAuth2User principal) {
             appUserService.clearRefreshToken(principal.getKakaoUserProfile().id());
         }
-        JwtCookieUtils.expireCookie(response, JwtCookieUtils.ACCESS_TOKEN_COOKIE_NAME, cookieSecure);
-        JwtCookieUtils.expireCookie(response, JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME, cookieSecure);
+        JwtCookieUtils.expireCookie(response, JwtCookieUtils.ACCESS_TOKEN_COOKIE_NAME, cookieSecure, cookieSameSite);
+        JwtCookieUtils.expireCookie(response, JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME, cookieSecure, cookieSameSite);
     }
 }
