@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.dto.DiaryCreateRequest;
-import mutsa.hackathon.dto.DiaryCreateResponse;
+import mutsa.hackathon.dto.DiaryResponse;
 import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AppUserRepository;
@@ -13,9 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
 
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class DiaryService {
 
@@ -23,7 +24,7 @@ public class DiaryService {
     private final AppUserRepository appUserRepository;
 
     @Transactional
-    public DiaryCreateResponse create(Long userId, DiaryCreateRequest request) {
+    public DiaryResponse create(Long userId, DiaryCreateRequest request) {
         LocalDate recordedDate = request.recordedDate() == null
                 ? LocalDate.now()
                 : request.recordedDate();
@@ -36,6 +37,33 @@ public class DiaryService {
                 .orElseThrow(() -> new ProjectException(ErrorCode.USER_NOT_FOUND));
 
         Diary diary = Diary.create(user, request.content(), recordedDate);
-        return DiaryCreateResponse.from(diaryRepository.save(diary));
+        return DiaryResponse.from(diaryRepository.save(diary));
+    }
+
+    @Transactional(readOnly = true)
+    public List<DiaryResponse> getMonthlyDiaries(Long userId, int year, int month) {
+        YearMonth yearMonth = YearMonth.of(year, month);
+        return diaryRepository.findAllByUserIdAndRecordedDateBetweenAndDeletedFalseOrderByRecordedDateAsc(
+                        userId,
+                        yearMonth.atDay(1),
+                        yearMonth.atEndOfMonth()
+                ).stream()
+                .map(DiaryResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DiaryResponse getDiary(Long userId, Long diaryId) {
+        return DiaryResponse.from(findActiveDiary(userId, diaryId));
+    }
+
+    @Transactional
+    public void deleteDiary(Long userId, Long diaryId) {
+        findActiveDiary(userId, diaryId).softDelete();
+    }
+
+    private Diary findActiveDiary(Long userId, Long diaryId) {
+        return diaryRepository.findByIdAndUserIdAndDeletedFalse(diaryId, userId)
+                .orElseThrow(() -> new ProjectException(ErrorCode.DIARY_NOT_FOUND));
     }
 }

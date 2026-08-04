@@ -5,14 +5,14 @@ import mutsa.hackathon.domain.Diary;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-public record DiaryCreateResponse(
+public record DiaryResponse(
         Long diaryId,
         LocalDate recordedDate,
         String content,
         LocalDateTime createdAt
 ) {
-    public static DiaryCreateResponse from(Diary diary) {
-        return new DiaryCreateResponse(
+    public static DiaryResponse from(Diary diary) {
+        return new DiaryResponse(
                 diary.getId(),
                 diary.getRecordedDate(),
                 diary.getContent(),
