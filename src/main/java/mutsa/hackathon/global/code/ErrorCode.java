@@ -6,12 +6,25 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum ErrorCode implements BaseErrorCode {
+public enum ErrorCode
+        implements BaseErrorCode {
+
+    INVALID_REQUEST(
+            HttpStatus.BAD_REQUEST,
+            "COMMON400",
+            "요청 값이 올바르지 않습니다."
+    ),
 
     USER_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "USER404",
             "존재하지 않는 유저입니다."
+    ),
+
+    ONBOARDING_CONSENT_REQUIRED(
+            HttpStatus.BAD_REQUEST,
+            "ONBOARDING400_1",
+            "온보딩을 완료하려면 AI 기억 활용에 동의해야 합니다."
     ),
 
     EXPIRED_TOKEN(
