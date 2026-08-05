@@ -20,6 +20,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class OAuth2AuthenticationHandlerTest {
 
@@ -27,13 +29,15 @@ class OAuth2AuthenticationHandlerTest {
             "http://localhost:3000/oauth2/callback/kakao";
 
     private static final String FAILURE_REDIRECT_URI =
-            "http://localhost:3000/?error=oauth2_login_failed";
+            "http://localhost:3000/"
+                    + "?error=oauth2_login_failed";
 
     @Test
-    void 카카오_로그인_성공시_토큰_쿠키를_발급하고_프론트_콜백으로_이동한다()
+    void 로그인_성공시_운영_쿠키를_발급하고_프론트로_이동한다()
             throws Exception {
 
-        KakaoUserProfile profile = createProfile();
+        KakaoUserProfile profile =
+                createProfile();
 
         AuthTokenResponse tokenResponse =
                 new AuthTokenResponse(
@@ -45,19 +49,17 @@ class OAuth2AuthenticationHandlerTest {
                 );
 
         JwtAuthService jwtAuthService =
-                new JwtAuthService(null, null) {
-                    @Override
-                    public AuthTokenResponse issueTokens(
-                            KakaoUserProfile ignoredProfile
-                    ) {
-                        return tokenResponse;
-                    }
-                };
+                mock(JwtAuthService.class);
+
+        when(
+                jwtAuthService.issueTokens(profile)
+        ).thenReturn(tokenResponse);
 
         OAuth2AuthenticationSuccessHandler handler =
                 new OAuth2AuthenticationSuccessHandler(
                         jwtAuthService,
-                        false,
+                        true,
+                        "None",
                         SUCCESS_REDIRECT_URI
                 );
 
@@ -68,7 +70,10 @@ class OAuth2AuthenticationHandlerTest {
                                         "ROLE_USER"
                                 )
                         ),
-                        Map.of("id", profile.providerId()),
+                        Map.of(
+                                "id",
+                                profile.providerId()
+                        ),
                         "id",
                         profile
                 );
@@ -98,9 +103,14 @@ class OAuth2AuthenticationHandlerTest {
         );
 
         Collection<String> setCookieHeaders =
-                response.getHeaders(HttpHeaders.SET_COOKIE);
+                response.getHeaders(
+                        HttpHeaders.SET_COOKIE
+                );
 
-        assertEquals(2, setCookieHeaders.size());
+        assertEquals(
+                2,
+                setCookieHeaders.size()
+        );
 
         assertTrue(
                 setCookieHeaders.stream()
@@ -123,10 +133,33 @@ class OAuth2AuthenticationHandlerTest {
                                 )
                         )
         );
+
+        assertTrue(
+                setCookieHeaders.stream()
+                        .allMatch(header ->
+                                header.contains("HttpOnly")
+                        )
+        );
+
+        assertTrue(
+                setCookieHeaders.stream()
+                        .allMatch(header ->
+                                header.contains("Secure")
+                        )
+        );
+
+        assertTrue(
+                setCookieHeaders.stream()
+                        .allMatch(header ->
+                                header.contains(
+                                        "SameSite=None"
+                                )
+                        )
+        );
     }
 
     @Test
-    void 카카오_로그인_실패시_프론트_실패_주소로_이동한다()
+    void 로그인_실패시_프론트_실패_주소로_이동한다()
             throws Exception {
 
         OAuth2AuthenticationFailureHandler handler =
