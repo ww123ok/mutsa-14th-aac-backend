@@ -11,19 +11,53 @@ import org.springframework.security.web.authentication.logout.LogoutHandler;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CustomLogoutHandler implements LogoutHandler {
-    private final AppUserService appUserService;
-    @Value("${app.jwt.cookie-secure:false}") private boolean cookieSecure;
-    @Value("${app.jwt.cookie-same-site:Lax}") private String cookieSameSite;
+public class CustomLogoutHandler
+        implements LogoutHandler {
 
-    public CustomLogoutHandler(AppUserService appUserService) { this.appUserService = appUserService; }
+    private final AppUserService appUserService;
+    private final boolean cookieSecure;
+    private final String cookieSameSite;
+
+    public CustomLogoutHandler(
+            AppUserService appUserService,
+            @Value("${app.jwt.cookie-secure:false}")
+            boolean cookieSecure,
+            @Value("${app.jwt.cookie-same-site:Lax}")
+            String cookieSameSite
+    ) {
+        this.appUserService = appUserService;
+        this.cookieSecure = cookieSecure;
+        this.cookieSameSite = cookieSameSite;
+    }
 
     @Override
-    public void logout(HttpServletRequest request, HttpServletResponse response, Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof CustomOAuth2User principal) {
-            appUserService.clearRefreshToken(principal.getKakaoUserProfile().id());
+    public void logout(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Authentication authentication
+    ) {
+        if (
+                authentication != null
+                        && authentication.getPrincipal()
+                        instanceof CustomOAuth2User principal
+        ) {
+            appUserService.clearRefreshToken(
+                    principal.getKakaoUserProfile().id()
+            );
         }
-        JwtCookieUtils.expireCookie(response, JwtCookieUtils.ACCESS_TOKEN_COOKIE_NAME, cookieSecure, cookieSameSite);
-        JwtCookieUtils.expireCookie(response, JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME, cookieSecure, cookieSameSite);
+
+        JwtCookieUtils.expireCookie(
+                response,
+                JwtCookieUtils.ACCESS_TOKEN_COOKIE_NAME,
+                cookieSecure,
+                cookieSameSite
+        );
+
+        JwtCookieUtils.expireCookie(
+                response,
+                JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME,
+                cookieSecure,
+                cookieSameSite
+        );
     }
 }

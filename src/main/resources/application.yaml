@@ -45,8 +45,8 @@ spring:
 
 app:
   oauth2:
-    success-redirect-uri: ${FRONTEND_OAUTH_SUCCESS_URL:http://localhost:8080/swagger-ui/index.html}
-    failure-redirect-uri: ${FRONTEND_OAUTH_FAILURE_URL:http://localhost:8080/swagger-ui/index.html?error=oauth2_login_failed}
+    success-redirect-uri: ${FRONTEND_OAUTH_SUCCESS_URL:http://localhost:3000/oauth2/callback/kakao}
+    failure-redirect-uri: ${FRONTEND_OAUTH_FAILURE_URL:http://localhost:3000/?error=oauth2_login_failed}
 
   jwt:
     access-token-expiration: 1800000
