@@ -27,6 +27,24 @@ public enum ErrorCode
             "온보딩을 완료하려면 AI 기억 활용에 동의해야 합니다."
     ),
 
+    MEMORY_CANDIDATE_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "MEMORY404",
+            "검토할 AI 기억 후보가 없습니다."
+    ),
+
+    AI_MEMORY_CONSENT_REQUIRED(
+            HttpStatus.CONFLICT,
+            "MEMORY409_1",
+            "AI 기억 활용에 동의한 사용자만 기억 후보를 승인할 수 있습니다."
+    ),
+
+    MEMORY_REVIEW_ALREADY_COMPLETED(
+            HttpStatus.CONFLICT,
+            "MEMORY409_2",
+            "이미 검토가 완료되어 기억 후보 결정을 변경할 수 없습니다."
+    ),
+
     EXPIRED_TOKEN(
             HttpStatus.UNAUTHORIZED,
             "AUTH401_1",
