@@ -29,11 +29,9 @@ public class UserMemoryService {
     private final UserMemoryItemRepository
             userMemoryItemRepository;
 
-    /**
-     * 특정 일기에서 발견된 기억 후보들을 조회.
-     * 후보가 없는 경우에도 오류를 발생시키지 않고
-     * 빈 배열과 NONE 상태를 반환.
-     */
+    private final AiMemoryProfileService
+            aiMemoryProfileService;
+
     @Transactional(readOnly = true)
     public MemoryCandidateListResponse getCandidates(
             Long userId,
@@ -62,12 +60,9 @@ public class UserMemoryService {
         );
     }
 
-    /**
-     * 한 일기에서 발견된 모든 PENDING 기억 후보를
-     * 한 번에 승인하거나 거절
-     */
     @Transactional
-    public MemoryCandidateReviewResponse reviewCandidates(
+    public MemoryCandidateReviewResponse
+    reviewCandidates(
             Long userId,
             Long diaryId,
             MemoryCandidateReviewRequest request
@@ -112,11 +107,16 @@ public class UserMemoryService {
                         ? MemoryReviewStatus.APPROVED
                         : MemoryReviewStatus.REJECTED;
 
-        /*
-         * 같은 요청이 네트워크 재시도 등으로 반복된 경우,
-         * 오류를 발생시키지 않고 멱등하게 처리
-         */
         if (currentStatus == targetStatus) {
+            /*
+             * 중복 승인 요청에서도 캐시가 누락되거나
+             * 오래된 경우를 복구할 수 있도록 재생성
+             */
+            if (approved) {
+                aiMemoryProfileService
+                        .rebuildProfile(userId);
+            }
+
             return new MemoryCandidateReviewResponse(
                     diary.getId(),
                     currentStatus,
@@ -125,10 +125,6 @@ public class UserMemoryService {
             );
         }
 
-        /*
-         * 이미 반대 결정으로 검토가 완료되었거나
-         * 후보 상태가 섞여 있으면 결정을 변경하지 않음.
-         */
         if (
                 currentStatus
                         != MemoryReviewStatus.PENDING
@@ -139,11 +135,6 @@ public class UserMemoryService {
             );
         }
 
-        /*
-         * 거절은 언제든 가능하지만,
-         * 향후 질문에 활용하는 승인은
-         * 전역 AI 기억 동의가 켜져 있어야 함.
-         */
         if (
                 approved
                         && !diary
@@ -160,6 +151,16 @@ public class UserMemoryService {
             memories.forEach(
                     UserMemoryItem::approve
             );
+
+            /*
+             * 상태 변경 내용을 프로필 재조회 전에
+             * DB에 반영
+             */
+            userMemoryItemRepository.flush();
+
+            aiMemoryProfileService
+                    .rebuildProfile(userId);
+
         } else {
             memories.forEach(
                     UserMemoryItem::reject
@@ -205,7 +206,9 @@ public class UserMemoryService {
             List<UserMemoryItem> memories
     ) {
         return memories.stream()
-                .map(MemoryCandidateResponse::from)
+                .map(
+                        MemoryCandidateResponse::from
+                )
                 .toList();
     }
 
@@ -218,8 +221,12 @@ public class UserMemoryService {
 
         Set<UserMemoryStatus> statuses =
                 memories.stream()
-                        .map(UserMemoryItem::getStatus)
-                        .collect(Collectors.toSet());
+                        .map(
+                                UserMemoryItem::getStatus
+                        )
+                        .collect(
+                                Collectors.toSet()
+                        );
 
         if (statuses.size() > 1) {
             return MemoryReviewStatus.MIXED;

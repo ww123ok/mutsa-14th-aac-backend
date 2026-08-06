@@ -19,6 +19,9 @@ public class AppUserService {
 
     private final AppUserRepository appUserRepository;
 
+    private final AiMemoryProfileService
+            aiMemoryProfileService;
+
     @Transactional
     public KakaoUserProfile saveOrUpdate(
             String provider,
@@ -84,13 +87,6 @@ public class AppUserService {
                         request.aiMemoryConsent()
                 );
 
-        /*
-         * 최초 온보딩 화면에는 동의하기 버튼만 있으므로
-         * 온보딩 최초 완료에는 동의를 필수로 처리함.
-         *
-         * 이미 온보딩을 완료한 사용자는 설정 화면에서
-         * false를 보내 동의를 철회할 수 있음.
-         */
         if (
                 !user.isOnboardingCompleted()
                         && !requestedConsent
@@ -108,13 +104,25 @@ public class AppUserService {
                 requestedConsent
         );
 
+        /*
+         * 동의가 켜져 있으면 현재 승인 기억으로
+         * 프로필 일관성을 다시 맞춤.
+         * 동의가 꺼지면 PENDING / APPROVED 기억을
+         * 모두 REVOKED로 변경하고 캐시를 제거.
+         */
+        if (requestedConsent) {
+            aiMemoryProfileService
+                    .rebuildProfile(userId);
+        } else {
+            aiMemoryProfileService
+                    .revokeAllUsableMemories(
+                            userId
+                    );
+        }
+
         return MeResponse.from(user);
     }
 
-    /**
-     * JWT 인증 객체 생성에 사용하는 내부 프로필.
-     * 외부 API 응답으로 직접 반환하지 않음.
-     */
     @Transactional(readOnly = true)
     public KakaoUserProfile findProfileById(
             Long userId
