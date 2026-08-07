@@ -28,53 +28,72 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DiaryService {
 
-    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
+    private static final ZoneId SERVICE_ZONE =
+            ZoneId.of("Asia/Seoul");
 
-    private static final String FALLBACK_REFLECTION_QUESTION =
+    private static final String
+            FALLBACK_REFLECTION_QUESTION =
             "오늘의 기록에서 가장 오래 마음에 남은 순간은 무엇인가요?";
 
     private final DiaryRepository diaryRepository;
-    private final DiaryRewardRepository diaryRewardRepository;
-    private final AiQuestionRepository aiQuestionRepository;
-    private final AppUserRepository appUserRepository;
+
+    private final DiaryRewardRepository
+            diaryRewardRepository;
+
+    private final AiQuestionRepository
+            aiQuestionRepository;
+
+    private final AppUserRepository
+            appUserRepository;
+
+    private final AiMemoryProfileService
+            aiMemoryProfileService;
 
     @Transactional
     public DiaryCreateResponse create(
             Long userId,
             DiaryCreateRequest request
     ) {
-        LocalDate today = LocalDate.now(SERVICE_ZONE);
+        LocalDate today =
+                LocalDate.now(SERVICE_ZONE);
 
-        validateDiaryNotWrittenToday(userId, today);
+        validateDiaryNotWrittenToday(
+                userId,
+                today
+        );
 
-        AppUser user = appUserRepository.findById(userId)
-                .orElseThrow(() ->
-                        new ProjectException(ErrorCode.USER_NOT_FOUND)
+        AppUser user =
+                appUserRepository
+                        .findById(userId)
+                        .orElseThrow(() ->
+                                new ProjectException(
+                                        ErrorCode.USER_NOT_FOUND
+                                )
+                        );
+
+        Diary diary = saveDiary(
+                user,
+                request.content(),
+                today
+        );
+
+        DiaryReward reward =
+                diaryRewardRepository.save(
+                        DiaryReward
+                                .createPending(diary)
                 );
 
-        Diary diary = saveDiary(user, request.content(), today);
-
-        /*
-         * OpenAI 연동 전 임시 상태임.
-         * AI 연동 후에는 PENDING 생성 -> AI 호출 -> complete(...) 순서로 변경 예정.
-         */
-        DiaryReward reward = diaryRewardRepository.save(
-                DiaryReward.createPending(diary)
-        );
-
-        /*
-         * 성찰 질문은 반드시 화면에 표시되어야 하므로
-         * AI 연동 전이나 AI 장애 상황에도 fallback 질문을 저장한다.
-         */
-        AiQuestion reflectionQuestion = aiQuestionRepository.save(
-                AiQuestion.createReflection(
-                        user,
-                        diary,
-                        FALLBACK_REFLECTION_QUESTION,
-                        today,
-                        QuestionGenerationSource.FALLBACK
-                )
-        );
+        AiQuestion reflectionQuestion =
+                aiQuestionRepository.save(
+                        AiQuestion.createReflection(
+                                user,
+                                diary,
+                                FALLBACK_REFLECTION_QUESTION,
+                                today,
+                                QuestionGenerationSource
+                                        .FALLBACK
+                        )
+                );
 
         return DiaryCreateResponse.from(
                 diary,
@@ -89,7 +108,11 @@ public class DiaryService {
             int year,
             int month
     ) {
-        YearMonth yearMonth = YearMonth.of(year, month);
+        YearMonth yearMonth =
+                YearMonth.of(
+                        year,
+                        month
+                );
 
         return diaryRepository
                 .findAllByUserIdAndRecordedDateBetweenAndDeletedFalseOrderByRecordedDateAsc(
@@ -108,7 +131,10 @@ public class DiaryService {
             Long diaryId
     ) {
         return DiaryResponse.from(
-                findActiveDiary(userId, diaryId)
+                findActiveDiary(
+                        userId,
+                        diaryId
+                )
         );
     }
 
@@ -117,23 +143,39 @@ public class DiaryService {
             Long userId,
             Long diaryId
     ) {
-        findActiveDiary(userId, diaryId).softDelete();
+        Diary diary = findActiveDiary(
+                userId,
+                diaryId
+        );
+
+        diary.softDelete();
+
+        /*
+         * 삭제된 일기의 내용을 바탕으로 생성된 기억이
+         * 이후 질문에 계속 사용되지 않도록 폐기함.
+         * 다른 일기에서 나온 승인 기억은 유지.
+         */
+        aiMemoryProfileService
+                .revokeMemoriesFromDiary(
+                        userId,
+                        diaryId
+                );
     }
 
     private void validateDiaryNotWrittenToday(
             Long userId,
             LocalDate today
     ) {
-        /*
-         * 삭제된 일기도 포함해 검사한다.
-         * 삭제 후 같은 날짜에 다시 쓸 수 없기 때문.
-         */
-        if (diaryRepository.existsByUserIdAndRecordedDate(
-                userId,
-                today
-        )) {
+        if (
+                diaryRepository
+                        .existsByUserIdAndRecordedDate(
+                                userId,
+                                today
+                        )
+        ) {
             throw new ProjectException(
-                    ErrorCode.DIARY_ALREADY_WRITTEN_TODAY
+                    ErrorCode
+                            .DIARY_ALREADY_WRITTEN_TODAY
             );
         }
     }
@@ -144,19 +186,19 @@ public class DiaryService {
             LocalDate today
     ) {
         try {
-            /*
-             * saveAndFlush를 사용해 UNIQUE 제약 오류를
-             * 현재 메서드 안에서 즉시 확인한다.
-             *
-             * 동시에 요청 두 개가 들어와 서비스 검사를 둘 다
-             * 통과하더라도 DB UNIQUE 제약이 마지막으로 막는다.
-             */
             return diaryRepository.saveAndFlush(
-                    Diary.create(user, content, today)
+                    Diary.create(
+                            user,
+                            content,
+                            today
+                    )
             );
-        } catch (DataIntegrityViolationException exception) {
+        } catch (
+                DataIntegrityViolationException exception
+        ) {
             throw new ProjectException(
-                    ErrorCode.DIARY_ALREADY_WRITTEN_TODAY
+                    ErrorCode
+                            .DIARY_ALREADY_WRITTEN_TODAY
             );
         }
     }
@@ -171,7 +213,9 @@ public class DiaryService {
                         userId
                 )
                 .orElseThrow(() ->
-                        new ProjectException(ErrorCode.DIARY_NOT_FOUND)
+                        new ProjectException(
+                                ErrorCode.DIARY_NOT_FOUND
+                        )
                 );
     }
 }

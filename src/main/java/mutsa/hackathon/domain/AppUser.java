@@ -26,7 +26,8 @@ import java.time.LocalTime;
         name = "app_user",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_app_user_provider_provider_id",
+                        name =
+                                "uk_app_user_provider_provider_id",
                         columnNames = {
                                 "provider",
                                 "provider_id"
@@ -41,7 +42,9 @@ public class AppUser extends BaseEntity {
     private static final int JOB_MAX_LENGTH = 30;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(
+            strategy = GenerationType.IDENTITY
+    )
     private Long id;
 
     @Version
@@ -58,13 +61,6 @@ public class AppUser extends BaseEntity {
     )
     private String providerId;
 
-    /*
-     * 카카오에서 받은 최초 닉네임은 8자를 넘을 수도 있으므로
-     * DB 컬럼은 100자로 유지함.
-     *
-     * 사용자가 DAYBIT에서 직접 정하는 닉네임만
-     * 서비스 규칙상 2~8자로 검증함.
-     */
     @Column(nullable = false, length = 100)
     private String nickname;
 
@@ -147,12 +143,6 @@ public class AppUser extends BaseEntity {
                 .build();
     }
 
-    /**
-     * 카카오 재로그인 시 외부 프로필을 갱신함.
-     *
-     * 온보딩 완료 전에는 카카오 닉네임을 임시 닉네임으로 사용하고,
-     * 온보딩 완료 후에는 DAYBIT에서 정한 닉네임을 유지함.
-     */
     public void updateKakaoProfile(
             String kakaoNickname,
             String email,
@@ -177,9 +167,6 @@ public class AppUser extends BaseEntity {
         this.lastLoginAt = LocalDateTime.now();
     }
 
-    /**
-     * 최초 온보딩 완료와 이후 설정 변경을 처리함.
-     */
     public void updatePersonalSettings(
             String nickname,
             String job,
@@ -234,10 +221,6 @@ public class AppUser extends BaseEntity {
         this.credit -= amount;
     }
 
-    /**
-     * AI 기억 활용 동의를 한 경우에만
-     * 파생 기억 정보를 저장할 수 있음.
-     */
     public void updateAiMemoryProfile(
             String aiMemoryProfile
     ) {
@@ -249,6 +232,15 @@ public class AppUser extends BaseEntity {
 
         this.aiMemoryProfile =
                 normalizeOptional(aiMemoryProfile);
+    }
+
+    /**
+     * 파생 캐시만 제거.
+     * user_memory_item 원본 상태 변경은
+     * AiMemoryProfileService에서 담당.
+     */
+    public void clearAiMemoryProfile() {
+        this.aiMemoryProfile = null;
     }
 
     public void updateRefreshToken(
@@ -282,11 +274,6 @@ public class AppUser extends BaseEntity {
             return;
         }
 
-        /*
-         * 설정에서 동의를 철회하면
-         * 기존에 생성된 파생 AI 기억도 제거.
-         * 원본 일기 자체는 삭제하지 않음
-         */
         this.aiMemoryConsent = false;
         this.aiMemoryConsentedAt = null;
         this.aiMemoryProfile = null;
