@@ -154,6 +154,6 @@ public class OpenAiWritingHelpQuestionGenerator
     private record OpenAiOutput(List<OpenAiContent> content) {
     }
 
-    privat키 미주입·응답 파싱 실패 경로e record OpenAiContent(String text) {
+    private record OpenAiContent(String text) {
     }
 }
