@@ -24,6 +24,9 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -123,14 +126,34 @@ public class DiaryService {
                         month
                 );
 
-        return diaryRepository
+        List<Diary> diaries = diaryRepository
                 .findAllByUserIdAndRecordedDateBetweenAndDeletedFalseOrderByRecordedDateAsc(
                         userId,
                         yearMonth.atDay(1),
                         yearMonth.atEndOfMonth()
+                );
+
+        if (diaries.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, DiaryReward> rewardsByDiaryId = diaryRewardRepository
+                .findAllByDiaryIdIn(
+                        diaries.stream().map(Diary::getId).toList()
                 )
                 .stream()
-                .map(DiaryResponse::from)
+                .collect(
+                        Collectors.toMap(
+                                reward -> reward.getDiary().getId(),
+                                Function.identity()
+                        )
+                );
+
+        return diaries.stream()
+                .map(diary -> DiaryResponse.from(
+                        diary,
+                        rewardsByDiaryId.get(diary.getId())
+                ))
                 .toList();
     }
 
@@ -139,12 +162,12 @@ public class DiaryService {
             Long userId,
             Long diaryId
     ) {
-        return DiaryResponse.from(
-                findActiveDiary(
-                        userId,
-                        diaryId
-                )
-        );
+        Diary diary = findActiveDiary(userId, diaryId);
+        DiaryReward reward = diaryRewardRepository
+                .findByDiaryId(diaryId)
+                .orElse(null);
+
+        return DiaryResponse.from(diary, reward);
     }
 
     @Transactional

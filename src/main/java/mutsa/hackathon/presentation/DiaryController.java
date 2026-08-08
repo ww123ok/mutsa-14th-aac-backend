@@ -8,11 +8,14 @@ import mutsa.hackathon.dto.DiaryCreateRequest;
 import mutsa.hackathon.dto.DiaryCreateResponse;
 import mutsa.hackathon.dto.DiaryResponse;
 import mutsa.hackathon.dto.DiaryRewardResponse;
+import mutsa.hackathon.dto.ReflectionAnswerRequest;
+import mutsa.hackathon.dto.ReflectionAnswerResponse;
 import mutsa.hackathon.global.ApiResponse;
 import mutsa.hackathon.global.code.SuccessCode;
 import mutsa.hackathon.security.CustomOAuth2User;
 import mutsa.hackathon.service.DiaryService;
 import mutsa.hackathon.service.DiaryRewardService;
+import mutsa.hackathon.service.DiaryReflectionService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,6 +33,8 @@ public class DiaryController {
     private final DiaryService diaryService;
 
     private final DiaryRewardService diaryRewardService;
+
+    private final DiaryReflectionService diaryReflectionService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<DiaryCreateResponse>> create(
@@ -88,6 +93,21 @@ public class DiaryController {
         DiaryRewardResponse response = diaryRewardService.getReward(
                 user.getKakaoUserProfile().id(),
                 diaryId
+        );
+
+        return ApiResponse.onSuccess(response);
+    }
+
+    @PostMapping("/{diaryId}/reflection-answer")
+    public ApiResponse<ReflectionAnswerResponse> submitReflectionAnswer(
+            @AuthenticationPrincipal CustomOAuth2User user,
+            @PathVariable Long diaryId,
+            @Valid @RequestBody ReflectionAnswerRequest request
+    ) {
+        ReflectionAnswerResponse response = diaryReflectionService.submitAnswer(
+                user.getKakaoUserProfile().id(),
+                diaryId,
+                request
         );
 
         return ApiResponse.onSuccess(response);
