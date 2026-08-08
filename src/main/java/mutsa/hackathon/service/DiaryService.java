@@ -15,6 +15,7 @@ import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.AppUserRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,9 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +52,11 @@ public class DiaryService {
 
     private final AiMemoryProfileService
             aiMemoryProfileService;
+
+    private final DiaryReflectionQuestionGenerator
+            diaryReflectionQuestionGenerator;
+
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public DiaryCreateResponse create(
@@ -83,17 +92,25 @@ public class DiaryService {
                                 .createPending(diary)
                 );
 
+        GeneratedReflectionQuestion generatedQuestion =
+                generateReflectionQuestion(diary.getContent());
+
         AiQuestion reflectionQuestion =
                 aiQuestionRepository.save(
                         AiQuestion.createReflection(
                                 user,
                                 diary,
-                                FALLBACK_REFLECTION_QUESTION,
+                                generatedQuestion.questionText(),
                                 today,
-                                QuestionGenerationSource
-                                        .FALLBACK
+                                generatedQuestion.generationSource()
                         )
                 );
+
+        eventPublisher.publishEvent(
+                new DiaryRewardGenerationRequested(
+                        reward.getId()
+                )
+        );
 
         return DiaryCreateResponse.from(
                 diary,
@@ -114,14 +131,34 @@ public class DiaryService {
                         month
                 );
 
-        return diaryRepository
+        List<Diary> diaries = diaryRepository
                 .findAllByUserIdAndRecordedDateBetweenAndDeletedFalseOrderByRecordedDateAsc(
                         userId,
                         yearMonth.atDay(1),
                         yearMonth.atEndOfMonth()
+                );
+
+        if (diaries.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, DiaryReward> rewardsByDiaryId = diaryRewardRepository
+                .findAllByDiaryIdIn(
+                        diaries.stream().map(Diary::getId).toList()
                 )
                 .stream()
-                .map(DiaryResponse::from)
+                .collect(
+                        Collectors.toMap(
+                                reward -> reward.getDiary().getId(),
+                                Function.identity()
+                        )
+                );
+
+        return diaries.stream()
+                .map(diary -> DiaryResponse.from(
+                        diary,
+                        rewardsByDiaryId.get(diary.getId())
+                ))
                 .toList();
     }
 
@@ -130,12 +167,12 @@ public class DiaryService {
             Long userId,
             Long diaryId
     ) {
-        return DiaryResponse.from(
-                findActiveDiary(
-                        userId,
-                        diaryId
-                )
-        );
+        Diary diary = findActiveDiary(userId, diaryId);
+        DiaryReward reward = diaryRewardRepository
+                .findByDiaryId(diaryId)
+                .orElse(null);
+
+        return DiaryResponse.from(diary, reward);
     }
 
     @Transactional
@@ -201,6 +238,30 @@ public class DiaryService {
                             .DIARY_ALREADY_WRITTEN_TODAY
             );
         }
+    }
+
+    private GeneratedReflectionQuestion generateReflectionQuestion(
+            String diaryContent
+    ) {
+        try {
+            return new GeneratedReflectionQuestion(
+                    diaryReflectionQuestionGenerator.generate(
+                            diaryContent
+                    ),
+                    QuestionGenerationSource.AI
+            );
+        } catch (RuntimeException exception) {
+            return new GeneratedReflectionQuestion(
+                    FALLBACK_REFLECTION_QUESTION,
+                    QuestionGenerationSource.FALLBACK
+            );
+        }
+    }
+
+    private record GeneratedReflectionQuestion(
+            String questionText,
+            QuestionGenerationSource generationSource
+    ) {
     }
 
     private Diary findActiveDiary(
