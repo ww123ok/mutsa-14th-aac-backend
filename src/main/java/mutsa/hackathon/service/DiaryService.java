@@ -15,6 +15,7 @@ import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.AppUserRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,8 @@ public class DiaryService {
 
     private final AiMemoryProfileService
             aiMemoryProfileService;
+
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public DiaryCreateResponse create(
@@ -94,6 +97,12 @@ public class DiaryService {
                                         .FALLBACK
                         )
                 );
+
+        eventPublisher.publishEvent(
+                new DiaryRewardGenerationRequested(
+                        reward.getId()
+                )
+        );
 
         return DiaryCreateResponse.from(
                 diary,
