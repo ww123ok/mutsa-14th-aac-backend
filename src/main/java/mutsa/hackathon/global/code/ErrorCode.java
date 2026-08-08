@@ -87,6 +87,12 @@ public enum ErrorCode
             "오늘 사용할 수 있는 작성 도움 질문을 모두 사용했습니다."
     ),
 
+    AI_WRITING_HELP_UNAVAILABLE(
+            HttpStatus.SERVICE_UNAVAILABLE,
+            "QUESTION503",
+            "AI 작성 도움 질문을 지금 만들 수 없습니다. 잠시 후 다시 시도해 주세요."
+    ),
+
     REFLECTION_ANSWER_ALREADY_SUBMITTED(
             HttpStatus.CONFLICT,
             "QUESTION409_1",
