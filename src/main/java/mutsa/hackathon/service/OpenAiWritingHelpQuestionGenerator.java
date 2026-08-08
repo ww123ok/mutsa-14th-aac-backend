@@ -13,6 +13,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.util.List;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -41,6 +43,10 @@ public class OpenAiWritingHelpQuestionGenerator
     @Override
     public String generate(WritingHelpPrompt prompt) {
         if (apiKey == null || apiKey.isBlank()) {
+            log.warn(
+                    "OpenAI writing-help is unavailable because OPENAI_API_KEY is missing: model={}",
+                    model
+            );
             throw new ProjectException(ErrorCode.AI_WRITING_HELP_UNAVAILABLE);
         }
 
@@ -65,6 +71,13 @@ public class OpenAiWritingHelpQuestionGenerator
                     exception.getResponseBodyAsString()
             );
             throw new ProjectException(ErrorCode.AI_WRITING_HELP_UNAVAILABLE);
+        } catch (ProjectException exception) {
+            log.warn(
+                    "OpenAI writing-help response could not be used: model={}, reason={}",
+                    model,
+                    exception.getErrorCode().getCode()
+            );
+            throw exception;
         } catch (RestClientException exception) {
             log.warn(
                     "OpenAI writing-help request could not be completed: model={}, reason={}",
@@ -91,11 +104,28 @@ public class OpenAiWritingHelpQuestionGenerator
     }
 
     private String extractQuestion(OpenAiResponse response) {
-        if (response == null || response.outputText() == null) {
+        if (response == null) {
             throw new ProjectException(ErrorCode.AI_WRITING_HELP_UNAVAILABLE);
         }
 
-        String question = response.outputText().trim();
+        String question = response.outputText();
+        if (question == null || question.isBlank()) {
+            question = response.output() == null
+                    ? null
+                    : response.output().stream()
+                            .filter(output -> output.content() != null)
+                            .flatMap(output -> output.content().stream())
+                            .map(OpenAiContent::text)
+                            .filter(text -> text != null && !text.isBlank())
+                            .findFirst()
+                            .orElse(null);
+        }
+
+        if (question == null) {
+            throw new ProjectException(ErrorCode.AI_WRITING_HELP_UNAVAILABLE);
+        }
+
+        question = question.trim();
         if (question.isBlank() || question.length() > 1_000) {
             throw new ProjectException(ErrorCode.AI_WRITING_HELP_UNAVAILABLE);
         }
@@ -116,7 +146,14 @@ public class OpenAiWritingHelpQuestionGenerator
     }
 
     private record OpenAiResponse(
-            @JsonProperty("output_text") String outputText
+            @JsonProperty("output_text") String outputText,
+            List<OpenAiOutput> output
     ) {
+    }
+
+    private record OpenAiOutput(List<OpenAiContent> content) {
+    }
+
+    privat키 미주입·응답 파싱 실패 경로e record OpenAiContent(String text) {
     }
 }
