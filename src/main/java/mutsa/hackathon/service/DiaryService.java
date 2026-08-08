@@ -53,6 +53,9 @@ public class DiaryService {
     private final AiMemoryProfileService
             aiMemoryProfileService;
 
+    private final DiaryReflectionQuestionGenerator
+            diaryReflectionQuestionGenerator;
+
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
@@ -89,15 +92,17 @@ public class DiaryService {
                                 .createPending(diary)
                 );
 
+        GeneratedReflectionQuestion generatedQuestion =
+                generateReflectionQuestion(diary.getContent());
+
         AiQuestion reflectionQuestion =
                 aiQuestionRepository.save(
                         AiQuestion.createReflection(
                                 user,
                                 diary,
-                                FALLBACK_REFLECTION_QUESTION,
+                                generatedQuestion.questionText(),
                                 today,
-                                QuestionGenerationSource
-                                        .FALLBACK
+                                generatedQuestion.generationSource()
                         )
                 );
 
@@ -233,6 +238,30 @@ public class DiaryService {
                             .DIARY_ALREADY_WRITTEN_TODAY
             );
         }
+    }
+
+    private GeneratedReflectionQuestion generateReflectionQuestion(
+            String diaryContent
+    ) {
+        try {
+            return new GeneratedReflectionQuestion(
+                    diaryReflectionQuestionGenerator.generate(
+                            diaryContent
+                    ),
+                    QuestionGenerationSource.AI
+            );
+        } catch (RuntimeException exception) {
+            return new GeneratedReflectionQuestion(
+                    FALLBACK_REFLECTION_QUESTION,
+                    QuestionGenerationSource.FALLBACK
+            );
+        }
+    }
+
+    private record GeneratedReflectionQuestion(
+            String questionText,
+            QuestionGenerationSource generationSource
+    ) {
     }
 
     private Diary findActiveDiary(
