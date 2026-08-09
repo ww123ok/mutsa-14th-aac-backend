@@ -7,11 +7,23 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
-public interface DiaryShareRepository extends JpaRepository<DiaryShare, Long> {
+public interface DiaryShareRepository
+        extends JpaRepository<DiaryShare, Long> {
 
-    Optional<DiaryShare> findByDiaryId(Long diaryId);
+    Optional<DiaryShare> findByDiaryId(
+            Long diaryId
+    );
 
-    Optional<DiaryShare> findByIdAndDiaryUserId(Long shareId, Long userId);
+    boolean existsByDiaryId(
+            Long diaryId
+    );
 
-    List<DiaryShare> findAllByShareStatus(DiaryShareStatus shareStatus);
+    Optional<DiaryShare> findByIdAndDiaryUserId(
+            Long shareId,
+            Long userId
+    );
+
+    List<DiaryShare> findAllByShareStatus(
+            DiaryShareStatus shareStatus
+    );
 }

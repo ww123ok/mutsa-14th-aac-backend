@@ -75,6 +75,12 @@ public enum ErrorCode
             "일기 내용은 필수입니다."
     ),
 
+    DEV_DIARY_RESET_SHARED_DIARY_BLOCKED(
+            HttpStatus.CONFLICT,
+            "DEV409_1",
+            "공유 이력이 있는 일기는 개발용 초기화로 삭제할 수 없습니다."
+    ),
+
     QUESTION_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "QUESTION404",

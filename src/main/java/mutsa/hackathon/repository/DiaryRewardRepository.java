@@ -20,7 +20,7 @@ public interface DiaryRewardRepository
     );
 
     /**
-     * 비동기 처리 스레드에서 Diary의 본문까지
+     * 비동기 처리 스레드에서 Diary 본문까지
      * 안전하게 사용할 수 있도록 fetch join
      */
     @Query("""
@@ -32,5 +32,9 @@ public interface DiaryRewardRepository
     Optional<DiaryReward> findByIdWithDiary(
             @Param("rewardId")
             Long rewardId
+    );
+
+    long deleteAllByDiaryId(
+            Long diaryId
     );
 }
