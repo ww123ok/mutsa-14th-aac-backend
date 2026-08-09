@@ -59,5 +59,6 @@ app:
     model: ${OPENAI_MODEL:gpt-5.6-terra}
     base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
 
-    # 로컬·테스트에서 의도하지 않은 실제 API 호출을 막음
+    # 로컬·일반 테스트에서 실제 API가 호출되지 않도록 함.
     reflection-enabled: ${OPENAI_REFLECTION_ENABLED:false}
+    reward-enabled: ${OPENAI_REWARD_ENABLED:false}
