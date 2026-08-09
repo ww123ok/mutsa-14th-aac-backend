@@ -1,22 +1,29 @@
 package mutsa.hackathon.service;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * 깨진 머지 상태를 우선 복구하기 위한 임시 구현체.
- * DiaryService가 이 예외를 받아
- * FALLBACK 성찰 질문을 생성.
- * 다음 OpenAI 성찰 질문 체크포인트에서
- * OpenAiDiaryReflectionQuestionGenerator로 교체 예정.
+ * OpenAI 성찰 질문 기능이 비활성화되어 있을 때 사용하는 생성기.
+ * DiaryService가 이 예외를 받아 기본 성찰 질문을 FALLBACK 출처로
+ * 저장하도록 의도적으로 예외를 발생시킴.
  */
 @Component
+@ConditionalOnProperty(
+        prefix = "app.openai",
+        name = "reflection-enabled",
+        havingValue = "false",
+        matchIfMissing = true
+)
 public class FallbackDiaryReflectionQuestionGenerator
         implements DiaryReflectionQuestionGenerator {
 
     @Override
-    public String generate(String diaryContent) {
+    public String generate(
+            DiaryReflectionPrompt prompt
+    ) {
         throw new IllegalStateException(
-                "OpenAI 성찰 질문 생성기가 아직 연결되지 않았습니다."
+                "OpenAI 성찰 질문 생성 기능이 비활성화되어 있습니다."
         );
     }
 }

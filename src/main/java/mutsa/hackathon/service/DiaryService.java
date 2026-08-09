@@ -56,7 +56,8 @@ public class DiaryService {
     private final DiaryReflectionQuestionGenerator
             diaryReflectionQuestionGenerator;
 
-    private final ApplicationEventPublisher eventPublisher;
+    private final ApplicationEventPublisher
+            eventPublisher;
 
     @Transactional
     public DiaryCreateResponse create(
@@ -88,21 +89,28 @@ public class DiaryService {
 
         DiaryReward reward =
                 diaryRewardRepository.save(
-                        DiaryReward
-                                .createPending(diary)
+                        DiaryReward.createPending(
+                                diary
+                        )
                 );
 
         GeneratedReflectionQuestion generatedQuestion =
-                generateReflectionQuestion(diary.getContent());
+                generateReflectionQuestion(
+                        user,
+                        diary.getContent(),
+                        request.shouldUseDiaryContent()
+                );
 
         AiQuestion reflectionQuestion =
                 aiQuestionRepository.save(
                         AiQuestion.createReflection(
                                 user,
                                 diary,
-                                generatedQuestion.questionText(),
+                                generatedQuestion
+                                        .questionText(),
                                 today,
-                                generatedQuestion.generationSource()
+                                generatedQuestion
+                                        .generationSource()
                         )
                 );
 
@@ -131,34 +139,45 @@ public class DiaryService {
                         month
                 );
 
-        List<Diary> diaries = diaryRepository
-                .findAllByUserIdAndRecordedDateBetweenAndDeletedFalseOrderByRecordedDateAsc(
-                        userId,
-                        yearMonth.atDay(1),
-                        yearMonth.atEndOfMonth()
-                );
+        List<Diary> diaries =
+                diaryRepository
+                        .findAllByUserIdAndRecordedDateBetweenAndDeletedFalseOrderByRecordedDateAsc(
+                                userId,
+                                yearMonth.atDay(1),
+                                yearMonth.atEndOfMonth()
+                        );
 
         if (diaries.isEmpty()) {
             return List.of();
         }
 
-        Map<Long, DiaryReward> rewardsByDiaryId = diaryRewardRepository
-                .findAllByDiaryIdIn(
-                        diaries.stream().map(Diary::getId).toList()
-                )
-                .stream()
-                .collect(
-                        Collectors.toMap(
-                                reward -> reward.getDiary().getId(),
-                                Function.identity()
+        Map<Long, DiaryReward> rewardsByDiaryId =
+                diaryRewardRepository
+                        .findAllByDiaryIdIn(
+                                diaries.stream()
+                                        .map(Diary::getId)
+                                        .toList()
                         )
-                );
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        reward ->
+                                                reward
+                                                        .getDiary()
+                                                        .getId(),
+                                        Function.identity()
+                                )
+                        );
 
         return diaries.stream()
-                .map(diary -> DiaryResponse.from(
-                        diary,
-                        rewardsByDiaryId.get(diary.getId())
-                ))
+                .map(diary ->
+                        DiaryResponse.from(
+                                diary,
+                                rewardsByDiaryId.get(
+                                        diary.getId()
+                                )
+                        )
+                )
                 .toList();
     }
 
@@ -167,12 +186,20 @@ public class DiaryService {
             Long userId,
             Long diaryId
     ) {
-        Diary diary = findActiveDiary(userId, diaryId);
-        DiaryReward reward = diaryRewardRepository
-                .findByDiaryId(diaryId)
-                .orElse(null);
+        Diary diary = findActiveDiary(
+                userId,
+                diaryId
+        );
 
-        return DiaryResponse.from(diary, reward);
+        DiaryReward reward =
+                diaryRewardRepository
+                        .findByDiaryId(diaryId)
+                        .orElse(null);
+
+        return DiaryResponse.from(
+                diary,
+                reward
+        );
     }
 
     @Transactional
@@ -188,9 +215,8 @@ public class DiaryService {
         diary.softDelete();
 
         /*
-         * 삭제된 일기의 내용을 바탕으로 생성된 기억이
-         * 이후 질문에 계속 사용되지 않도록 폐기함.
-         * 다른 일기에서 나온 승인 기억은 유지.
+         * 삭제된 일기에서 생성된 기억은 이후 질문에서
+         * 사용되지 않도록 폐기
          */
         aiMemoryProfileService
                 .revokeMemoriesFromDiary(
@@ -240,14 +266,34 @@ public class DiaryService {
         }
     }
 
-    private GeneratedReflectionQuestion generateReflectionQuestion(
-            String diaryContent
+    private GeneratedReflectionQuestion
+    generateReflectionQuestion(
+            AppUser user,
+            String diaryContent,
+            boolean reflectionUsesDiaryContent
     ) {
+        /*
+         * 사용자가 일기 반영을 거부하면 생성기에
+         * 일기 본문 자체를 전달하지 않음
+         */
+        String contentForPrompt =
+                reflectionUsesDiaryContent
+                        ? diaryContent
+                        : null;
+
+        DiaryReflectionPrompt prompt =
+                new DiaryReflectionPrompt(
+                        user.getNickname(),
+                        user.getJob(),
+                        user.getAiMemoryProfile(),
+                        contentForPrompt,
+                        reflectionUsesDiaryContent
+                );
+
         try {
             return new GeneratedReflectionQuestion(
-                    diaryReflectionQuestionGenerator.generate(
-                            diaryContent
-                    ),
+                    diaryReflectionQuestionGenerator
+                            .generate(prompt),
                     QuestionGenerationSource.AI
             );
         } catch (RuntimeException exception) {
