@@ -58,7 +58,10 @@ app:
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-5.6-terra}
     base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
-
-    # 로컬·일반 테스트에서 실제 API가 호출되지 않도록 함.
     reflection-enabled: ${OPENAI_REFLECTION_ENABLED:false}
     reward-enabled: ${OPENAI_REWARD_ENABLED:false}
+
+  dev:
+    # 기본적으로 비활성화
+    # 개발 서버에서만 DEV_RESET_ENABLED=true로 활성화
+    reset-enabled: ${DEV_RESET_ENABLED:false}

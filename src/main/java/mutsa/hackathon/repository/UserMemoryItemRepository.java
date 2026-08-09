@@ -38,6 +38,15 @@ public interface UserMemoryItemRepository
     );
 
     /**
+     * 개발용 일기 초기화 시 해당 일기에서 파생된
+     * 기억 후보를 실제로 삭제
+     */
+    long deleteAllByUserIdAndSourceDiaryId(
+            Long userId,
+            Long sourceDiaryId
+    );
+
+    /**
      * 승인 상태이면서 아직 만료되지 않은 기억만
      * 질문 생성용으로 조회
      */

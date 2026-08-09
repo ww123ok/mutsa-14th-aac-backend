@@ -1,0 +1,355 @@
+package mutsa.hackathon.service;
+
+import mutsa.hackathon.domain.AiQuestion;
+import mutsa.hackathon.domain.AppUser;
+import mutsa.hackathon.domain.Diary;
+import mutsa.hackathon.domain.DiaryReward;
+import mutsa.hackathon.domain.QuestionGenerationSource;
+import mutsa.hackathon.domain.UserMemoryCategory;
+import mutsa.hackathon.domain.UserMemoryItem;
+import mutsa.hackathon.dto.DevTodayDiaryResetResponse;
+import mutsa.hackathon.repository.AiQuestionRepository;
+import mutsa.hackathon.repository.AppUserRepository;
+import mutsa.hackathon.repository.DiaryRepository;
+import mutsa.hackathon.repository.DiaryRewardRepository;
+import mutsa.hackathon.repository.UserMemoryItemRepository;
+import mutsa.hackathon.util.MemoryHashGenerator;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@SpringBootTest(
+        properties = {
+                "app.dev.reset-enabled=true",
+                "app.openai.reflection-enabled=false",
+                "app.openai.reward-enabled=false"
+        }
+)
+class DevDiaryResetServiceIntegrationTest {
+
+    private static final ZoneId SERVICE_ZONE =
+            ZoneId.of("Asia/Seoul");
+
+    @Autowired
+    private DevDiaryResetService
+            devDiaryResetService;
+
+    @Autowired
+    private AppUserRepository
+            appUserRepository;
+
+    @Autowired
+    private DiaryRepository
+            diaryRepository;
+
+    @Autowired
+    private DiaryRewardRepository
+            diaryRewardRepository;
+
+    @Autowired
+    private AiQuestionRepository
+            aiQuestionRepository;
+
+    @Autowired
+    private UserMemoryItemRepository
+            userMemoryItemRepository;
+
+    @Autowired
+    private AiMemoryProfileService
+            aiMemoryProfileService;
+
+    @Test
+    void 오늘_일기와_연결된_데이터를_하드삭제하고_다시_작성할_수_있다() {
+        LocalDate today =
+                LocalDate.now(SERVICE_ZONE);
+
+        AppUser user =
+                saveUser();
+
+        Diary yesterdayDiary =
+                diaryRepository.saveAndFlush(
+                        Diary.create(
+                                user,
+                                "어제는 반려묘와 산책했다.",
+                                today.minusDays(1)
+                        )
+                );
+
+        UserMemoryItem yesterdayMemory =
+                saveApprovedMemory(
+                        user,
+                        yesterdayDiary,
+                        UserMemoryCategory.PET,
+                        "반려묘와 함께 생활함"
+                );
+
+        Diary todayDiary =
+                diaryRepository.saveAndFlush(
+                        Diary.create(
+                                user,
+                                "오늘은 프로젝트 테스트를 진행했다.",
+                                today
+                        )
+                );
+
+        DiaryReward todayReward =
+                diaryRewardRepository.saveAndFlush(
+                        DiaryReward.createPending(
+                                todayDiary
+                        )
+                );
+
+        AiQuestion todayQuestion =
+                aiQuestionRepository.saveAndFlush(
+                        AiQuestion.createReflection(
+                                user,
+                                todayDiary,
+                                "오늘 가장 의미 있었던 순간은 무엇인가요?",
+                                today,
+                                QuestionGenerationSource.FALLBACK
+                        )
+                );
+
+        UserMemoryItem todayMemory =
+                saveApprovedMemory(
+                        user,
+                        todayDiary,
+                        UserMemoryCategory.WORK_STUDY,
+                        "대학 팀 프로젝트를 진행 중임"
+                );
+
+        aiMemoryProfileService.rebuildProfile(
+                user.getId()
+        );
+
+        /*
+         * rebuildProfile()은 서비스 트랜잭션에서 사용자를
+         * 다시 조회하여 수정하므로 최신 엔티티를 재조회
+         */
+        AppUser profileBeforeReset =
+                appUserRepository
+                        .findById(user.getId())
+                        .orElseThrow();
+
+        assertNotNull(
+                profileBeforeReset.getAiMemoryProfile()
+        );
+
+        assertTrue(
+                profileBeforeReset
+                        .getAiMemoryProfile()
+                        .contains(
+                                "대학 팀 프로젝트를 진행 중임"
+                        )
+        );
+
+        DevTodayDiaryResetResponse response =
+                devDiaryResetService.resetToday(
+                        user.getId()
+                );
+
+        assertTrue(
+                response.deleted()
+        );
+
+        assertEquals(
+                todayDiary.getId(),
+                response.diaryId()
+        );
+
+        assertEquals(
+                today,
+                response.recordedDate()
+        );
+
+        assertEquals(
+                1,
+                response.deletedRewardCount()
+        );
+
+        assertEquals(
+                1,
+                response.deletedQuestionCount()
+        );
+
+        assertEquals(
+                1,
+                response.deletedMemoryCount()
+        );
+
+        assertFalse(
+                diaryRepository
+                        .findById(
+                                todayDiary.getId()
+                        )
+                        .isPresent()
+        );
+
+        assertFalse(
+                diaryRewardRepository
+                        .findById(
+                                todayReward.getId()
+                        )
+                        .isPresent()
+        );
+
+        assertFalse(
+                aiQuestionRepository
+                        .findById(
+                                todayQuestion.getId()
+                        )
+                        .isPresent()
+        );
+
+        assertFalse(
+                userMemoryItemRepository
+                        .findById(
+                                todayMemory.getId()
+                        )
+                        .isPresent()
+        );
+
+        assertTrue(
+                userMemoryItemRepository
+                        .findById(
+                                yesterdayMemory.getId()
+                        )
+                        .isPresent()
+        );
+
+        AppUser savedUser =
+                appUserRepository
+                        .findById(user.getId())
+                        .orElseThrow();
+
+        assertNotNull(
+                savedUser.getAiMemoryProfile()
+        );
+
+        assertTrue(
+                savedUser.getAiMemoryProfile()
+                        .contains(
+                                "반려묘와 함께 생활함"
+                        )
+        );
+
+        assertFalse(
+                savedUser.getAiMemoryProfile()
+                        .contains(
+                                "대학 팀 프로젝트를 진행 중임"
+                        )
+        );
+
+        Diary rewrittenDiary =
+                diaryRepository.saveAndFlush(
+                        Diary.create(
+                                savedUser,
+                                "초기화 후 오늘의 일기를 다시 작성했다.",
+                                today
+                        )
+                );
+
+        assertNotNull(
+                rewrittenDiary.getId()
+        );
+    }
+
+    @Test
+    void 오늘_일기가_없으면_삭제하지_않고_정상응답한다() {
+        AppUser user =
+                saveUser();
+
+        DevTodayDiaryResetResponse response =
+                devDiaryResetService.resetToday(
+                        user.getId()
+                );
+
+        assertFalse(
+                response.deleted()
+        );
+
+        assertEquals(
+                LocalDate.now(SERVICE_ZONE),
+                response.recordedDate()
+        );
+
+        assertEquals(
+                0,
+                response.deletedRewardCount()
+        );
+
+        assertEquals(
+                0,
+                response.deletedQuestionCount()
+        );
+
+        assertEquals(
+                0,
+                response.deletedMemoryCount()
+        );
+    }
+
+    private AppUser saveUser() {
+        AppUser user =
+                AppUser.createKakaoUser(
+                        "dev-reset-"
+                                + System.nanoTime(),
+                        "데이빗",
+                        null,
+                        null
+                );
+
+        /*
+         * 저장 전에 설정을 변경하여 한 트랜잭션으로
+         * 확실하게 DB에 반영
+         */
+        user.updatePersonalSettings(
+                "데이빗",
+                "대학생",
+                LocalTime.of(21, 0),
+                true
+        );
+
+        return appUserRepository.saveAndFlush(
+                user
+        );
+    }
+
+    private UserMemoryItem saveApprovedMemory(
+            AppUser user,
+            Diary diary,
+            UserMemoryCategory category,
+            String memoryText
+    ) {
+        UserMemoryItem memory =
+                UserMemoryItem.createCandidate(
+                        user,
+                        diary,
+                        category,
+                        memoryText,
+                        MemoryHashGenerator.generate(
+                                category,
+                                memoryText
+                        ),
+                        null
+                );
+
+        /*
+         * 저장된 엔티티를 트랜잭션 밖에서 수정하지 않고,
+         * 승인한 상태로 한 번에 저장
+         */
+        memory.approve();
+
+        return userMemoryItemRepository
+                .saveAndFlush(memory);
+    }
+}
