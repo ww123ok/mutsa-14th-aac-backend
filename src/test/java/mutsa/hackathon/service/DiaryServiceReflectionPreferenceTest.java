@@ -19,14 +19,15 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,7 +35,8 @@ import static org.mockito.Mockito.when;
 class DiaryServiceReflectionPreferenceTest {
 
     @Mock
-    private DiaryRepository diaryRepository;
+    private DiaryRepository
+            diaryRepository;
 
     @Mock
     private DiaryRewardRepository
@@ -45,7 +47,8 @@ class DiaryServiceReflectionPreferenceTest {
             aiQuestionRepository;
 
     @Mock
-    private AppUserRepository appUserRepository;
+    private AppUserRepository
+            appUserRepository;
 
     @Mock
     private AiMemoryProfileService
@@ -63,8 +66,11 @@ class DiaryServiceReflectionPreferenceTest {
     private DiaryService diaryService;
 
     @Test
-    void 일기_반영을_선택하면_성찰질문_생성기에_일기내용을_전달한다() {
-        AppUser user = prepareSuccessfulCreate();
+    void 개인화_반영을_거부해도_성찰질문은_오늘_일기내용을_사용한다() {
+
+        prepareSuccessfulCreate(
+                true
+        );
 
         when(
                 diaryReflectionQuestionGenerator
@@ -81,11 +87,12 @@ class DiaryServiceReflectionPreferenceTest {
                 1L,
                 new DiaryCreateRequest(
                         "오늘 팀원들과 프로젝트를 완성했다.",
-                        true
+                        false
                 )
         );
 
-        ArgumentCaptor<DiaryReflectionPrompt> captor =
+        ArgumentCaptor<DiaryReflectionPrompt>
+                captor =
                 ArgumentCaptor.forClass(
                         DiaryReflectionPrompt.class
                 );
@@ -96,27 +103,20 @@ class DiaryServiceReflectionPreferenceTest {
                 captor.capture()
         );
 
-        DiaryReflectionPrompt prompt =
-                captor.getValue();
-
-        assertTrue(
-                prompt.reflectionUsesDiaryContent()
-        );
-
         assertEquals(
                 "오늘 팀원들과 프로젝트를 완성했다.",
-                prompt.diaryContent()
-        );
-
-        assertEquals(
-                user.getNickname(),
-                prompt.nickname()
+                captor
+                        .getValue()
+                        .diaryContent()
         );
     }
 
     @Test
-    void 일기_반영을_거부하면_성찰질문_생성기에_일기내용을_전달하지_않는다() {
-        prepareSuccessfulCreate();
+    void 개인화_반영을_선택하고_전역동의도_있으면_기억추출_이벤트를_발행한다() {
+
+        prepareSuccessfulCreate(
+                true
+        );
 
         when(
                 diaryReflectionQuestionGenerator
@@ -126,60 +126,145 @@ class DiaryServiceReflectionPreferenceTest {
                                 )
                         )
         ).thenReturn(
-                "오늘 하루를 돌아보면 어떤 순간이 가장 기억에 남나요?"
+                "오늘 어떤 순간이 가장 오래 기억에 남았나요?"
         );
 
         diaryService.create(
                 1L,
                 new DiaryCreateRequest(
-                        "외부 AI에 전달하고 싶지 않은 일기 내용",
-                        false
+                        "오늘 반려묘와 시간을 보냈다.",
+                        true
                 )
         );
 
-        ArgumentCaptor<DiaryReflectionPrompt> captor =
-                ArgumentCaptor.forClass(
-                        DiaryReflectionPrompt.class
-                );
-
         verify(
-                diaryReflectionQuestionGenerator
-        ).generate(
-                captor.capture()
-        );
-
-        DiaryReflectionPrompt prompt =
-                captor.getValue();
-
-        assertFalse(
-                prompt.reflectionUsesDiaryContent()
-        );
-
-        assertNull(
-                prompt.diaryContent()
+                eventPublisher
+        ).publishEvent(
+                any(
+                        DiaryMemoryExtractionRequested.class
+                )
         );
     }
 
     @Test
-    void 기존_한개_인자_생성자는_일기내용_반영으로_처리한다() {
-        DiaryCreateRequest request =
-                new DiaryCreateRequest(
-                        "기존 테스트 호환용 일기"
-                );
+    void 개인화_반영을_거부하면_기억추출_이벤트를_발행하지_않는다() {
 
-        assertTrue(
-                request.shouldUseDiaryContent()
+        prepareSuccessfulCreate(
+                true
+        );
+
+        when(
+                diaryReflectionQuestionGenerator
+                        .generate(
+                                any(
+                                        DiaryReflectionPrompt.class
+                                )
+                        )
+        ).thenReturn(
+                "오늘 어떤 순간이 가장 오래 기억에 남았나요?"
+        );
+
+        diaryService.create(
+                1L,
+                new DiaryCreateRequest(
+                        "오늘 반려묘와 시간을 보냈다.",
+                        false
+                )
+        );
+
+        verify(
+                eventPublisher,
+                never()
+        ).publishEvent(
+                any(
+                        DiaryMemoryExtractionRequested.class
+                )
         );
     }
 
-    private AppUser prepareSuccessfulCreate() {
+    @Test
+    void 전역_AI기억동의가_없으면_개인화선택이_true여도_기억추출하지_않는다() {
+
+        prepareSuccessfulCreate(
+                false
+        );
+
+        when(
+                diaryReflectionQuestionGenerator
+                        .generate(
+                                any(
+                                        DiaryReflectionPrompt.class
+                                )
+                        )
+        ).thenReturn(
+                "오늘 어떤 순간이 가장 오래 기억에 남았나요?"
+        );
+
+        diaryService.create(
+                1L,
+                new DiaryCreateRequest(
+                        "오늘 반려묘와 시간을 보냈다.",
+                        true
+                )
+        );
+
+        verify(
+                eventPublisher,
+                never()
+        ).publishEvent(
+                any(
+                        DiaryMemoryExtractionRequested.class
+                )
+        );
+    }
+
+    @Test
+    void 일기생성요청은_개인화반영여부를_명확히_판단한다() {
+
+        DiaryCreateRequest useRequest =
+                new DiaryCreateRequest(
+                        "개인화 사용",
+                        true
+                );
+
+        DiaryCreateRequest skipRequest =
+                new DiaryCreateRequest(
+                        "개인화 미사용",
+                        false
+                );
+
+        assertTrue(
+                useRequest
+                        .shouldUseDiaryContentForPersonalization()
+        );
+
+        assertFalse(
+                skipRequest
+                        .shouldUseDiaryContentForPersonalization()
+        );
+    }
+
+    private AppUser prepareSuccessfulCreate(
+            boolean aiMemoryConsent
+    ) {
         AppUser user =
                 AppUser.createKakaoUser(
-                        "reflection-preference-user",
+                        "reflection-preference-user-"
+                                + System.nanoTime(),
                         "데이빗",
                         null,
                         null
                 );
+
+        user.updatePersonalSettings(
+                "데이빗",
+                "대학생",
+                LocalTime.of(
+                        21,
+                        0
+                ),
+                aiMemoryConsent
+        );
 
         when(
                 diaryRepository
@@ -190,16 +275,19 @@ class DiaryServiceReflectionPreferenceTest {
         ).thenReturn(false);
 
         when(
-                appUserRepository.findById(1L)
+                appUserRepository
+                        .findById(1L)
         ).thenReturn(
                 Optional.of(user)
         );
 
         when(
-                diaryRepository.saveAndFlush(
-                        any(Diary.class)
-                )
+                diaryRepository
+                        .saveAndFlush(
+                                any(Diary.class)
+                        )
         ).thenAnswer(invocation -> {
+
             Diary diary =
                     invocation.getArgument(0);
 
@@ -217,6 +305,7 @@ class DiaryServiceReflectionPreferenceTest {
                         any(DiaryReward.class)
                 )
         ).thenAnswer(invocation -> {
+
             DiaryReward reward =
                     invocation.getArgument(0);
 
@@ -234,6 +323,7 @@ class DiaryServiceReflectionPreferenceTest {
                         any(AiQuestion.class)
                 )
         ).thenAnswer(invocation -> {
+
             AiQuestion question =
                     invocation.getArgument(0);
 

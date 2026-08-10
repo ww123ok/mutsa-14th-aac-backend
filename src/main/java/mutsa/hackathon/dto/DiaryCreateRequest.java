@@ -1,5 +1,6 @@
 package mutsa.hackathon.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -10,25 +11,37 @@ public record DiaryCreateRequest(
         )
         String content,
 
+        /**
+         * 오늘 일기에서 추출한 정보를
+         * 앞으로의 작성 도움 질문 개인화에
+         * 활용할지에 대한 사용자 선택.
+         * 기존 프론트의 reflectionUsesDiaryContent는
+         * 마이그레이션 기간 동안 입력 alias로만 지원.
+         */
+        @JsonAlias("reflectionUsesDiaryContent")
         @NotNull(
-                message = "성찰 질문에 일기 내용을 반영할지 선택해야 합니다."
+                message = "오늘 일기 내용을 앞으로의 질문에 반영할지 선택해야 합니다."
         )
-        Boolean reflectionUsesDiaryContent
+        Boolean personalizationUsesDiaryContent
 
 ) {
 
         /**
-         * 기존 백엔드 테스트 코드와 내부 호출의 호환성을 유지
-         * HTTP 요청에서는 reflectionUsesDiaryContent를
-         * 명시적으로 전달해야 함
+         * 기존 내부 테스트 및 호출 호환용 생성자.
          */
-        public DiaryCreateRequest(String content) {
-                this(content, true);
+        public DiaryCreateRequest(
+                String content
+        ) {
+                this(
+                        content,
+                        true
+                );
         }
 
-        public boolean shouldUseDiaryContent() {
+        public boolean
+        shouldUseDiaryContentForPersonalization() {
                 return Boolean.TRUE.equals(
-                        reflectionUsesDiaryContent
+                        personalizationUsesDiaryContent
                 );
         }
 }

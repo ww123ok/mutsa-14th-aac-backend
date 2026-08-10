@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,11 +41,13 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
             responseBody =
             new AtomicReference<>();
 
-    private final AtomicInteger responseStatus =
+    private final AtomicInteger
+            responseStatus =
             new AtomicInteger();
 
     @BeforeEach
     void setUp() throws IOException {
+
         responseStatus.set(200);
 
         responseBody.set("""
@@ -110,25 +111,19 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
 
     @AfterEach
     void tearDown() {
+
         if (server != null) {
             server.stop(0);
         }
     }
 
     @Test
-    void 일기_반영을_선택하면_OpenAI_요청에_일기내용을_포함한다() {
+    void 성찰질문은_항상_오늘_일기내용을_OpenAI에_전달한다() {
+
         String question =
                 generator.generate(
                         new DiaryReflectionPrompt(
-                                "한재",
-                                "대학생",
-                                """
-                                {
-                                  "stableMemories": []
-                                }
-                                """,
-                                "오늘 팀원들과 프로젝트의 오류를 해결했다.",
-                                true
+                                "오늘 팀원들과 프로젝트의 오류를 해결했다."
                         )
                 );
 
@@ -176,50 +171,8 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
     }
 
     @Test
-    void 일기_반영을_거부하면_OpenAI_요청에_일기내용을_포함하지_않는다() {
-        String privateDiaryContent =
-                "외부 AI 요청에 포함되면 안 되는 개인적인 일기 내용";
-
-        String question =
-                generator.generate(
-                        new DiaryReflectionPrompt(
-                                "한재",
-                                "대학생",
-                                "승인된 기억 정보 없음",
-                                null,
-                                false
-                        )
-                );
-
-        assertEquals(
-                "오늘 가장 오래 마음에 남은 순간은 무엇이었나요?",
-                question
-        );
-
-        String requestBody =
-                capturedRequestBody.get();
-
-        assertFalse(
-                requestBody.contains(
-                        privateDiaryContent
-                )
-        );
-
-        assertTrue(
-                requestBody.contains(
-                        "The user chose not to include today's diary content."
-                )
-        );
-
-        assertFalse(
-                requestBody.contains(
-                        "<diary_content>"
-                )
-        );
-    }
-
-    @Test
     void OpenAI_응답의_불필요한_따옴표와_줄바꿈을_정리한다() {
+
         responseBody.set("""
                 {
                   "output_text": "“오늘 가장 고마웠던 순간은\\n무엇이었나요?”"
@@ -229,11 +182,7 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
         String question =
                 generator.generate(
                         new DiaryReflectionPrompt(
-                                "한재",
-                                "대학생",
-                                null,
-                                null,
-                                false
+                                "오늘 고마운 일이 있었다."
                         )
                 );
 
@@ -244,7 +193,8 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
     }
 
     @Test
-    void API_Key가_없으면_외부_요청을_시도하지_않는다() {
+    void API_Key가_없으면_외부요청을_시도하지_않는다() {
+
         ReflectionTestUtils.setField(
                 generator,
                 "apiKey",
@@ -256,11 +206,7 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
                 () ->
                         generator.generate(
                                 new DiaryReflectionPrompt(
-                                        "한재",
-                                        "대학생",
-                                        null,
-                                        null,
-                                        false
+                                        "오늘 하루를 기록했다."
                                 )
                         )
         );
@@ -272,7 +218,8 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
     }
 
     @Test
-    void OpenAI가_사용할_수_없는_응답을_보내면_예외가_발생한다() {
+    void OpenAI가_사용할수없는_응답을_보내면_예외가_발생한다() {
+
         responseBody.set("""
                 {
                   "output": []
@@ -284,11 +231,7 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
                 () ->
                         generator.generate(
                                 new DiaryReflectionPrompt(
-                                        "한재",
-                                        "대학생",
-                                        null,
-                                        null,
-                                        false
+                                        "오늘은 러닝을 했다."
                                 )
                         )
         );
@@ -296,6 +239,7 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
 
     @Test
     void OpenAI_HTTP_오류가_발생하면_예외가_발생한다() {
+
         responseStatus.set(500);
 
         responseBody.set("""
@@ -311,11 +255,7 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
                 () ->
                         generator.generate(
                                 new DiaryReflectionPrompt(
-                                        "한재",
-                                        "대학생",
-                                        null,
-                                        null,
-                                        false
+                                        "오늘 하루를 기록했다."
                                 )
                         )
         );
@@ -324,30 +264,37 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
     private void handleRequest(
             HttpExchange exchange
     ) throws IOException {
+
         capturedMethod.set(
                 exchange.getRequestMethod()
         );
 
         capturedAuthorization.set(
-                exchange.getRequestHeaders()
-                        .getFirst("Authorization")
+                exchange
+                        .getRequestHeaders()
+                        .getFirst(
+                                "Authorization"
+                        )
         );
 
         capturedRequestBody.set(
                 new String(
-                        exchange.getRequestBody()
+                        exchange
+                                .getRequestBody()
                                 .readAllBytes(),
                         StandardCharsets.UTF_8
                 )
         );
 
         byte[] responseBytes =
-                responseBody.get()
+                responseBody
+                        .get()
                         .getBytes(
                                 StandardCharsets.UTF_8
                         );
 
-        exchange.getResponseHeaders()
+        exchange
+                .getResponseHeaders()
                 .set(
                         "Content-Type",
                         "application/json;charset=UTF-8"
@@ -358,8 +305,11 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
                 responseBytes.length
         );
 
-        exchange.getResponseBody()
-                .write(responseBytes);
+        exchange
+                .getResponseBody()
+                .write(
+                        responseBytes
+                );
 
         exchange.close();
     }
