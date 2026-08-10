@@ -3,6 +3,7 @@ package mutsa.hackathon.service;
 import mutsa.hackathon.domain.AiQuestion;
 import mutsa.hackathon.domain.AiQuestionType;
 import mutsa.hackathon.domain.AppUser;
+import mutsa.hackathon.domain.QuestionGenerationSource;
 import mutsa.hackathon.dto.WritingHelpQuestionResponse;
 import mutsa.hackathon.dto.WritingHelpStatusResponse;
 import mutsa.hackathon.global.code.ErrorCode;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -239,6 +241,20 @@ class AiWritingHelpServiceTest {
         );
 
         when(
+                aiQuestionRepository
+                        .findAllByUserIdAndQuestionTypeAndAskedDateOrderByQuestionOrderAsc(
+                                eq(1L),
+                                eq(
+                                        AiQuestionType
+                                                .WRITING_HELP
+                                ),
+                                any(LocalDate.class)
+                        )
+        ).thenReturn(
+                List.of()
+        );
+
+        when(
                 writingHelpQuestionGenerator
                         .generate(
                                 any(
@@ -288,10 +304,137 @@ class AiWritingHelpServiceTest {
                 captor.capture()
         );
 
+        WritingHelpPrompt prompt =
+                captor.getValue();
+
         assertEquals(
                 "하늘",
-                captor.getValue()
-                        .nickname()
+                prompt.nickname()
+        );
+
+        assertEquals(
+                1,
+                prompt.questionOrder()
+        );
+
+        assertTrue(
+                prompt.previousQuestions()
+                        .isEmpty()
+        );
+    }
+
+    @Test
+    void 두번째_작성도움_질문에는_첫번째_질문을_함께_전달한다() {
+        AppUser user =
+                AppUser.createKakaoUser(
+                        "provider-id-2",
+                        "민준",
+                        null,
+                        null
+                );
+
+        LocalDate today =
+                LocalDate.now();
+
+        AiQuestion firstQuestion =
+                AiQuestion.createWritingHelp(
+                        user,
+                        "오늘 캠퍼스에서 가장 기억에 남는 순간은 언제였나요?",
+                        1,
+                        today,
+                        QuestionGenerationSource.AI
+                );
+
+        when(
+                aiQuestionRepository
+                        .countByUserIdAndQuestionTypeAndAskedDate(
+                                eq(2L),
+                                eq(
+                                        AiQuestionType
+                                                .WRITING_HELP
+                                ),
+                                any(LocalDate.class)
+                        )
+        ).thenReturn(1L);
+
+        when(
+                appUserRepository.findById(2L)
+        ).thenReturn(
+                Optional.of(user)
+        );
+
+        when(
+                aiQuestionRepository
+                        .findAllByUserIdAndQuestionTypeAndAskedDateOrderByQuestionOrderAsc(
+                                eq(2L),
+                                eq(
+                                        AiQuestionType
+                                                .WRITING_HELP
+                                ),
+                                any(LocalDate.class)
+                        )
+        ).thenReturn(
+                List.of(firstQuestion)
+        );
+
+        when(
+                writingHelpQuestionGenerator
+                        .generate(
+                                any(
+                                        WritingHelpPrompt.class
+                                )
+                        )
+        ).thenReturn(
+                "오늘 누군가와 나눈 대화 중 다시 떠오르는 말이 있나요?"
+        );
+
+        when(
+                aiQuestionRepository.save(
+                        any(AiQuestion.class)
+                )
+        ).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
+        );
+
+        WritingHelpQuestionResponse response =
+                aiWritingHelpService
+                        .generateQuestion(2L);
+
+        assertEquals(
+                2,
+                response.questionOrder()
+        );
+
+        assertEquals(
+                1,
+                response.remainingCount()
+        );
+
+        ArgumentCaptor<WritingHelpPrompt> captor =
+                ArgumentCaptor.forClass(
+                        WritingHelpPrompt.class
+                );
+
+        verify(
+                writingHelpQuestionGenerator
+        ).generate(
+                captor.capture()
+        );
+
+        WritingHelpPrompt prompt =
+                captor.getValue();
+
+        assertEquals(
+                2,
+                prompt.questionOrder()
+        );
+
+        assertEquals(
+                List.of(
+                        "오늘 캠퍼스에서 가장 기억에 남는 순간은 언제였나요?"
+                ),
+                prompt.previousQuestions()
         );
     }
 

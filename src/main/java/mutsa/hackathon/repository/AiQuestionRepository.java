@@ -5,12 +5,26 @@ import mutsa.hackathon.domain.AiQuestionType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface AiQuestionRepository
         extends JpaRepository<AiQuestion, Long> {
 
     long countByUserIdAndQuestionTypeAndAskedDate(
+            Long userId,
+            AiQuestionType questionType,
+            LocalDate askedDate
+    );
+
+    /**
+     * 같은 날 먼저 생성된 작성 도움 질문을
+     * 순서대로 조회.
+     * 다음 질문 생성 시 이전 질문과 다른 방향의
+     * 질문을 만들기 위한 컨텍스트로 사용.
+     */
+    List<AiQuestion>
+    findAllByUserIdAndQuestionTypeAndAskedDateOrderByQuestionOrderAsc(
             Long userId,
             AiQuestionType questionType,
             LocalDate askedDate
@@ -27,11 +41,6 @@ public interface AiQuestionRepository
             AiQuestionType questionType
     );
 
-    /**
-     * 특정 일기에 연결된 성찰 질문을 하드 삭제.
-     * 작성 도움 질문은 diary_id가 null이므로
-     * 이 메서드의 영향을 받지 않음.
-     */
     long deleteAllByDiaryId(
             Long diaryId
     );
