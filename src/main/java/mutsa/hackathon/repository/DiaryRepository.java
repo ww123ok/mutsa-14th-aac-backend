@@ -2,6 +2,8 @@ package mutsa.hackathon.repository;
 
 import mutsa.hackathon.domain.Diary;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,8 +30,24 @@ public interface DiaryRepository
     );
 
     /**
+     * 추후 비동기 개인화 기억 추출 과정에서
+     * 사용자 설정까지 안전하게 사용할 수 있도록
+     * User를 fetch join
+     */
+    @Query("""
+            select diary
+            from Diary diary
+            join fetch diary.user
+            where diary.id = :diaryId
+            """)
+    Optional<Diary> findByIdWithUser(
+            @Param("diaryId")
+            Long diaryId
+    );
+
+    /**
      * 개발용 하드 삭제에서는 Soft Delete된 일기도
-     * 찾아야 하므로 deleted 조건을 사용하지 않음
+     * 찾아야 하므로 deleted 조건을 사용하지 않음.
      */
     Optional<Diary>
     findByUserIdAndRecordedDate(
