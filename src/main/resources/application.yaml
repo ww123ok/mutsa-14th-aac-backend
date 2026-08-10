@@ -58,8 +58,13 @@ app:
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-5.6-terra}
     base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+
     reflection-enabled: ${OPENAI_REFLECTION_ENABLED:false}
     reward-enabled: ${OPENAI_REWARD_ENABLED:false}
+
+    # 일기에서 향후 작성 도움 질문용
+    # 개인화 기억 후보를 추출하는 기능
+    memory-extraction-enabled: ${OPENAI_MEMORY_EXTRACTION_ENABLED:false}
 
   dev:
     # 기본적으로 비활성화
