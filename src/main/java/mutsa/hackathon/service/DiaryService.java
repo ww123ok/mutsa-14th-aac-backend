@@ -1,8 +1,6 @@
 package mutsa.hackathon.service;
 
 import lombok.RequiredArgsConstructor;
-import mutsa.hackathon.domain.AiQuestion;
-import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.domain.DiaryReward;
 import mutsa.hackathon.domain.QuestionGenerationSource;
@@ -11,12 +9,8 @@ import mutsa.hackathon.dto.DiaryCreateResponse;
 import mutsa.hackathon.dto.DiaryResponse;
 import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
-import mutsa.hackathon.repository.AiQuestionRepository;
-import mutsa.hackathon.repository.AppUserRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,22 +39,22 @@ public class DiaryService {
     private final DiaryRewardRepository
             diaryRewardRepository;
 
-    private final AiQuestionRepository
-            aiQuestionRepository;
-
-    private final AppUserRepository
-            appUserRepository;
-
     private final AiMemoryProfileService
             aiMemoryProfileService;
 
     private final DiaryReflectionQuestionGenerator
             diaryReflectionQuestionGenerator;
 
-    private final ApplicationEventPublisher
-            eventPublisher;
+    private final DiaryCreatePersistenceService
+            diaryCreatePersistenceService;
 
-    @Transactional
+    /**
+     * 이 메서드에는 의도적으로 @Transactional을 붙이지 않음.
+     * 흐름:
+     * 1. 짧은 read-only transaction으로 작성 가능 여부 확인
+     * 2. transaction이 없는 상태에서 OpenAI 성찰 질문 호출
+     * 3. 짧은 write transaction으로 결과 저장
+     */
     public DiaryCreateResponse create(
             Long userId,
             DiaryCreateRequest request
@@ -70,90 +64,32 @@ public class DiaryService {
                         SERVICE_ZONE
                 );
 
-        validateDiaryNotWrittenToday(
-                userId,
-                today
-        );
-
-        AppUser user =
-                appUserRepository
-                        .findById(userId)
-                        .orElseThrow(() ->
-                                new ProjectException(
-                                        ErrorCode.USER_NOT_FOUND
-                                )
-                        );
-
-        Diary diary =
-                saveDiary(
-                        user,
-                        request.content(),
+        diaryCreatePersistenceService
+                .validateCanCreate(
+                        userId,
                         today
                 );
 
-        DiaryReward reward =
-                diaryRewardRepository.save(
-                        DiaryReward.createPending(
-                                diary
-                        )
-                );
-
         /*
-         * 최신 기획에서는 성찰 질문이
-         * 항상 오늘 작성한 일기 내용만을 사용.
-         * 개인화 기억 반영 동의와 성찰 질문 생성은
-         * 서로 별개의 개념.
+         * 외부 OpenAI 호출.
+         * 이 시점에는 DiaryService transaction이 존재하지 않음.
          */
-        GeneratedReflectionQuestion generatedQuestion =
+        GeneratedReflectionQuestion
+                generatedQuestion =
                 generateReflectionQuestion(
-                        diary.getContent()
+                        request.content()
                 );
 
-        AiQuestion reflectionQuestion =
-                aiQuestionRepository.save(
-                        AiQuestion.createReflection(
-                                user,
-                                diary,
-                                generatedQuestion
-                                        .questionText(),
-                                today,
-                                generatedQuestion
-                                        .generationSource()
-                        )
+        return diaryCreatePersistenceService
+                .persist(
+                        userId,
+                        request,
+                        today,
+                        generatedQuestion
+                                .questionText(),
+                        generatedQuestion
+                                .generationSource()
                 );
-
-        /*
-         * 색상 생성은 항상 수행
-         */
-        eventPublisher.publishEvent(
-                new DiaryRewardGenerationRequested(
-                        reward.getId()
-                )
-        );
-
-        /*
-         * 다음 작성 도움 질문에 오늘의 정보를
-         * 활용하겠다고 사용자가 선택했고,
-         * 동시에 전역 AI 기억 동의가 활성화된 경우에만
-         * 개인화 기억 추출을 요청
-         */
-        if (
-                request
-                        .shouldUseDiaryContentForPersonalization()
-                        && user.isAiMemoryConsent()
-        ) {
-            eventPublisher.publishEvent(
-                    new DiaryMemoryExtractionRequested(
-                            diary.getId()
-                    )
-            );
-        }
-
-        return DiaryCreateResponse.from(
-                diary,
-                reward,
-                reflectionQuestion
-        );
     }
 
     @Transactional(readOnly = true)
@@ -253,56 +189,14 @@ public class DiaryService {
 
         /*
          * 삭제된 일기에서 생성된 기억은
-         * 이후 질문에 사용되지 않도록 폐기
+         * 이후 질문에 사용되지 않도록 폐기.
+         * 이 과정에는 외부 OpenAI 호출이 없음.
          */
         aiMemoryProfileService
                 .revokeMemoriesFromDiary(
                         userId,
                         diaryId
                 );
-    }
-
-    private void validateDiaryNotWrittenToday(
-            Long userId,
-            LocalDate today
-    ) {
-        if (
-                diaryRepository
-                        .existsByUserIdAndRecordedDate(
-                                userId,
-                                today
-                        )
-        ) {
-            throw new ProjectException(
-                    ErrorCode
-                            .DIARY_ALREADY_WRITTEN_TODAY
-            );
-        }
-    }
-
-    private Diary saveDiary(
-            AppUser user,
-            String content,
-            LocalDate today
-    ) {
-        try {
-            return diaryRepository
-                    .saveAndFlush(
-                            Diary.create(
-                                    user,
-                                    content,
-                                    today
-                            )
-                    );
-
-        } catch (
-                DataIntegrityViolationException exception
-        ) {
-            throw new ProjectException(
-                    ErrorCode
-                            .DIARY_ALREADY_WRITTEN_TODAY
-            );
-        }
     }
 
     private GeneratedReflectionQuestion

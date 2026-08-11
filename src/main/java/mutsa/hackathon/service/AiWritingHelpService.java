@@ -57,8 +57,15 @@ public class AiWritingHelpService {
         );
     }
 
-    @Transactional
-    public WritingHelpQuestionResponse generateQuestion(
+    /**
+     * OpenAI 응답을 기다리는 동안 DB transaction을
+     * 유지하지 않기 위해 의도적으로 @Transactional을
+     * 사용하지 않음.
+     * Repository 조회/저장은 각각 필요한 짧은
+     * transaction만 사용.
+     */
+    public WritingHelpQuestionResponse
+    generateQuestion(
             Long userId
     ) {
         LocalDate today =
@@ -86,12 +93,6 @@ public class AiWritingHelpService {
                                 )
                         );
 
-        /*
-         * 오늘 이미 생성한 질문을 다음 질문 생성기에
-         * 함께 전달.
-         * AI가 앞 질문을 모르는 상태에서 같은 소재와
-         * 문장 구조를 반복하는 문제를 방지.
-         */
         List<String> previousQuestions =
                 aiQuestionRepository
                         .findAllByUserIdAndQuestionTypeAndAskedDateOrderByQuestionOrderAsc(
@@ -119,6 +120,11 @@ public class AiWritingHelpService {
                         previousQuestions
                 );
 
+        /*
+         * 외부 OpenAI 호출.
+         * generateQuestion() 자체에 transaction이 없으므로
+         * DB transaction 밖에서 실행.
+         */
         String questionText =
                 writingHelpQuestionGenerator
                         .generate(prompt);
