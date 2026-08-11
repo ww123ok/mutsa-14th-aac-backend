@@ -1,50 +1,32 @@
 package mutsa.hackathon.service;
 
+import mutsa.hackathon.domain.DiaryRewardPolicy;
+
+import java.util.List;
+
 /**
- * 색 보상 생성기가 반환하는 검증된 결과
+ * 색 보상 생성기가 반환하는 검증된 결과.
+ * colorHex:
+ * DAYBIT UI 예약 색상을 제외한 #RRGGBB 색상
+ * keywords:
+ * 일기와 색의 연결 단서를 보여주는 1~3개의 짧은 키워드
  */
 public record DiaryColorReward(
         String colorHex,
-        String colorName
+        List<String> keywords
 ) {
 
-    private static final int
-            MAX_COLOR_NAME_LENGTH = 100;
-
     public DiaryColorReward {
-        if (
-                colorHex == null
-                        || !colorHex.matches(
-                        "^#[0-9A-Fa-f]{6}$"
-                )
-        ) {
-            throw new IllegalArgumentException(
-                    "색상 코드는 #RRGGBB 형식이어야 합니다."
-            );
-        }
+        colorHex =
+                DiaryRewardPolicy
+                        .normalizeColorHex(
+                                colorHex
+                        );
 
-        if (
-                colorName == null
-                        || colorName.isBlank()
-        ) {
-            throw new IllegalArgumentException(
-                    "색상 이름은 필수입니다."
-            );
-        }
-
-        String normalizedColorName =
-                colorName.trim();
-
-        if (
-                normalizedColorName.length()
-                        > MAX_COLOR_NAME_LENGTH
-        ) {
-            throw new IllegalArgumentException(
-                    "색상 이름은 100자 이하여야 합니다."
-            );
-        }
-
-        colorHex = colorHex.toUpperCase();
-        colorName = normalizedColorName;
+        keywords =
+                DiaryRewardPolicy
+                        .normalizeKeywords(
+                                keywords
+                        );
     }
 }

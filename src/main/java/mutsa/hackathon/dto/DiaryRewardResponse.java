@@ -2,11 +2,13 @@ package mutsa.hackathon.dto;
 
 import mutsa.hackathon.domain.DiaryReward;
 
+import java.util.List;
+
 public record DiaryRewardResponse(
         Long diaryId,
         String status,
         String colorHex,
-        String colorName
+        List<String> keywords
 ) {
 
     public static DiaryRewardResponse from(
@@ -22,7 +24,7 @@ public record DiaryRewardResponse(
                 reward.getDiary().getId(),
                 reward.getGenerationStatus().name(),
                 reward.getColorHex(),
-                reward.getColorName()
+                reward.getKeywords()
         );
     }
 }

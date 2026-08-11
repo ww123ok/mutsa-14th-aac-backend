@@ -1,10 +1,12 @@
 package mutsa.hackathon.service;
 
+import mutsa.hackathon.domain.DiaryRewardPolicy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * 실제 OpenAI Responses API로 색 보상 생성을 검증하는
  * 수동 통합 테스트.
- * 일반 clean test에서는 실행되지 않음
- * OPENAI_LIVE_TEST=true일 때만 실제 API를 한 번 호출함.
+ * 일반 clean test에서는 실행되지 않고
+ * OPENAI_LIVE_TEST=true일 때만 실제 API를 호출.
  */
 @SpringBootTest(
         properties = {
@@ -31,7 +33,7 @@ class OpenAiDiaryColorRewardLiveIntegrationTest {
             diaryColorRewardGenerator;
 
     @Test
-    void 실제_OpenAI가_일기에_어울리는_색_보상을_생성한다() {
+    void 실제_OpenAI가_예약색을_피하고_일기기반_키워드와_HEX를_생성한다() {
         assertInstanceOf(
                 OpenAiDiaryColorRewardGenerator.class,
                 diaryColorRewardGenerator
@@ -62,26 +64,39 @@ class OpenAiDiaryColorRewardLiveIntegrationTest {
                         )
         );
 
+        assertFalse(
+                DiaryRewardPolicy
+                        .isReservedColor(
+                                reward.colorHex()
+                        )
+        );
+
         assertNotNull(
-                reward.colorName()
+                reward.keywords()
         );
 
         assertTrue(
-                !reward.colorName()
-                        .isBlank()
+                reward.keywords().size() >= 1
+                        && reward.keywords().size() <= 3
         );
 
         assertTrue(
-                reward.colorName()
-                        .length()
-                        <= 100
+                reward.keywords()
+                        .stream()
+                        .allMatch(keyword ->
+                                keyword != null
+                                        && !keyword.isBlank()
+                                        && keyword.length() <= 20
+                                        && !keyword.startsWith("#")
+                                        && !keyword.matches(".*\\s+.*")
+                        )
         );
 
         System.out.println(
                 "[OpenAI 실제 색 보상] "
-                        + reward.colorName()
-                        + " "
                         + reward.colorHex()
+                        + " "
+                        + reward.keywords()
         );
     }
 }
