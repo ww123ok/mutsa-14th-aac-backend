@@ -5,6 +5,7 @@ import mutsa.hackathon.domain.DiaryReward;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record DiaryResponse(
         Long diaryId,
@@ -14,30 +15,39 @@ public record DiaryResponse(
         RewardSummary reward
 ) {
 
-    public static DiaryResponse from(Diary diary, DiaryReward reward) {
+    public static DiaryResponse from(
+            Diary diary,
+            DiaryReward reward
+    ) {
         return new DiaryResponse(
                 diary.getId(),
                 diary.getRecordedDate(),
                 diary.getContent(),
                 diary.getCreatedAt(),
-                RewardSummary.from(reward)
+                RewardSummary.from(
+                        reward
+                )
         );
     }
 
     public record RewardSummary(
             String status,
             String colorHex,
-            String colorName
+            List<String> keywords
     ) {
-        private static RewardSummary from(DiaryReward reward) {
+
+        private static RewardSummary from(
+                DiaryReward reward
+        ) {
             if (reward == null) {
                 return null;
             }
 
             return new RewardSummary(
-                    reward.getGenerationStatus().name(),
+                    reward.getGenerationStatus()
+                            .name(),
                     reward.getColorHex(),
-                    reward.getColorName()
+                    reward.getKeywords()
             );
         }
     }

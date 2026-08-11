@@ -1,10 +1,12 @@
 package mutsa.hackathon.service;
 
 import mutsa.hackathon.domain.AppUser;
+import mutsa.hackathon.domain.DiaryReward;
 import mutsa.hackathon.dto.DiaryCreateRequest;
 import mutsa.hackathon.dto.DiaryCreateResponse;
 import mutsa.hackathon.dto.DiaryRewardResponse;
 import mutsa.hackathon.repository.AppUserRepository;
+import mutsa.hackathon.repository.DiaryRewardRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,6 +17,7 @@ import org.springframework.context.annotation.Primary;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -40,10 +43,14 @@ class DiaryRewardAsyncFlowIntegrationTest {
     private DiaryRewardService diaryRewardService;
 
     @Autowired
+    private DiaryRewardRepository
+            diaryRewardRepository;
+
+    @Autowired
     private AppUserRepository appUserRepository;
 
     @Test
-    void 일기를_생성하면_비동기로_색_보상이_COMPLETED가_된다()
+    void 일기를_생성하면_비동기로_HEX와_키워드_보상이_COMPLETED가_된다()
             throws InterruptedException {
 
         AppUser user = saveUser();
@@ -61,10 +68,6 @@ class DiaryRewardAsyncFlowIntegrationTest {
                         )
                 );
 
-        /*
-         * 일기 생성 응답 시점에는 비동기 작업이 이미 끝났을 수도 있고
-         * 아직 PENDING일 수도 있으므로 최종 상태를 폴링.
-         */
         DiaryRewardResponse completedReward =
                 waitUntilCompleted(
                         user.getId(),
@@ -87,16 +90,43 @@ class DiaryRewardAsyncFlowIntegrationTest {
         );
 
         assertEquals(
-                "포근한 민트빛",
-                completedReward.colorName()
+                List.of(
+                        "해결",
+                        "성취",
+                        "안도"
+                ),
+                completedReward.keywords()
         );
 
         assertNotNull(
                 completedReward.colorHex()
         );
 
-        assertNotNull(
-                completedReward.colorName()
+        DiaryReward savedReward =
+                diaryRewardRepository
+                        .findByDiaryId(
+                                created.diaryId()
+                        )
+                        .orElseThrow();
+
+        assertEquals(
+                "해결",
+                savedReward.getKeyword1()
+        );
+
+        assertEquals(
+                "성취",
+                savedReward.getKeyword2()
+        );
+
+        assertEquals(
+                "안도",
+                savedReward.getKeyword3()
+        );
+
+        assertEquals(
+                completedReward.keywords(),
+                savedReward.getKeywords()
         );
     }
 
@@ -153,10 +183,6 @@ class DiaryRewardAsyncFlowIntegrationTest {
                         + latestStatus
         );
 
-        /*
-         * fail()이 항상 예외를 발생시키므로
-         * 실제로 도달하지 않는 코드입니다.
-         */
         throw new IllegalStateException(
                 "도달할 수 없는 코드입니다."
         );
@@ -179,10 +205,6 @@ class DiaryRewardAsyncFlowIntegrationTest {
     )
     static class TestRewardGeneratorConfiguration {
 
-        /**
-         * 운영용 또는 fallback 생성기보다 우선해서
-         * 이 테스트의 고정 결과 생성기를 주입
-         */
         @Bean
         @Primary
         DiaryColorRewardGenerator
@@ -191,7 +213,11 @@ class DiaryRewardAsyncFlowIntegrationTest {
             return diaryContent ->
                     new DiaryColorReward(
                             "#73D8B4",
-                            "포근한 민트빛"
+                            List.of(
+                                    "해결",
+                                    "성취",
+                                    "안도"
+                            )
                     );
         }
     }

@@ -15,7 +15,7 @@ public class DiaryRewardCompletionService {
             diaryRewardRepository;
 
     /**
-     * 생성이 성공한 경우 PENDING 보상을 완료함.
+     * 생성이 성공한 경우 PENDING 보상을 완료.
      * 동일 이벤트가 중복 처리되더라도 이미 처리된
      * 보상은 변경하지 않음.
      */
@@ -42,7 +42,7 @@ public class DiaryRewardCompletionService {
 
         reward.complete(
                 generatedReward.colorHex(),
-                generatedReward.colorName()
+                generatedReward.keywords()
         );
     }
 
@@ -64,7 +64,9 @@ public class DiaryRewardCompletionService {
             return;
         }
 
-        reward.fail(failureReason);
+        reward.fail(
+                failureReason
+        );
     }
 
     private DiaryReward findReward(

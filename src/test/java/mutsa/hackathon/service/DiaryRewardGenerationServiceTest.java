@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.Mockito.never;
@@ -39,14 +40,18 @@ class DiaryRewardGenerationServiceTest {
             diaryRewardGenerationService;
 
     @Test
-    void PENDING_보상의_색을_생성하고_완료_처리한다() {
+    void PENDING_보상의_색과_키워드를_생성하고_완료_처리한다() {
         DiaryReward reward =
                 createPendingReward();
 
         DiaryColorReward generatedReward =
                 new DiaryColorReward(
                         "#73D8B4",
-                        "포근한 민트빛"
+                        List.of(
+                                "해결",
+                                "성취",
+                                "안도"
+                        )
                 );
 
         when(
@@ -133,7 +138,10 @@ class DiaryRewardGenerationServiceTest {
 
         reward.complete(
                 "#73D8B4",
-                "포근한 민트빛"
+                List.of(
+                        "해결",
+                        "안도"
+                )
         );
 
         when(
