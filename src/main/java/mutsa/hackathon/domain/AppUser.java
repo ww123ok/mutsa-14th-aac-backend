@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Locale;
 
 @Entity
 @Getter
@@ -37,9 +38,29 @@ import java.time.LocalTime;
 )
 public class AppUser extends BaseEntity {
 
-    private static final int NICKNAME_MIN_LENGTH = 2;
-    private static final int NICKNAME_MAX_LENGTH = 8;
-    private static final int JOB_MAX_LENGTH = 30;
+    private static final int
+            NICKNAME_MIN_LENGTH = 2;
+
+    private static final int
+            NICKNAME_MAX_LENGTH = 8;
+
+    private static final int
+            JOB_MAX_LENGTH = 30;
+
+    private static final int
+            LOCAL_EMAIL_MAX_LENGTH = 100;
+
+    private static final String
+            LOCAL_PROVIDER = "local";
+
+    /*
+     * 일반 회원가입 직후에는 기존 DAYBIT 온보딩에서
+     * 사용자가 실제 닉네임을 선택.
+     * AppUser.nickname은 현재 nullable=false이므로
+     * 온보딩 전까지 사용할 내부 임시값을 둠.
+     */
+    private static final String
+            LOCAL_INITIAL_NICKNAME = "데이빗";
 
     @Id
     @GeneratedValue(
@@ -51,7 +72,10 @@ public class AppUser extends BaseEntity {
     @Column(nullable = false)
     private Long version;
 
-    @Column(nullable = false, length = 30)
+    @Column(
+            nullable = false,
+            length = 30
+    )
     private String provider;
 
     @Column(
@@ -61,11 +85,26 @@ public class AppUser extends BaseEntity {
     )
     private String providerId;
 
-    @Column(nullable = false, length = 100)
+    @Column(
+            nullable = false,
+            length = 100
+    )
     private String nickname;
 
     @Column(length = 150)
     private String email;
+
+    /*
+     * Kakao 사용자는 null.
+     * 일반 계정에서만 PasswordEncoder로 생성한
+     * 단방향 password hash를 저장.
+     * 원본 비밀번호는 절대 저장하지 않음.
+     */
+    @Column(
+            name = "password_hash",
+            length = 255
+    )
+    private String passwordHash;
 
     @Column(
             name = "profile_image",
@@ -131,15 +170,67 @@ public class AppUser extends BaseEntity {
                         )
                 )
                 .nickname(
-                        normalizeInitialNickname(nickname)
+                        normalizeInitialNickname(
+                                nickname
+                        )
                 )
-                .email(normalizeOptional(email))
+                .email(
+                        normalizeOptional(
+                                email
+                        )
+                )
                 .profileImage(
-                        normalizeOptional(profileImage)
+                        normalizeOptional(
+                                profileImage
+                        )
                 )
                 .aiMemoryConsent(false)
                 .credit(0)
-                .lastLoginAt(LocalDateTime.now())
+                .lastLoginAt(
+                        LocalDateTime.now()
+                )
+                .build();
+    }
+
+    /**
+     * 이메일/비밀번호 기반 일반 사용자를 생성.
+     * email:
+     * 로그인 식별자로 사용하므로 소문자로 정규화.
+     * passwordHash:
+     * PasswordEncoder를 이미 통과한 값만 받음.
+     */
+    public static AppUser createLocalUser(
+            String email,
+            String passwordHash
+    ) {
+        String normalizedEmail =
+                normalizeEmail(email);
+
+        return AppUser.builder()
+                .version(0L)
+                .provider(
+                        LOCAL_PROVIDER
+                )
+                .providerId(
+                        normalizedEmail
+                )
+                .nickname(
+                        LOCAL_INITIAL_NICKNAME
+                )
+                .email(
+                        normalizedEmail
+                )
+                .passwordHash(
+                        normalizeRequired(
+                                passwordHash,
+                                "암호화된 비밀번호는 필수입니다."
+                        )
+                )
+                .aiMemoryConsent(false)
+                .credit(0)
+                .lastLoginAt(
+                        LocalDateTime.now()
+                )
                 .build();
     }
 
@@ -156,15 +247,21 @@ public class AppUser extends BaseEntity {
         }
 
         if (email != null) {
-            this.email = normalizeOptional(email);
+            this.email =
+                    normalizeOptional(
+                            email
+                    );
         }
 
         if (profileImage != null) {
             this.profileImage =
-                    normalizeOptional(profileImage);
+                    normalizeOptional(
+                            profileImage
+                    );
         }
 
-        this.lastLoginAt = LocalDateTime.now();
+        this.lastLoginAt =
+                LocalDateTime.now();
     }
 
     public void updatePersonalSettings(
@@ -173,8 +270,15 @@ public class AppUser extends BaseEntity {
             LocalTime diaryReminderTime,
             boolean aiMemoryConsent
     ) {
-        this.nickname = normalizeNickname(nickname);
-        this.job = normalizeJob(job);
+        this.nickname =
+                normalizeNickname(
+                        nickname
+                );
+
+        this.job =
+                normalizeJob(
+                        job
+                );
 
         if (diaryReminderTime == null) {
             throw new IllegalArgumentException(
@@ -189,7 +293,10 @@ public class AppUser extends BaseEntity {
                 aiMemoryConsent
         );
 
-        if (this.onboardingCompletedAt == null) {
+        if (
+                this.onboardingCompletedAt
+                        == null
+        ) {
             this.onboardingCompletedAt =
                     LocalDateTime.now();
         }
@@ -231,7 +338,9 @@ public class AppUser extends BaseEntity {
         }
 
         this.aiMemoryProfile =
-                normalizeOptional(aiMemoryProfile);
+                normalizeOptional(
+                        aiMemoryProfile
+                );
     }
 
     /**
@@ -245,9 +354,12 @@ public class AppUser extends BaseEntity {
 
     public void updateRefreshToken(
             String refreshToken,
-            LocalDateTime refreshTokenExpiresAt
+            LocalDateTime
+                    refreshTokenExpiresAt
     ) {
-        this.refreshToken = refreshToken;
+        this.refreshToken =
+                refreshToken;
+
         this.refreshTokenExpiresAt =
                 refreshTokenExpiresAt;
     }
@@ -255,6 +367,16 @@ public class AppUser extends BaseEntity {
     public void clearRefreshToken() {
         this.refreshToken = null;
         this.refreshTokenExpiresAt = null;
+    }
+
+    /**
+     * 이메일/비밀번호 로그인처럼
+     * 프로필 정보 갱신이 없는 로그인에서도
+     * 마지막 로그인 시각을 갱신
+     */
+    public void recordLogin() {
+        this.lastLoginAt =
+                LocalDateTime.now();
     }
 
     public boolean isOnboardingCompleted() {
@@ -279,7 +401,8 @@ public class AppUser extends BaseEntity {
         this.aiMemoryProfile = null;
     }
 
-    private static String normalizeInitialNickname(
+    private static String
+    normalizeInitialNickname(
             String value
     ) {
         return normalizeRequired(
@@ -288,13 +411,15 @@ public class AppUser extends BaseEntity {
         );
     }
 
-    private static String normalizeNickname(
+    private static String
+    normalizeNickname(
             String value
     ) {
-        String normalized = normalizeRequired(
-                value,
-                "닉네임은 필수입니다."
-        );
+        String normalized =
+                normalizeRequired(
+                        value,
+                        "닉네임은 필수입니다."
+                );
 
         if (
                 normalized.length()
@@ -313,12 +438,16 @@ public class AppUser extends BaseEntity {
     private static String normalizeJob(
             String value
     ) {
-        String normalized = normalizeRequired(
-                value,
-                "현재 하는 일은 필수입니다."
-        );
+        String normalized =
+                normalizeRequired(
+                        value,
+                        "현재 하는 일은 필수입니다."
+                );
 
-        if (normalized.length() > JOB_MAX_LENGTH) {
+        if (
+                normalized.length()
+                        > JOB_MAX_LENGTH
+        ) {
             throw new IllegalArgumentException(
                     "현재 하는 일은 30자 이하로 입력해야 합니다."
             );
@@ -327,25 +456,57 @@ public class AppUser extends BaseEntity {
         return normalized;
     }
 
-    private static String normalizeRequired(
+    private static String normalizeEmail(
+            String value
+    ) {
+        String normalized =
+                normalizeRequired(
+                        value,
+                        "이메일은 필수입니다."
+                )
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
+
+        if (
+                normalized.length()
+                        > LOCAL_EMAIL_MAX_LENGTH
+        ) {
+            throw new IllegalArgumentException(
+                    "이메일은 100자 이하로 입력해야 합니다."
+            );
+        }
+
+        return normalized;
+    }
+
+    private static String
+    normalizeRequired(
             String value,
             String message
     ) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(message);
+        if (
+                value == null
+                        || value.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    message
+            );
         }
 
         return value.trim();
     }
 
-    private static String normalizeOptional(
+    private static String
+    normalizeOptional(
             String value
     ) {
         if (value == null) {
             return null;
         }
 
-        String normalized = value.trim();
+        String normalized =
+                value.trim();
 
         return normalized.isEmpty()
                 ? null

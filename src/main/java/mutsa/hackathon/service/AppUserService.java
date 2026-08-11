@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class AppUserService {
 
-    private final AppUserRepository appUserRepository;
+    private final AppUserRepository
+            appUserRepository;
 
     private final AiMemoryProfileService
             aiMemoryProfileService;
@@ -36,11 +37,12 @@ public class AppUserService {
                         providerId
                 )
                 .map(existingUser -> {
-                    existingUser.updateKakaoProfile(
-                            nickname,
-                            email,
-                            profileImage
-                    );
+                    existingUser
+                            .updateKakaoProfile(
+                                    nickname,
+                                    email,
+                                    profileImage
+                            );
 
                     return KakaoUserProfile.from(
                             existingUser,
@@ -69,7 +71,9 @@ public class AppUserService {
     }
 
     @Transactional(readOnly = true)
-    public MeResponse findMe(Long userId) {
+    public MeResponse findMe(
+            Long userId
+    ) {
         return MeResponse.from(
                 findUser(userId)
         );
@@ -80,7 +84,8 @@ public class AppUserService {
             Long userId,
             MeUpdateRequest request
     ) {
-        AppUser user = findUser(userId);
+        AppUser user =
+                findUser(userId);
 
         boolean requestedConsent =
                 Boolean.TRUE.equals(
@@ -112,7 +117,9 @@ public class AppUserService {
          */
         if (requestedConsent) {
             aiMemoryProfileService
-                    .rebuildProfile(userId);
+                    .rebuildProfile(
+                            userId
+                    );
         } else {
             aiMemoryProfileService
                     .revokeAllUsableMemories(
@@ -120,11 +127,26 @@ public class AppUserService {
                     );
         }
 
-        return MeResponse.from(user);
+        return MeResponse.from(
+                user
+        );
+    }
+
+    /**
+     * 이메일/비밀번호 로그인 성공 시
+     * 마지막 로그인 시각만 짧은 transaction에서 갱신
+     */
+    @Transactional
+    public void recordLogin(
+            Long userId
+    ) {
+        findUser(userId)
+                .recordLogin();
     }
 
     @Transactional(readOnly = true)
-    public KakaoUserProfile findProfileById(
+    public KakaoUserProfile
+    findProfileById(
             Long userId
     ) {
         return KakaoUserProfile.from(
@@ -138,7 +160,9 @@ public class AppUserService {
             String refreshToken
     ) {
         return appUserRepository
-                .findByRefreshToken(refreshToken)
+                .findByRefreshToken(
+                        refreshToken
+                )
                 .orElseThrow(() ->
                         new ProjectException(
                                 ErrorCode.INVALID_TOKEN
@@ -152,10 +176,11 @@ public class AppUserService {
             String refreshToken,
             LocalDateTime expiresAt
     ) {
-        findUser(userId).updateRefreshToken(
-                refreshToken,
-                expiresAt
-        );
+        findUser(userId)
+                .updateRefreshToken(
+                        refreshToken,
+                        expiresAt
+                );
     }
 
     @Transactional
@@ -169,7 +194,9 @@ public class AppUserService {
                 );
     }
 
-    private AppUser findUser(Long userId) {
+    private AppUser findUser(
+            Long userId
+    ) {
         return appUserRepository
                 .findById(userId)
                 .orElseThrow(() ->
