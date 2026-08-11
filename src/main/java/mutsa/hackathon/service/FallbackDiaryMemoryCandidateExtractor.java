@@ -24,7 +24,7 @@ public class FallbackDiaryMemoryCandidateExtractor
 
     @Override
     public List<DiaryMemoryCandidate> extract(
-            String diaryContent
+            DiaryMemoryExtractionPrompt prompt
     ) {
         return List.of();
     }

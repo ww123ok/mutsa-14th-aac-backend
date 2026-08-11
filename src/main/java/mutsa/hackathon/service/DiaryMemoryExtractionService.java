@@ -68,11 +68,18 @@ public class DiaryMemoryExtractionService {
         }
 
         try {
+            DiaryMemoryExtractionPrompt prompt =
+                    new DiaryMemoryExtractionPrompt(
+                            diary.getContent(),
+                            diary.getUser()
+                                    .getJob(),
+                            diary.getUser()
+                                    .getAiMemoryProfile()
+                    );
+
             List<DiaryMemoryCandidate> candidates =
                     diaryMemoryCandidateExtractor
-                            .extract(
-                                    diary.getContent()
-                            );
+                            .extract(prompt);
 
             diaryMemoryCandidatePersistenceService
                     .saveCandidates(
