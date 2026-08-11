@@ -39,7 +39,8 @@ public class DiaryService {
             FALLBACK_REFLECTION_QUESTION =
             "오늘의 기록에서 가장 오래 마음에 남은 순간은 무엇인가요?";
 
-    private final DiaryRepository diaryRepository;
+    private final DiaryRepository
+            diaryRepository;
 
     private final DiaryRewardRepository
             diaryRewardRepository;
@@ -65,7 +66,9 @@ public class DiaryService {
             DiaryCreateRequest request
     ) {
         LocalDate today =
-                LocalDate.now(SERVICE_ZONE);
+                LocalDate.now(
+                        SERVICE_ZONE
+                );
 
         validateDiaryNotWrittenToday(
                 userId,
@@ -81,11 +84,12 @@ public class DiaryService {
                                 )
                         );
 
-        Diary diary = saveDiary(
-                user,
-                request.content(),
-                today
-        );
+        Diary diary =
+                saveDiary(
+                        user,
+                        request.content(),
+                        today
+                );
 
         DiaryReward reward =
                 diaryRewardRepository.save(
@@ -94,11 +98,15 @@ public class DiaryService {
                         )
                 );
 
+        /*
+         * 최신 기획에서는 성찰 질문이
+         * 항상 오늘 작성한 일기 내용만을 사용.
+         * 개인화 기억 반영 동의와 성찰 질문 생성은
+         * 서로 별개의 개념.
+         */
         GeneratedReflectionQuestion generatedQuestion =
                 generateReflectionQuestion(
-                        user,
-                        diary.getContent(),
-                        request.shouldUseDiaryContent()
+                        diary.getContent()
                 );
 
         AiQuestion reflectionQuestion =
@@ -114,11 +122,32 @@ public class DiaryService {
                         )
                 );
 
+        /*
+         * 색상 생성은 항상 수행
+         */
         eventPublisher.publishEvent(
                 new DiaryRewardGenerationRequested(
                         reward.getId()
                 )
         );
+
+        /*
+         * 다음 작성 도움 질문에 오늘의 정보를
+         * 활용하겠다고 사용자가 선택했고,
+         * 동시에 전역 AI 기억 동의가 활성화된 경우에만
+         * 개인화 기억 추출을 요청
+         */
+        if (
+                request
+                        .shouldUseDiaryContentForPersonalization()
+                        && user.isAiMemoryConsent()
+        ) {
+            eventPublisher.publishEvent(
+                    new DiaryMemoryExtractionRequested(
+                            diary.getId()
+                    )
+            );
+        }
 
         return DiaryCreateResponse.from(
                 diary,
@@ -151,11 +180,14 @@ public class DiaryService {
             return List.of();
         }
 
-        Map<Long, DiaryReward> rewardsByDiaryId =
+        Map<Long, DiaryReward>
+                rewardsByDiaryId =
                 diaryRewardRepository
                         .findAllByDiaryIdIn(
                                 diaries.stream()
-                                        .map(Diary::getId)
+                                        .map(
+                                                Diary::getId
+                                        )
                                         .toList()
                         )
                         .stream()
@@ -173,9 +205,10 @@ public class DiaryService {
                 .map(diary ->
                         DiaryResponse.from(
                                 diary,
-                                rewardsByDiaryId.get(
-                                        diary.getId()
-                                )
+                                rewardsByDiaryId
+                                        .get(
+                                                diary.getId()
+                                        )
                         )
                 )
                 .toList();
@@ -186,14 +219,17 @@ public class DiaryService {
             Long userId,
             Long diaryId
     ) {
-        Diary diary = findActiveDiary(
-                userId,
-                diaryId
-        );
+        Diary diary =
+                findActiveDiary(
+                        userId,
+                        diaryId
+                );
 
         DiaryReward reward =
                 diaryRewardRepository
-                        .findByDiaryId(diaryId)
+                        .findByDiaryId(
+                                diaryId
+                        )
                         .orElse(null);
 
         return DiaryResponse.from(
@@ -207,16 +243,17 @@ public class DiaryService {
             Long userId,
             Long diaryId
     ) {
-        Diary diary = findActiveDiary(
-                userId,
-                diaryId
-        );
+        Diary diary =
+                findActiveDiary(
+                        userId,
+                        diaryId
+                );
 
         diary.softDelete();
 
         /*
-         * 삭제된 일기에서 생성된 기억은 이후 질문에서
-         * 사용되지 않도록 폐기
+         * 삭제된 일기에서 생성된 기억은
+         * 이후 질문에 사용되지 않도록 폐기
          */
         aiMemoryProfileService
                 .revokeMemoriesFromDiary(
@@ -249,13 +286,15 @@ public class DiaryService {
             LocalDate today
     ) {
         try {
-            return diaryRepository.saveAndFlush(
-                    Diary.create(
-                            user,
-                            content,
-                            today
-                    )
-            );
+            return diaryRepository
+                    .saveAndFlush(
+                            Diary.create(
+                                    user,
+                                    content,
+                                    today
+                            )
+                    );
+
         } catch (
                 DataIntegrityViolationException exception
         ) {
@@ -268,35 +307,25 @@ public class DiaryService {
 
     private GeneratedReflectionQuestion
     generateReflectionQuestion(
-            AppUser user,
-            String diaryContent,
-            boolean reflectionUsesDiaryContent
+            String diaryContent
     ) {
-        /*
-         * 사용자가 일기 반영을 거부하면 생성기에
-         * 일기 본문 자체를 전달하지 않음
-         */
-        String contentForPrompt =
-                reflectionUsesDiaryContent
-                        ? diaryContent
-                        : null;
-
         DiaryReflectionPrompt prompt =
                 new DiaryReflectionPrompt(
-                        user.getNickname(),
-                        user.getJob(),
-                        user.getAiMemoryProfile(),
-                        contentForPrompt,
-                        reflectionUsesDiaryContent
+                        diaryContent
                 );
 
         try {
             return new GeneratedReflectionQuestion(
                     diaryReflectionQuestionGenerator
-                            .generate(prompt),
+                            .generate(
+                                    prompt
+                            ),
                     QuestionGenerationSource.AI
             );
-        } catch (RuntimeException exception) {
+
+        } catch (
+                RuntimeException exception
+        ) {
             return new GeneratedReflectionQuestion(
                     FALLBACK_REFLECTION_QUESTION,
                     QuestionGenerationSource.FALLBACK
@@ -306,7 +335,8 @@ public class DiaryService {
 
     private record GeneratedReflectionQuestion(
             String questionText,
-            QuestionGenerationSource generationSource
+            QuestionGenerationSource
+            generationSource
     ) {
     }
 

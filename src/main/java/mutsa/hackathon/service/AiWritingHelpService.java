@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -35,11 +36,6 @@ public class AiWritingHelpService {
     private final WritingHelpQuestionGenerator
             writingHelpQuestionGenerator;
 
-    /**
-     * 오늘의 작성 도움 질문 사용 상태를 조회.
-     * 질문을 새로 생성하지 않으므로 사용 횟수는
-     * 소모되지 않음.
-     */
     @Transactional(readOnly = true)
     public WritingHelpStatusResponse getStatus(
             Long userId
@@ -90,23 +86,49 @@ public class AiWritingHelpService {
                                 )
                         );
 
-        String questionText =
-                writingHelpQuestionGenerator.generate(
-                        new WritingHelpPrompt(
-                                user.getNickname(),
-                                user.getJob(),
-                                user.getAiMemoryProfile()
+        /*
+         * 오늘 이미 생성한 질문을 다음 질문 생성기에
+         * 함께 전달.
+         * AI가 앞 질문을 모르는 상태에서 같은 소재와
+         * 문장 구조를 반복하는 문제를 방지.
+         */
+        List<String> previousQuestions =
+                aiQuestionRepository
+                        .findAllByUserIdAndQuestionTypeAndAskedDateOrderByQuestionOrderAsc(
+                                userId,
+                                AiQuestionType.WRITING_HELP,
+                                today
                         )
+                        .stream()
+                        .map(
+                                AiQuestion::getQuestionText
+                        )
+                        .toList();
+
+        int questionOrder =
+                Math.toIntExact(
+                        usedCount + 1
                 );
+
+        WritingHelpPrompt prompt =
+                new WritingHelpPrompt(
+                        user.getNickname(),
+                        user.getJob(),
+                        user.getAiMemoryProfile(),
+                        questionOrder,
+                        previousQuestions
+                );
+
+        String questionText =
+                writingHelpQuestionGenerator
+                        .generate(prompt);
 
         AiQuestion question =
                 aiQuestionRepository.save(
                         AiQuestion.createWritingHelp(
                                 user,
                                 questionText,
-                                Math.toIntExact(
-                                        usedCount + 1
-                                ),
+                                questionOrder,
                                 today,
                                 QuestionGenerationSource.AI
                         )
