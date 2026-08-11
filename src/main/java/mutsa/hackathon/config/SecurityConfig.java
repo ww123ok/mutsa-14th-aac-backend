@@ -18,51 +18,115 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
+
     @Bean
-    public SecurityFilterChain securityFilterChain(
+    public SecurityFilterChain
+    securityFilterChain(
             HttpSecurity http,
-            CustomOAuth2UserService customOAuth2UserService,
-            JwtAuthenticationFilter jwtAuthenticationFilter,
-            OAuth2AuthenticationSuccessHandler successHandler,
-            OAuth2AuthenticationFailureHandler failureHandler,
-            CustomLogoutHandler customLogoutHandler,
-            CustomLogoutSuccessHandler customLogoutSuccessHandler,
-            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-            CorsConfigurationSource corsConfigurationSource // 🚨 CorsConfig에서 만든 빈 주입
+            CustomOAuth2UserService
+                    customOAuth2UserService,
+            JwtAuthenticationFilter
+                    jwtAuthenticationFilter,
+            OAuth2AuthenticationSuccessHandler
+                    successHandler,
+            OAuth2AuthenticationFailureHandler
+                    failureHandler,
+            CustomLogoutHandler
+                    customLogoutHandler,
+            CustomLogoutSuccessHandler
+                    customLogoutSuccessHandler,
+            JwtAuthenticationEntryPoint
+                    jwtAuthenticationEntryPoint,
+            CorsConfigurationSource
+                    corsConfigurationSource
     ) throws Exception {
+
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(cors ->
+                        cors.configurationSource(
+                                corsConfigurationSource
+                        )
+                )
+                .csrf(
+                        AbstractHttpConfigurer
+                                ::disable
+                )
+                .sessionManagement(
+                        session ->
+                                session
+                                        .sessionCreationPolicy(
+                                                SessionCreationPolicy
+                                                        .STATELESS
+                                        )
+                )
+                .exceptionHandling(
+                        exception ->
+                                exception
+                                        .authenticationEntryPoint(
+                                                jwtAuthenticationEntryPoint
+                                        )
+                )
+                .authorizeHttpRequests(
+                        authorize ->
+                                authorize
+                                        .requestMatchers(
+                                                "/",
+                                                "/api/auth/signup",
+                                                "/api/auth/login",
+                                                "/api/auth/refresh",
+                                                "/error",
+                                                "/v3/api-docs/**",
+                                                "/swagger-ui/**",
+                                                "/swagger-resources/**"
+                                        )
+                                        .permitAll()
+                                        .anyRequest()
+                                        .authenticated()
+                )
+                .addFilterBefore(
+                        jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter
+                                .class
+                )
+                .oauth2Login(
+                        oauth2 ->
+                                oauth2
+                                        .userInfoEndpoint(
+                                                userInfo ->
+                                                        userInfo
+                                                                .userService(
+                                                                        customOAuth2UserService
+                                                                )
+                                        )
+                                        .successHandler(
+                                                successHandler
+                                        )
+                                        .failureHandler(
+                                                failureHandler
+                                        )
+                )
+                .logout(
+                        logout ->
+                                logout
+                                        .logoutUrl(
+                                                "/api/logout"
+                                        )
+                                        .addLogoutHandler(
+                                                customLogoutHandler
+                                        )
+                                        .logoutSuccessHandler(
+                                                customLogoutSuccessHandler
+                                        )
+                )
+                .formLogin(
+                        AbstractHttpConfigurer
+                                ::disable
+                )
+                .httpBasic(
+                        AbstractHttpConfigurer
+                                ::disable
+                );
 
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)
-                )
-
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(
-                                "/",
-                                "/api/auth/refresh",
-                                "/error",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-resources/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .oauth2Login(oauth2 -> oauth2
-                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
-                        .successHandler(successHandler)
-                        .failureHandler(failureHandler)
-                )
-                .logout(logout -> logout
-                        .logoutUrl("/api/logout")
-                        .addLogoutHandler(customLogoutHandler)
-                        .logoutSuccessHandler(customLogoutSuccessHandler)
-                )
-                .formLogin(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable);
         return http.build();
     }
 }

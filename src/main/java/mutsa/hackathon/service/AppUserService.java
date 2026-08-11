@@ -109,12 +109,6 @@ public class AppUserService {
                 requestedConsent
         );
 
-        /*
-         * 동의가 켜져 있으면 현재 승인 기억으로
-         * 프로필 일관성을 다시 맞춤.
-         * 동의가 꺼지면 PENDING / APPROVED 기억을
-         * 모두 REVOKED로 변경하고 캐시를 제거.
-         */
         if (requestedConsent) {
             aiMemoryProfileService
                     .rebuildProfile(
@@ -189,6 +183,35 @@ public class AppUserService {
     ) {
         appUserRepository
                 .findById(userId)
+                .ifPresent(
+                        AppUser::clearRefreshToken
+                );
+    }
+
+    /**
+     * Stateless JWT logout용.
+     * LogoutFilter는 일반적인 JWT 인증 Filter보다
+     * 먼저 실행될 수 있으므로 Authentication 객체에
+     * 의존하지 않고 refresh_token Cookie 값으로
+     * 서버에 저장된 refresh token을 폐기.
+     * 존재하지 않는 token이어도 logout 자체는
+     * 정상적으로 끝나도록 예외를 발생시키지 않음.
+     */
+    @Transactional
+    public void clearRefreshTokenByValue(
+            String refreshToken
+    ) {
+        if (
+                refreshToken == null
+                        || refreshToken.isBlank()
+        ) {
+            return;
+        }
+
+        appUserRepository
+                .findByRefreshToken(
+                        refreshToken
+                )
                 .ifPresent(
                         AppUser::clearRefreshToken
                 );

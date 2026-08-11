@@ -5,8 +5,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import mutsa.hackathon.dto.AuthTokenResponse;
 import mutsa.hackathon.security.CustomOAuth2User;
+import mutsa.hackathon.security.JwtCookieService;
 import mutsa.hackathon.service.JwtAuthService;
-import mutsa.hackathon.util.JwtCookieUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -18,24 +18,32 @@ import java.io.IOException;
 public class OAuth2AuthenticationSuccessHandler
         extends SimpleUrlAuthenticationSuccessHandler {
 
-    private final JwtAuthService jwtAuthService;
-    private final boolean cookieSecure;
-    private final String cookieSameSite;
-    private final String successRedirectUri;
+    private final JwtAuthService
+            jwtAuthService;
+
+    private final JwtCookieService
+            jwtCookieService;
+
+    private final String
+            successRedirectUri;
 
     public OAuth2AuthenticationSuccessHandler(
             JwtAuthService jwtAuthService,
-            @Value("${app.jwt.cookie-secure:false}")
-            boolean cookieSecure,
-            @Value("${app.jwt.cookie-same-site:Lax}")
-            String cookieSameSite,
-            @Value("${app.oauth2.success-redirect-uri}")
+            JwtCookieService jwtCookieService,
+
+            @Value(
+                    "${app.oauth2.success-redirect-uri}"
+            )
             String successRedirectUri
     ) {
-        this.jwtAuthService = jwtAuthService;
-        this.cookieSecure = cookieSecure;
-        this.cookieSameSite = cookieSameSite;
-        this.successRedirectUri = successRedirectUri;
+        this.jwtAuthService =
+                jwtAuthService;
+
+        this.jwtCookieService =
+                jwtCookieService;
+
+        this.successRedirectUri =
+                successRedirectUri;
     }
 
     @Override
@@ -47,35 +55,25 @@ public class OAuth2AuthenticationSuccessHandler
 
         CustomOAuth2User principal =
                 (CustomOAuth2User)
-                        authentication.getPrincipal();
+                        authentication
+                                .getPrincipal();
 
         AuthTokenResponse tokenResponse =
                 jwtAuthService.issueTokens(
-                        principal.getKakaoUserProfile()
+                        principal
+                                .getKakaoUserProfile()
                 );
 
-        JwtCookieUtils.addTokenCookie(
+        jwtCookieService.addTokenCookies(
                 response,
-                JwtCookieUtils.ACCESS_TOKEN_COOKIE_NAME,
-                tokenResponse.accessToken(),
-                tokenResponse.accessTokenExpiresIn() / 1000,
-                cookieSecure,
-                cookieSameSite
+                tokenResponse
         );
 
-        JwtCookieUtils.addTokenCookie(
-                response,
-                JwtCookieUtils.REFRESH_TOKEN_COOKIE_NAME,
-                tokenResponse.refreshToken(),
-                tokenResponse.refreshTokenExpiresIn() / 1000,
-                cookieSecure,
-                cookieSameSite
-        );
-
-        getRedirectStrategy().sendRedirect(
-                request,
-                response,
-                successRedirectUri
-        );
+        getRedirectStrategy()
+                .sendRedirect(
+                        request,
+                        response,
+                        successRedirectUri
+                );
     }
 }
