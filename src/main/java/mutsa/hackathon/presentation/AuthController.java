@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import mutsa.hackathon.dto.AuthLoginRequest;
 import mutsa.hackathon.dto.AuthSignupRequest;
 import mutsa.hackathon.dto.AuthTokenResponse;
+import mutsa.hackathon.dto.CsrfTokenResponse;
 import mutsa.hackathon.dto.MeResponse;
 import mutsa.hackathon.dto.MeUpdateRequest;
 import mutsa.hackathon.global.ApiResponse;
@@ -22,6 +23,8 @@ import mutsa.hackathon.util.JwtCookieUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,11 +48,15 @@ public class AuthController {
     private final JwtCookieService
             jwtCookieService;
 
+    private final CsrfTokenRepository
+            csrfTokenRepository;
+
     public AuthController(
             JwtAuthService jwtAuthService,
             AppUserService appUserService,
             FormAuthService formAuthService,
-            JwtCookieService jwtCookieService
+            JwtCookieService jwtCookieService,
+            CsrfTokenRepository csrfTokenRepository
     ) {
         this.jwtAuthService =
                 jwtAuthService;
@@ -62,6 +69,28 @@ public class AuthController {
 
         this.jwtCookieService =
                 jwtCookieService;
+
+        this.csrfTokenRepository =
+                csrfTokenRepository;
+    }
+
+    /**
+     * SPA가 unsafe 요청 전에 사용할
+     * CSRF token을 발급.
+     * 브라우저는 XSRF-TOKEN Cookie를 보관하고,
+     * 프론트는 응답의 token 값을
+     * X-XSRF-TOKEN Header에 담음.
+     */
+    @GetMapping("/auth/csrf")
+    public ApiResponse<CsrfTokenResponse>
+    csrf(
+            CsrfToken csrfToken
+    ) {
+        return ApiResponse.onSuccess(
+                CsrfTokenResponse.from(
+                        csrfToken
+                )
+        );
     }
 
     /**
@@ -73,10 +102,12 @@ public class AuthController {
     public ResponseEntity<
             ApiResponse<MeResponse>
             > signup(
+
             @Valid
             @RequestBody
             AuthSignupRequest request,
 
+            HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
         FormAuthService.FormAuthResult
@@ -88,6 +119,18 @@ public class AuthController {
         jwtCookieService.addTokenCookies(
                 response,
                 authResult.tokenResponse()
+        );
+
+        /*
+         * 인증 상태가 바뀌었으므로
+         * 로그인 전에 사용한 CSRF token은 폐기.
+         * 프론트는 성공 후
+         * GET /api/auth/csrf를 다시 호출.
+         */
+        csrfTokenRepository.saveToken(
+                null,
+                httpRequest,
+                response
         );
 
         return ResponseEntity
@@ -110,10 +153,12 @@ public class AuthController {
      */
     @PostMapping("/auth/login")
     public ApiResponse<MeResponse> login(
+
             @Valid
             @RequestBody
             AuthLoginRequest request,
 
+            HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
         FormAuthService.FormAuthResult
@@ -125,6 +170,15 @@ public class AuthController {
         jwtCookieService.addTokenCookies(
                 response,
                 authResult.tokenResponse()
+        );
+
+        /*
+         * 로그인 전 CSRF token을 재사용하지 않음
+         */
+        csrfTokenRepository.saveToken(
+                null,
+                httpRequest,
+                response
         );
 
         return ApiResponse.onSuccess(
@@ -150,6 +204,7 @@ public class AuthController {
 
     @PatchMapping("/me")
     public ApiResponse<MeResponse> updateMe(
+
             @AuthenticationPrincipal
             CustomOAuth2User user,
 
@@ -205,10 +260,10 @@ public class AuthController {
 
         /*
          * 기존 refresh API의 Response 계약은
-         * 이번 기능에서 깨지지 않도록 그대로 유지.
-         * 최종 production hardening 단계에서
-         * 프론트 사용 여부를 확인한 후
-         * Token Body 제거를 별도 검토.
+         * 이번 기능에서는 유지.
+         * 최종 production hardening에서
+         * Token Body 제거 여부를 프론트 사용 여부와
+         * 함께 별도로 검토.
          */
         return ApiResponse.onSuccess(
                 tokenResponse

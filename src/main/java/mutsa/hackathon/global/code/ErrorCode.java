@@ -69,6 +69,18 @@ public enum ErrorCode
             "이미 가입된 이메일입니다."
     ),
 
+    ACCESS_DENIED(
+            HttpStatus.FORBIDDEN,
+            "AUTH403_1",
+            "접근 권한이 없습니다."
+    ),
+
+    CSRF_TOKEN_INVALID(
+            HttpStatus.FORBIDDEN,
+            "AUTH403_2",
+            "CSRF 토큰이 없거나 유효하지 않습니다."
+    ),
+
     DIARY_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "DIARY404",
