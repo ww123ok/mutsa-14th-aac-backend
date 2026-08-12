@@ -3,6 +3,7 @@ package mutsa.hackathon.handler;
 import mutsa.hackathon.domain.KakaoUserProfile;
 import mutsa.hackathon.dto.AuthTokenResponse;
 import mutsa.hackathon.security.CustomOAuth2User;
+import mutsa.hackathon.security.JwtCookieService;
 import mutsa.hackathon.service.JwtAuthService;
 import mutsa.hackathon.util.JwtCookieUtils;
 import org.junit.jupiter.api.Test;
@@ -25,10 +26,12 @@ import static org.mockito.Mockito.when;
 
 class OAuth2AuthenticationHandlerTest {
 
-    private static final String SUCCESS_REDIRECT_URI =
+    private static final String
+            SUCCESS_REDIRECT_URI =
             "http://localhost:3000/oauth2/callback/kakao";
 
-    private static final String FAILURE_REDIRECT_URI =
+    private static final String
+            FAILURE_REDIRECT_URI =
             "http://localhost:3000/"
                     + "?error=oauth2_login_failed";
 
@@ -49,17 +52,35 @@ class OAuth2AuthenticationHandlerTest {
                 );
 
         JwtAuthService jwtAuthService =
-                mock(JwtAuthService.class);
+                mock(
+                        JwtAuthService.class
+                );
 
         when(
-                jwtAuthService.issueTokens(profile)
-        ).thenReturn(tokenResponse);
+                jwtAuthService
+                        .issueTokens(
+                                profile
+                        )
+        ).thenReturn(
+                tokenResponse
+        );
 
-        OAuth2AuthenticationSuccessHandler handler =
+        /*
+         * 실제 운영 환경에서 사용하는
+         * Secure + SameSite=None 정책을
+         * Cookie Service 자체로 검증합니다.
+         */
+        JwtCookieService jwtCookieService =
+                new JwtCookieService(
+                        true,
+                        "None"
+                );
+
+        OAuth2AuthenticationSuccessHandler
+                handler =
                 new OAuth2AuthenticationSuccessHandler(
                         jwtAuthService,
-                        true,
-                        "None",
+                        jwtCookieService,
                         SUCCESS_REDIRECT_URI
                 );
 
@@ -78,7 +99,8 @@ class OAuth2AuthenticationHandlerTest {
                         profile
                 );
 
-        UsernamePasswordAuthenticationToken authentication =
+        UsernamePasswordAuthenticationToken
+                authentication =
                 new UsernamePasswordAuthenticationToken(
                         principal,
                         null,
@@ -102,7 +124,8 @@ class OAuth2AuthenticationHandlerTest {
                 response.getRedirectedUrl()
         );
 
-        Collection<String> setCookieHeaders =
+        Collection<String>
+                setCookieHeaders =
                 response.getHeaders(
                         HttpHeaders.SET_COOKIE
                 );
@@ -137,14 +160,18 @@ class OAuth2AuthenticationHandlerTest {
         assertTrue(
                 setCookieHeaders.stream()
                         .allMatch(header ->
-                                header.contains("HttpOnly")
+                                header.contains(
+                                        "HttpOnly"
+                                )
                         )
         );
 
         assertTrue(
                 setCookieHeaders.stream()
                         .allMatch(header ->
-                                header.contains("Secure")
+                                header.contains(
+                                        "Secure"
+                                )
                         )
         );
 
@@ -162,7 +189,8 @@ class OAuth2AuthenticationHandlerTest {
     void 로그인_실패시_프론트_실패_주소로_이동한다()
             throws Exception {
 
-        OAuth2AuthenticationFailureHandler handler =
+        OAuth2AuthenticationFailureHandler
+                handler =
                 new OAuth2AuthenticationFailureHandler(
                         FAILURE_REDIRECT_URI
                 );
@@ -187,7 +215,8 @@ class OAuth2AuthenticationHandlerTest {
         );
     }
 
-    private KakaoUserProfile createProfile() {
+    private KakaoUserProfile
+    createProfile() {
         return new KakaoUserProfile(
                 1L,
                 "kakao",

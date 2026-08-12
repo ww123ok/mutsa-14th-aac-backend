@@ -17,7 +17,8 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class AppUserService {
 
-    private final AppUserRepository appUserRepository;
+    private final AppUserRepository
+            appUserRepository;
 
     private final AiMemoryProfileService
             aiMemoryProfileService;
@@ -36,11 +37,12 @@ public class AppUserService {
                         providerId
                 )
                 .map(existingUser -> {
-                    existingUser.updateKakaoProfile(
-                            nickname,
-                            email,
-                            profileImage
-                    );
+                    existingUser
+                            .updateKakaoProfile(
+                                    nickname,
+                                    email,
+                                    profileImage
+                            );
 
                     return KakaoUserProfile.from(
                             existingUser,
@@ -69,7 +71,9 @@ public class AppUserService {
     }
 
     @Transactional(readOnly = true)
-    public MeResponse findMe(Long userId) {
+    public MeResponse findMe(
+            Long userId
+    ) {
         return MeResponse.from(
                 findUser(userId)
         );
@@ -80,7 +84,8 @@ public class AppUserService {
             Long userId,
             MeUpdateRequest request
     ) {
-        AppUser user = findUser(userId);
+        AppUser user =
+                findUser(userId);
 
         boolean requestedConsent =
                 Boolean.TRUE.equals(
@@ -104,15 +109,11 @@ public class AppUserService {
                 requestedConsent
         );
 
-        /*
-         * 동의가 켜져 있으면 현재 승인 기억으로
-         * 프로필 일관성을 다시 맞춤.
-         * 동의가 꺼지면 PENDING / APPROVED 기억을
-         * 모두 REVOKED로 변경하고 캐시를 제거.
-         */
         if (requestedConsent) {
             aiMemoryProfileService
-                    .rebuildProfile(userId);
+                    .rebuildProfile(
+                            userId
+                    );
         } else {
             aiMemoryProfileService
                     .revokeAllUsableMemories(
@@ -120,11 +121,26 @@ public class AppUserService {
                     );
         }
 
-        return MeResponse.from(user);
+        return MeResponse.from(
+                user
+        );
+    }
+
+    /**
+     * 이메일/비밀번호 로그인 성공 시
+     * 마지막 로그인 시각만 짧은 transaction에서 갱신
+     */
+    @Transactional
+    public void recordLogin(
+            Long userId
+    ) {
+        findUser(userId)
+                .recordLogin();
     }
 
     @Transactional(readOnly = true)
-    public KakaoUserProfile findProfileById(
+    public KakaoUserProfile
+    findProfileById(
             Long userId
     ) {
         return KakaoUserProfile.from(
@@ -138,7 +154,9 @@ public class AppUserService {
             String refreshToken
     ) {
         return appUserRepository
-                .findByRefreshToken(refreshToken)
+                .findByRefreshToken(
+                        refreshToken
+                )
                 .orElseThrow(() ->
                         new ProjectException(
                                 ErrorCode.INVALID_TOKEN
@@ -152,10 +170,11 @@ public class AppUserService {
             String refreshToken,
             LocalDateTime expiresAt
     ) {
-        findUser(userId).updateRefreshToken(
-                refreshToken,
-                expiresAt
-        );
+        findUser(userId)
+                .updateRefreshToken(
+                        refreshToken,
+                        expiresAt
+                );
     }
 
     @Transactional
@@ -169,7 +188,38 @@ public class AppUserService {
                 );
     }
 
-    private AppUser findUser(Long userId) {
+    /**
+     * Stateless JWT logout용.
+     * LogoutFilter는 일반적인 JWT 인증 Filter보다
+     * 먼저 실행될 수 있으므로 Authentication 객체에
+     * 의존하지 않고 refresh_token Cookie 값으로
+     * 서버에 저장된 refresh token을 폐기.
+     * 존재하지 않는 token이어도 logout 자체는
+     * 정상적으로 끝나도록 예외를 발생시키지 않음.
+     */
+    @Transactional
+    public void clearRefreshTokenByValue(
+            String refreshToken
+    ) {
+        if (
+                refreshToken == null
+                        || refreshToken.isBlank()
+        ) {
+            return;
+        }
+
+        appUserRepository
+                .findByRefreshToken(
+                        refreshToken
+                )
+                .ifPresent(
+                        AppUser::clearRefreshToken
+                );
+    }
+
+    private AppUser findUser(
+            Long userId
+    ) {
         return appUserRepository
                 .findById(userId)
                 .orElseThrow(() ->
