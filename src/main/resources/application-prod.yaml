@@ -30,3 +30,10 @@ spring:
 logging:
   level:
     org.hibernate.SQL: INFO
+
+app:
+  oauth2:
+    # 운영 환경에서는 환경변수가 누락되어도 localhost로 되돌아가지 않도록
+    # DAYBIT 운영 프론트를 안전한 기본 redirect 대상으로 사용
+    success-redirect-uri: ${FRONTEND_OAUTH_SUCCESS_URL:https://www.daybit.cloud/oauth2/callback/kakao}
+    failure-redirect-uri: ${FRONTEND_OAUTH_FAILURE_URL:https://www.daybit.cloud/?error=oauth2_login_failed}
