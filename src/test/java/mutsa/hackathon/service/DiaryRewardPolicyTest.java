@@ -86,16 +86,16 @@ class DiaryRewardPolicyTest {
         List<String> normalized =
                 DiaryRewardPolicy.normalizeKeywords(
                         List.of(
-                                "#새벽비",
-                                " 팀 프로젝트 ",
+                                "#긴장",
+                                " 한결 가벼운 ",
                                 "따뜻한"
                         )
                 );
 
         assertEquals(
                 List.of(
-                        "새벽비",
-                        "팀프로젝트",
+                        "긴장",
+                        "한결가벼운",
                         "따뜻한"
                 ),
                 normalized
