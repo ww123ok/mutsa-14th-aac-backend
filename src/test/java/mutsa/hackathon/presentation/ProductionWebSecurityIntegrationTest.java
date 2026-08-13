@@ -27,15 +27,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 실제 배포 환경에서 사용할 Web Security 정책을 검증합니다.
- *
+ * 실제 배포 환경에서 사용할 Web Security 정책을 검증
  * 검증 대상:
- *
- * 1. Vercel Frontend Origin의 credentialed CORS
- * 2. X-XSRF-TOKEN preflight 허용
- * 3. 허용하지 않은 Origin 차단
- * 4. Production CSRF Cookie의 Secure + SameSite=None
- * 5. Form Signup으로 발급되는 JWT Cookie의
+ * 1. DAYBIT 운영 Frontend Origin의 credentialed CORS
+ * 2. apex/www 양쪽에서 X-XSRF-TOKEN PATCH preflight 허용
+ * 3. 기존 Vercel Frontend Origin 회귀 방지
+ * 4. 허용하지 않은 Origin 차단
+ * 5. Production CSRF Cookie의 Secure + SameSite=None
+ * 6. Form Signup으로 발급되는 JWT Cookie의
  *    HttpOnly + Secure + SameSite=None
  */
 @SpringBootTest(
@@ -49,6 +48,14 @@ class ProductionWebSecurityIntegrationTest {
 
     private static final String
             FRONTEND_ORIGIN =
+            "https://www.daybit.cloud";
+
+    private static final String
+            APEX_FRONTEND_ORIGIN =
+            "https://daybit.cloud";
+
+    private static final String
+            LEGACY_VERCEL_ORIGIN =
             "https://likelion14th-hackathon.vercel.app";
 
     private static final String
@@ -78,104 +85,38 @@ class ProductionWebSecurityIntegrationTest {
     private JsonMapper jsonMapper;
 
     @Test
-    void Vercel에서_로그인_POST를_위한_CORS_preflight가_허용된다()
+    void DAYBIT_www에서_me_PATCH를_위한_CORS_preflight가_허용된다()
             throws Exception {
 
-        MvcResult result =
-                mockMvc.perform(
-                                options(
-                                        "/api/auth/login"
-                                )
-                                        .header(
-                                                HttpHeaders.ORIGIN,
-                                                FRONTEND_ORIGIN
-                                        )
-                                        .header(
-                                                HttpHeaders
-                                                        .ACCESS_CONTROL_REQUEST_METHOD,
-                                                "POST"
-                                        )
-                                        .header(
-                                                HttpHeaders
-                                                        .ACCESS_CONTROL_REQUEST_HEADERS,
-                                                "content-type,"
-                                                        + "x-xsrf-token"
-                                        )
-                        )
-                        .andExpect(
-                                status()
-                                        .isOk()
-                        )
-                        .andReturn();
-
-        assertEquals(
+        assertCorsPreflightAllowed(
                 FRONTEND_ORIGIN,
-                result.getResponse()
-                        .getHeader(
-                                HttpHeaders
-                                        .ACCESS_CONTROL_ALLOW_ORIGIN
-                        )
+                "/api/me",
+                "PATCH",
+                "content-type,x-xsrf-token"
         );
+    }
 
-        assertEquals(
-                "true",
-                result.getResponse()
-                        .getHeader(
-                                HttpHeaders
-                                        .ACCESS_CONTROL_ALLOW_CREDENTIALS
-                        )
+    @Test
+    void DAYBIT_apex에서_me_PATCH를_위한_CORS_preflight가_허용된다()
+            throws Exception {
+
+        assertCorsPreflightAllowed(
+                APEX_FRONTEND_ORIGIN,
+                "/api/me",
+                "PATCH",
+                "content-type,x-xsrf-token"
         );
+    }
 
-        String allowedMethods =
-                result.getResponse()
-                        .getHeader(
-                                HttpHeaders
-                                        .ACCESS_CONTROL_ALLOW_METHODS
-                        );
+    @Test
+    void 기존_Vercel에서_로그인_POST_CORS_preflight가_계속_허용된다()
+            throws Exception {
 
-        assertNotNull(
-                allowedMethods
-        );
-
-        assertTrue(
-                allowedMethods
-                        .toUpperCase(
-                                Locale.ROOT
-                        )
-                        .contains(
-                                "POST"
-                        )
-        );
-
-        String allowedHeaders =
-                result.getResponse()
-                        .getHeader(
-                                HttpHeaders
-                                        .ACCESS_CONTROL_ALLOW_HEADERS
-                        );
-
-        assertNotNull(
-                allowedHeaders
-        );
-
-        String normalizedAllowedHeaders =
-                allowedHeaders
-                        .toLowerCase(
-                                Locale.ROOT
-                        );
-
-        assertTrue(
-                normalizedAllowedHeaders
-                        .contains(
-                                "content-type"
-                        )
-        );
-
-        assertTrue(
-                normalizedAllowedHeaders
-                        .contains(
-                                "x-xsrf-token"
-                        )
+        assertCorsPreflightAllowed(
+                LEGACY_VERCEL_ORIGIN,
+                "/api/auth/login",
+                "POST",
+                "content-type,x-xsrf-token"
         );
     }
 
@@ -220,7 +161,7 @@ class ProductionWebSecurityIntegrationTest {
     }
 
     @Test
-    void Vercel에서_CSRF를_요청하면_CORS와_Production_Cookie정책이_함께_적용된다()
+    void DAYBIT_www에서_CSRF를_요청하면_CORS와_Production_Cookie정책이_함께_적용된다()
             throws Exception {
 
         MvcResult result =
@@ -405,6 +346,113 @@ class ProductionWebSecurityIntegrationTest {
                 signupResult,
                 REFRESH_TOKEN_COOKIE_NAME
         );
+    }
+
+    private void assertCorsPreflightAllowed(
+            String origin,
+            String path,
+            String method,
+            String requestedHeaders
+    ) throws Exception {
+
+        MvcResult result =
+                mockMvc.perform(
+                                options(
+                                        path
+                                )
+                                        .header(
+                                                HttpHeaders.ORIGIN,
+                                                origin
+                                        )
+                                        .header(
+                                                HttpHeaders
+                                                        .ACCESS_CONTROL_REQUEST_METHOD,
+                                                method
+                                        )
+                                        .header(
+                                                HttpHeaders
+                                                        .ACCESS_CONTROL_REQUEST_HEADERS,
+                                                requestedHeaders
+                                        )
+                        )
+                        .andExpect(
+                                status()
+                                        .isOk()
+                        )
+                        .andReturn();
+
+        assertEquals(
+                origin,
+                result.getResponse()
+                        .getHeader(
+                                HttpHeaders
+                                        .ACCESS_CONTROL_ALLOW_ORIGIN
+                        )
+        );
+
+        assertEquals(
+                "true",
+                result.getResponse()
+                        .getHeader(
+                                HttpHeaders
+                                        .ACCESS_CONTROL_ALLOW_CREDENTIALS
+                        )
+        );
+
+        String allowedMethods =
+                result.getResponse()
+                        .getHeader(
+                                HttpHeaders
+                                        .ACCESS_CONTROL_ALLOW_METHODS
+                        );
+
+        assertNotNull(
+                allowedMethods
+        );
+
+        assertTrue(
+                allowedMethods
+                        .toUpperCase(
+                                Locale.ROOT
+                        )
+                        .contains(
+                                method.toUpperCase(
+                                        Locale.ROOT
+                                )
+                        )
+        );
+
+        String allowedHeaders =
+                result.getResponse()
+                        .getHeader(
+                                HttpHeaders
+                                        .ACCESS_CONTROL_ALLOW_HEADERS
+                        );
+
+        assertNotNull(
+                allowedHeaders
+        );
+
+        String normalizedAllowedHeaders =
+                allowedHeaders
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
+
+        for (String requestedHeader :
+                requestedHeaders.split(",")) {
+
+            assertTrue(
+                    normalizedAllowedHeaders
+                            .contains(
+                                    requestedHeader
+                                            .trim()
+                                            .toLowerCase(
+                                                    Locale.ROOT
+                                            )
+                            )
+            );
+        }
     }
 
     private CsrfContext fetchCsrf()

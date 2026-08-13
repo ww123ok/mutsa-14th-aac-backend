@@ -18,6 +18,8 @@ public class CorsConfig {
                 "http://localhost:5173",
                 "http://localhost:8080",
                 "https://likelion14th-hackathon.vercel.app",
+                "https://daybit.cloud",
+                "https://www.daybit.cloud",
                 "https://hyeonseong-babo.store"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
