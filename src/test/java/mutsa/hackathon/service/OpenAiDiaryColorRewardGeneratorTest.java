@@ -68,9 +68,9 @@ class OpenAiDiaryColorRewardGeneratorTest {
                 successResponse(
                         "#73d8b4",
                         List.of(
-                                "해결",
-                                "성취",
-                                "안도"
+                                "벅찬",
+                                "후련한",
+                                "편안한"
                         )
                 )
         );
@@ -142,9 +142,9 @@ class OpenAiDiaryColorRewardGeneratorTest {
 
         assertEquals(
                 List.of(
-                        "해결",
-                        "성취",
-                        "안도"
+                        "벅찬",
+                        "후련한",
+                        "편안한"
                 ),
                 reward.keywords()
         );
@@ -198,12 +198,36 @@ class OpenAiDiaryColorRewardGeneratorTest {
 
         /*
          * 팀에서 사용하는 UI 예약색 중 하나가
-         * 실제 prompt에도 포함되어 있는지 확인합니다.
+         * 실제 prompt에도 포함되어 있는지 확인
          */
         assertTrue(
                 request.get("instructions")
                         .asText()
                         .contains("#414450")
+        );
+
+        String instructions =
+                request.get("instructions")
+                        .asText();
+
+        assertTrue(
+                instructions.contains(
+                        "how the day felt, not what happened"
+                )
+        );
+
+        assertTrue(
+                instructions.contains("피곤한")
+                        && instructions.contains("설레는")
+                        && instructions.contains("담백한")
+        );
+
+        assertTrue(
+                instructions.contains("학교")
+                        && instructions.contains("프로젝트")
+                        && instructions.contains("시험")
+                        && instructions.contains("과제")
+                        && instructions.contains("회의")
         );
 
         JsonNode format =
@@ -269,6 +293,14 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         .get("type")
                         .asText()
         );
+
+        assertTrue(
+                schema.get("properties")
+                        .get("keywords")
+                        .get("description")
+                        .asText()
+                        .contains("emotional texture")
+        );
     }
 
     @Test
@@ -277,8 +309,8 @@ class OpenAiDiaryColorRewardGeneratorTest {
                 successResponse(
                         "#D99A7A",
                         List.of(
-                                "#새벽비",
-                                "팀 프로젝트",
+                                "#긴장",
+                                "한결 가벼운",
                                 "따뜻한"
                         )
                 )
@@ -286,13 +318,13 @@ class OpenAiDiaryColorRewardGeneratorTest {
 
         DiaryColorReward reward =
                 generator.generate(
-                        "새벽에 비가 왔고 팀 프로젝트에 집중했다."
+                        "발표가 끝나고 긴장이 풀려 마음이 한결 가벼워졌다."
                 );
 
         assertEquals(
                 List.of(
-                        "새벽비",
-                        "팀프로젝트",
+                        "긴장",
+                        "한결가벼운",
                         "따뜻한"
                 ),
                 reward.keywords()
@@ -309,8 +341,8 @@ class OpenAiDiaryColorRewardGeneratorTest {
                 successResponse(
                         "#D99A7A",
                         List.of(
-                                "집중",
-                                "안도"
+                                "차분한",
+                                "후련한"
                         )
                 )
         );
@@ -332,8 +364,8 @@ class OpenAiDiaryColorRewardGeneratorTest {
 
         assertEquals(
                 List.of(
-                        "집중",
-                        "안도"
+                        "차분한",
+                        "후련한"
                 ),
                 reward.keywords()
         );
@@ -346,6 +378,13 @@ class OpenAiDiaryColorRewardGeneratorTest {
                 capturedRequestBody.get()
                         .contains(
                                 "previous attempt violated a hard DAYBIT reward policy"
+                        )
+        );
+
+        assertTrue(
+                capturedRequestBody.get()
+                        .contains(
+                                "Do not return concrete topic, event, task, or proper-noun keywords"
                         )
         );
     }
@@ -389,8 +428,8 @@ class OpenAiDiaryColorRewardGeneratorTest {
                 successResponse(
                         "#C58A73",
                         List.of(
-                                "흐린날",
-                                "생각"
+                                "차분한",
+                                "담백한"
                         )
                 )
         );
@@ -407,8 +446,8 @@ class OpenAiDiaryColorRewardGeneratorTest {
 
         assertEquals(
                 List.of(
-                        "흐린날",
-                        "생각"
+                        "차분한",
+                        "담백한"
                 ),
                 reward.keywords()
         );
