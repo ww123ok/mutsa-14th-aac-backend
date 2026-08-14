@@ -353,13 +353,14 @@ public class OpenAiDiaryColorRewardGenerator
         String retryInstruction =
                 retryAfterPolicyViolation
                         ? """
-                        A previous attempt violated a hard DAYBIT reward policy.
-                        Generate a new result.
-                        Pay extra attention to reserved UI colors, emotional/atmospheric keyword rules,
-                        and the factual empathetic commentSummary rules.
-                        commentSummary must not infer an unstated emotion, must not use color psychology,
-                        and must end in "군요.".
-                        """
+                A previous attempt violated a hard DAYBIT reward policy.
+                Generate a new result.
+                Pay extra attention to reserved UI colors, emotional/atmospheric keyword rules,
+                and the factual empathetic commentSummary rules.
+                Do not return concrete topic, event, task, or proper-noun keywords.
+                commentSummary must not infer an unstated emotion, must not use color psychology,
+                and must end in "군요.".
+                """
                         : "";
 
         return """
