@@ -44,4 +44,10 @@ public interface AiQuestionRepository
     long deleteAllByDiaryId(
             Long diaryId
     );
+
+    long deleteAllByUserIdAndQuestionTypeAndAskedDate(
+            Long userId,
+            AiQuestionType questionType,
+            LocalDate askedDate
+    );
 }
