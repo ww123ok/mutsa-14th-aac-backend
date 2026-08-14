@@ -102,6 +102,11 @@ class DiaryRewardAsyncFlowIntegrationTest {
                 completedReward.colorHex()
         );
 
+        assertEquals(
+                "오류를 해결했고 테스트가 성공해 뿌듯하고 편안하셨군요. 데이빗님의 오늘의 색이에요.",
+                completedReward.colorComment()
+        );
+
         DiaryReward savedReward =
                 diaryRewardRepository
                         .findByDiaryId(
@@ -127,6 +132,11 @@ class DiaryRewardAsyncFlowIntegrationTest {
         assertEquals(
                 completedReward.keywords(),
                 savedReward.getKeywords()
+        );
+
+        assertEquals(
+                completedReward.colorComment(),
+                savedReward.getColorComment()
         );
     }
 
@@ -217,7 +227,8 @@ class DiaryRewardAsyncFlowIntegrationTest {
                                     "해결",
                                     "성취",
                                     "안도"
-                            )
+                            ),
+                            "오류를 해결했고 테스트가 성공해 뿌듯하고 편안하셨군요."
                     );
         }
     }

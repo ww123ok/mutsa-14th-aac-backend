@@ -120,11 +120,27 @@ class OpenAiDiaryColorRewardLiveIntegrationTest {
                         + reward.keywords()
         );
 
+        assertNotNull(
+                reward.commentSummary()
+        );
+
+        assertTrue(
+                reward.commentSummary()
+                        .endsWith("군요.")
+        );
+
+        assertFalse(
+                reward.commentSummary()
+                        .contains("적어주셨어요")
+        );
+
         System.out.println(
                 "[OpenAI 실제 색 보상] "
                         + reward.colorHex()
                         + " "
                         + reward.keywords()
+                        + " / "
+                        + reward.commentSummary()
         );
     }
 }

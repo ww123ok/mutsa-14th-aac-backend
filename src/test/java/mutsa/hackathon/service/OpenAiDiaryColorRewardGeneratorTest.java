@@ -150,6 +150,11 @@ class OpenAiDiaryColorRewardGeneratorTest {
         );
 
         assertEquals(
+                "오류를 해결했고 테스트가 성공해 뿌듯하셨군요.",
+                reward.commentSummary()
+        );
+
+        assertEquals(
                 1,
                 requestCount.get()
         );
@@ -181,7 +186,7 @@ class OpenAiDiaryColorRewardGeneratorTest {
         );
 
         assertEquals(
-                300,
+                450,
                 request.get(
                                 "max_output_tokens"
                         )
@@ -228,6 +233,14 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         && instructions.contains("시험")
                         && instructions.contains("과제")
                         && instructions.contains("회의")
+        );
+
+
+        assertTrue(
+                instructions.contains("context, NOT by repetition count alone")
+                        && instructions.contains("Never convert an event or action into an inferred emotion")
+                        && instructions.contains("적어주셨어요")
+                        && instructions.contains("~하셨군요.")
         );
 
         JsonNode format =
@@ -277,6 +290,11 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         .has("keywords")
         );
 
+        assertTrue(
+                schema.get("properties")
+                        .has("commentSummary")
+        );
+
         /*
          * 기존 colorName 계약이 구조화 출력에서
          * 완전히 사라졌는지도 확인합니다.
@@ -300,6 +318,15 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         .get("description")
                         .asText()
                         .contains("emotional texture")
+        );
+
+
+        assertTrue(
+                schema.get("properties")
+                        .get("commentSummary")
+                        .get("description")
+                        .asText()
+                        .contains("ending in '군요.'")
         );
     }
 
@@ -450,6 +477,68 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         "담백한"
                 ),
                 reward.keywords()
+        );
+    }
+
+    @Test
+    void 코멘트가_공감체_군요로_끝나지_않으면_한번_재생성한다() {
+        setResponses(
+                successResponse(
+                        "#D99A7A",
+                        List.of("피곤한"),
+                        "오늘 많이 피곤했습니다."
+                ),
+                successResponse(
+                        "#C58A73",
+                        List.of("피곤한", "졸린"),
+                        "밤늦게까지 작업했고 많이 피곤하고 졸리셨군요."
+                )
+        );
+
+        DiaryColorReward reward =
+                generator.generate(
+                        "밤늦게까지 작업했고 너무 피곤하고 졸렸다."
+                );
+
+        assertEquals(
+                2,
+                requestCount.get()
+        );
+
+        assertEquals(
+                "밤늦게까지 작업했고 많이 피곤하고 졸리셨군요.",
+                reward.commentSummary()
+        );
+    }
+
+    @Test
+    void 추측형_코멘트는_정책위반으로_보고_재생성한다() {
+        setResponses(
+                successResponse(
+                        "#D99A7A",
+                        List.of("긴장"),
+                        "시험을 봐서 긴장한 것 같군요."
+                ),
+                successResponse(
+                        "#C58A73",
+                        List.of("담백한"),
+                        "시험을 치르셨군요."
+                )
+        );
+
+        DiaryColorReward reward =
+                generator.generate(
+                        "오늘 시험을 봤다."
+                );
+
+        assertEquals(
+                2,
+                requestCount.get()
+        );
+
+        assertEquals(
+                "시험을 치르셨군요.",
+                reward.commentSummary()
         );
     }
 
@@ -640,6 +729,18 @@ class OpenAiDiaryColorRewardGeneratorTest {
             String colorHex,
             List<String> keywords
     ) {
+        return successResponse(
+                colorHex,
+                keywords,
+                "오류를 해결했고 테스트가 성공해 뿌듯하셨군요."
+        );
+    }
+
+    private String successResponse(
+            String colorHex,
+            List<String> keywords,
+            String commentSummary
+    ) {
         try {
             String payload =
                     jsonMapper.writeValueAsString(
@@ -647,14 +748,12 @@ class OpenAiDiaryColorRewardGeneratorTest {
                                     "colorHex",
                                     colorHex,
                                     "keywords",
-                                    keywords
+                                    keywords,
+                                    "commentSummary",
+                                    commentSummary
                             )
                     );
 
-            /*
-             * Responses API 응답 안의 output_text에
-             * JSON 문자열을 안전하게 넣기 위한 escaping입니다.
-             */
             String escapedPayload =
                     jsonMapper.writeValueAsString(
                             payload

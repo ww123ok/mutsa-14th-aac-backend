@@ -189,4 +189,50 @@ class DiaryRewardPolicyTest {
             );
         }
     }
+
+    @Test
+    void 색_코멘트_요약은_공감체_군요_형식을_사용한다() {
+        assertEquals(
+                "카페에서 늦게까지 작업했고 많이 피곤하셨군요.",
+                DiaryRewardPolicy.normalizeCommentSummary(
+                        "  카페에서 늦게까지 작업했고 많이 피곤하셨군요.  "
+                )
+        );
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                        DiaryRewardPolicy.normalizeCommentSummary(
+                                "오늘 많이 피곤했습니다."
+                        )
+        );
+    }
+
+    @Test
+    void 색_코멘트는_서버가_닉네임과_오늘의색_종결문을_붙인다() {
+        assertEquals(
+                "발표를 마친 뒤 후련하셨군요. 한재이님의 오늘의 색이에요.",
+                DiaryRewardPolicy.composeColorComment(
+                        "발표를 마친 뒤 후련하셨군요.",
+                        "한재이"
+                )
+        );
+    }
+
+    @Test
+    void 추측_분석_추천형_코멘트_요약은_거부한다() {
+        for (String summary : List.of(
+                "시험을 봐서 긴장한 것 같군요.",
+                "마음이 복잡해 보이네요군요.",
+                "민트색을 추천하고 싶군요."
+        )) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () ->
+                            DiaryRewardPolicy.normalizeCommentSummary(
+                                    summary
+                            )
+            );
+        }
+    }
 }
