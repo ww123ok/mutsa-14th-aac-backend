@@ -163,6 +163,12 @@ public enum ErrorCode
             HttpStatus.CONFLICT,
             "CREDIT409_1",
             "크레딧이 부족합니다."
+    ),
+
+    WEEKLY_REWARD_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "WEEKLY_REWARD404",
+            "존재하지 않는 주간 보상입니다."
     );
 
     private final HttpStatus status;

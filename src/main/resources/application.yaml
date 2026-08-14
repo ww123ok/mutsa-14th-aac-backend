@@ -54,6 +54,7 @@ app:
     cookie-secure: ${JWT_COOKIE_SECURE:false}
     cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
 
+  # 일간 보상, 성찰 질문, AI 기억에서 사용하는 공통 OpenAI 설정
   openai:
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-5.6-terra}
@@ -70,3 +71,33 @@ app:
     # 기본적으로 비활성화
     # 개발 서버에서만 DEV_RESET_ENABLED=true로 활성화
     reset-enabled: ${DEV_RESET_ENABLED:false}
+
+  weekly-reward:
+    enabled: ${WEEKLY_REWARD_ENABLED:false}
+
+    # 로컬·스테이징에서 실제 작성 일기의 수동 생성 확인에만 사용
+    # 운영 환경에서는 반드시 false
+    manual-trigger-enabled: ${WEEKLY_REWARD_MANUAL_TRIGGER_ENABLED:false}
+
+    minimum-diary-count: ${WEEKLY_REWARD_MINIMUM_DIARY_COUNT:3}
+    daily-reward-wait-minutes: ${WEEKLY_REWARD_DAILY_REWARD_WAIT_MINUTES:10}
+    max-attempts: ${WEEKLY_REWARD_MAX_ATTEMPTS:3}
+    stale-minutes: ${WEEKLY_REWARD_STALE_MINUTES:30}
+    image-url-expiration-minutes: ${WEEKLY_REWARD_IMAGE_URL_EXPIRATION_MINUTES:15}
+
+    # 일요일이 끝난 직후인 월요일 00:05 KST 최초 생성
+    initial-cron: "${WEEKLY_REWARD_INITIAL_CRON:0 5 0 * * MON}"
+
+    # 월요일 동안 매시간 15분에 누락·실패·중단 작업 복구
+    retry-cron: "${WEEKLY_REWARD_RETRY_CRON:0 15 * * * MON}"
+
+    s3:
+      region: ${AWS_REGION:ap-northeast-2}
+      bucket: ${WEEKLY_REWARD_S3_BUCKET:}
+
+    # 주간 보상 전용 OpenAI 설정
+    openai:
+      text-model: ${OPENAI_WEEKLY_TEXT_MODEL:gpt-5.6-terra}
+      image-model: ${OPENAI_IMAGE_MODEL:gpt-image-2}
+      image-size: ${OPENAI_IMAGE_SIZE:1024x1024}
+      image-quality: ${OPENAI_IMAGE_QUALITY:medium}
