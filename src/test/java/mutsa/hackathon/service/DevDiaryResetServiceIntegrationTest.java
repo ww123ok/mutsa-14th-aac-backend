@@ -1,6 +1,7 @@
 package mutsa.hackathon.service;
 
 import mutsa.hackathon.domain.AiQuestion;
+import mutsa.hackathon.domain.AiQuestionType;
 import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.domain.DiaryReward;
@@ -119,6 +120,17 @@ class DevDiaryResetServiceIntegrationTest {
                         )
                 );
 
+        AiQuestion todayWritingHelpQuestion =
+                aiQuestionRepository.saveAndFlush(
+                        AiQuestion.createWritingHelp(
+                                user,
+                                "오늘 가장 선명하게 기억나는 순간은 무엇인가요?",
+                                1,
+                                today,
+                                QuestionGenerationSource.AI
+                        )
+                );
+
         UserMemoryItem todayMemory =
                 saveApprovedMemory(
                         user,
@@ -177,7 +189,7 @@ class DevDiaryResetServiceIntegrationTest {
         );
 
         assertEquals(
-                1,
+                2,
                 response.deletedQuestionCount()
         );
 
@@ -206,6 +218,14 @@ class DevDiaryResetServiceIntegrationTest {
                 aiQuestionRepository
                         .findById(
                                 todayQuestion.getId()
+                        )
+                        .isPresent()
+        );
+
+        assertFalse(
+                aiQuestionRepository
+                        .findById(
+                                todayWritingHelpQuestion.getId()
                         )
                         .isPresent()
         );
@@ -264,9 +284,34 @@ class DevDiaryResetServiceIntegrationTest {
     }
 
     @Test
-    void 오늘_일기가_없으면_삭제하지_않고_정상응답한다() {
+    void 오늘_일기가_없어도_오늘_작성도움_질문은_초기화한다() {
+        LocalDate today =
+                LocalDate.now(SERVICE_ZONE);
+
         AppUser user =
                 saveUser();
+
+        AiQuestion todayWritingHelpQuestion =
+                aiQuestionRepository.saveAndFlush(
+                        AiQuestion.createWritingHelp(
+                                user,
+                                "오늘 무엇부터 기록해볼까요?",
+                                1,
+                                today,
+                                QuestionGenerationSource.AI
+                        )
+                );
+
+        AiQuestion yesterdayWritingHelpQuestion =
+                aiQuestionRepository.saveAndFlush(
+                        AiQuestion.createWritingHelp(
+                                user,
+                                "어제 가장 기억나는 순간은 무엇인가요?",
+                                1,
+                                today.minusDays(1),
+                                QuestionGenerationSource.AI
+                        )
+                );
 
         DevTodayDiaryResetResponse response =
                 devDiaryResetService.resetToday(
@@ -278,7 +323,7 @@ class DevDiaryResetServiceIntegrationTest {
         );
 
         assertEquals(
-                LocalDate.now(SERVICE_ZONE),
+                today,
                 response.recordedDate()
         );
 
@@ -288,13 +333,39 @@ class DevDiaryResetServiceIntegrationTest {
         );
 
         assertEquals(
-                0,
+                1,
                 response.deletedQuestionCount()
         );
 
         assertEquals(
                 0,
                 response.deletedMemoryCount()
+        );
+
+        assertFalse(
+                aiQuestionRepository
+                        .findById(
+                                todayWritingHelpQuestion.getId()
+                        )
+                        .isPresent()
+        );
+
+        assertTrue(
+                aiQuestionRepository
+                        .findById(
+                                yesterdayWritingHelpQuestion.getId()
+                        )
+                        .isPresent()
+        );
+
+        assertEquals(
+                0,
+                aiQuestionRepository
+                        .countByUserIdAndQuestionTypeAndAskedDate(
+                                user.getId(),
+                                AiQuestionType.WRITING_HELP,
+                                today
+                        )
         );
     }
 
