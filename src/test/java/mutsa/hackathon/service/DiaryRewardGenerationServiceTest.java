@@ -51,7 +51,8 @@ class DiaryRewardGenerationServiceTest {
                                 "해결",
                                 "성취",
                                 "안도"
-                        )
+                        ),
+                        "문제를 해결해서 뿌듯하셨군요."
                 );
 
         when(
@@ -141,7 +142,8 @@ class DiaryRewardGenerationServiceTest {
                 List.of(
                         "해결",
                         "안도"
-                )
+                ),
+                "문제를 해결하셨군요. 데이빗님의 오늘의 색이에요."
         );
 
         when(
