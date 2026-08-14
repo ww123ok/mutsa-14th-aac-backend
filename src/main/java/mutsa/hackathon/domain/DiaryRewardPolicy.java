@@ -9,22 +9,19 @@ import java.util.regex.Pattern;
 /**
  * DAYBIT 일간 색 보상의 공통 값 정책.
  * Entity와 AI 생성 결과가 동일한 검증 규칙을 사용하도록
- * 색상/키워드 정규화와 서비스 예약 색상 차단을 한 곳에서 담당.
+ * 색상/키워드/색 코멘트 정규화와 서비스 예약 색상 차단을 한 곳에서 담당.
  */
 public final class DiaryRewardPolicy {
 
     public static final int MIN_KEYWORD_COUNT = 1;
     public static final int MAX_KEYWORD_COUNT = 3;
     public static final int MAX_KEYWORD_LENGTH = 20;
+    public static final int MAX_COMMENT_SUMMARY_LENGTH = 220;
+    public static final int MAX_COLOR_COMMENT_LENGTH = 300;
 
     private static final Pattern HEX_COLOR =
             Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
-    /**
-     * DAYBIT UI에서 기본적으로 사용하는 색상.
-     * 색 보상은 사용자에게 독립적인 보상으로 보여야 하므로
-     * 아래 색상과 정확히 동일한 HEX는 생성할 수 없도록 함.
-     */
     private static final Set<String> RESERVED_UI_COLORS =
             Set.of(
                     "#FFFFFF",
@@ -41,13 +38,6 @@ public final class DiaryRewardPolicy {
                     "#F6F8FA"
             );
 
-    /**
-     * 기획에서 직접적으로 피하기로 한
-     * 직관적인 부정 감정 라벨.
-     * 모든 감정 표현을 금지하는 것은 아님.
-     * 사용자를 직접적으로 규정하는 대표 표현만
-     * 서버에서 최종 방어.
-     */
     private static final List<String>
             FORBIDDEN_DIRECT_NEGATIVE_PREFIXES =
             List.of(
@@ -55,6 +45,24 @@ public final class DiaryRewardPolicy {
                     "슬픈",
                     "우울한",
                     "불행한"
+            );
+
+    /**
+     * AI 코멘트가 사용자의 기록을 멀리서 분석하거나
+     * 추측하는 말투로 변하는 대표 표현을 최소한으로 차단.
+     * 의미 판단 전체를 서버 blacklist로 해결하지 않고,
+     * 결정적으로 잡을 수 있는 형태만 방어
+     */
+    private static final List<String>
+            FORBIDDEN_COMMENT_FRAGMENTS =
+            List.of(
+                    "추천",
+                    "적어주셨어요",
+                    "기록되어 있어요",
+                    "것 같",
+                    "듯해",
+                    "보여요",
+                    "보이네요"
             );
 
     private DiaryRewardPolicy() {
@@ -134,6 +142,130 @@ public final class DiaryRewardPolicy {
         );
     }
 
+    /**
+     * OpenAI가 생성하는 첫 문장은 공감체 사실 요약만 담당.
+     * 닉네임/오늘의 색 종결문은 서버가 따로 붙여서
+     * AI가 색의 심리적 의미를 임의로 설명하지 못하게 함.
+     */
+    public static String normalizeCommentSummary(
+            String commentSummary
+    ) {
+        if (
+                commentSummary == null
+                        || commentSummary.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "색 보상 코멘트 요약은 필수입니다."
+            );
+        }
+
+        String normalized =
+                commentSummary
+                        .trim()
+                        .replaceAll(
+                                "\\s+",
+                                " "
+                        );
+
+        if (
+                normalized.length()
+                        > MAX_COMMENT_SUMMARY_LENGTH
+        ) {
+            throw new IllegalArgumentException(
+                    "색 보상 코멘트 요약은 220자 이하여야 합니다."
+            );
+        }
+
+        if (!normalized.endsWith("군요.")) {
+            throw new IllegalArgumentException(
+                    "색 보상 코멘트 요약은 공감체 '~군요.'로 마무리해야 합니다."
+            );
+        }
+
+        if (
+                FORBIDDEN_COMMENT_FRAGMENTS
+                        .stream()
+                        .anyMatch(
+                                normalized::contains
+                        )
+        ) {
+            throw new IllegalArgumentException(
+                    "색 보상 코멘트에는 추측·분석·추천 표현을 사용할 수 없습니다."
+            );
+        }
+
+        return normalized;
+    }
+
+    public static String composeColorComment(
+            String commentSummary,
+            String nickname
+    ) {
+        String normalizedSummary =
+                normalizeCommentSummary(
+                        commentSummary
+                );
+
+        if (
+                nickname == null
+                        || nickname.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "색 보상 코멘트에 사용할 닉네임은 필수입니다."
+            );
+        }
+
+        String normalizedNickname =
+                nickname
+                        .trim()
+                        .replaceAll(
+                                "\\s+",
+                                " "
+                        );
+
+        String colorComment =
+                normalizedSummary
+                        + " "
+                        + normalizedNickname
+                        + "님의 오늘의 색이에요.";
+
+        return normalizeColorComment(
+                colorComment
+        );
+    }
+
+    public static String normalizeColorComment(
+            String colorComment
+    ) {
+        if (
+                colorComment == null
+                        || colorComment.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "색 보상 코멘트는 필수입니다."
+            );
+        }
+
+        String normalized =
+                colorComment
+                        .trim()
+                        .replaceAll(
+                                "\\s+",
+                                " "
+                        );
+
+        if (
+                normalized.length()
+                        > MAX_COLOR_COMMENT_LENGTH
+        ) {
+            throw new IllegalArgumentException(
+                    "색 보상 코멘트는 300자 이하여야 합니다."
+            );
+        }
+
+        return normalized;
+    }
+
     public static boolean isReservedColor(
             String colorHex
     ) {
@@ -168,20 +300,11 @@ public final class DiaryRewardPolicy {
         String normalized =
                 keyword.trim();
 
-        /*
-         * AI가 실수로 #차분한 형태로 반환하더라도
-         * API에서는 "차분한"으로 통일.
-         * 실제 # 표시는 프론트엔드가 담당.
-         */
         if (normalized.startsWith("#")) {
             normalized =
                     normalized.substring(1);
         }
 
-        /*
-         * 해시태그 형태로 사용할 것이므로
-         * "팀 프로젝트" → "팀프로젝트"처럼 정규화
-         */
         normalized =
                 normalized
                         .replaceAll(

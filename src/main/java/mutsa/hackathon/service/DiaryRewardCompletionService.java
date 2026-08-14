@@ -2,6 +2,7 @@ package mutsa.hackathon.service;
 
 import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.domain.DiaryReward;
+import mutsa.hackathon.domain.DiaryRewardPolicy;
 import mutsa.hackathon.domain.RewardGenerationStatus;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import org.springframework.stereotype.Service;
@@ -40,9 +41,19 @@ public class DiaryRewardCompletionService {
             return;
         }
 
+        String colorComment =
+                DiaryRewardPolicy
+                        .composeColorComment(
+                                generatedReward.commentSummary(),
+                                reward.getDiary()
+                                        .getUser()
+                                        .getNickname()
+                        );
+
         reward.complete(
                 generatedReward.colorHex(),
-                generatedReward.keywords()
+                generatedReward.keywords(),
+                colorComment
         );
     }
 

@@ -80,6 +80,12 @@ public class DiaryReward extends BaseEntity {
     private String keyword3;
 
     @Column(
+            name = "color_comment",
+            length = 300
+    )
+    private String colorComment;
+
+    @Column(
             name = "failure_reason",
             length = 500
     )
@@ -105,7 +111,8 @@ public class DiaryReward extends BaseEntity {
 
     public void complete(
             String colorHex,
-            List<String> keywords
+            List<String> keywords,
+            String colorComment
     ) {
         String normalizedColorHex =
                 DiaryRewardPolicy
@@ -117,6 +124,12 @@ public class DiaryReward extends BaseEntity {
                 DiaryRewardPolicy
                         .normalizeKeywords(
                                 keywords
+                        );
+
+        String normalizedColorComment =
+                DiaryRewardPolicy
+                        .normalizeColorComment(
+                                colorComment
                         );
 
         this.generationStatus =
@@ -138,6 +151,9 @@ public class DiaryReward extends BaseEntity {
                         ? normalizedKeywords.get(2)
                         : null;
 
+        this.colorComment =
+                normalizedColorComment;
+
         this.failureReason = null;
     }
 
@@ -150,6 +166,8 @@ public class DiaryReward extends BaseEntity {
         this.colorHex = null;
 
         clearKeywords();
+
+        this.colorComment = null;
 
         this.failureReason =
                 trimToLength(
