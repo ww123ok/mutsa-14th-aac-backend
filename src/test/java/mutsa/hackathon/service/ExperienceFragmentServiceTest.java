@@ -1,0 +1,93 @@
+package mutsa.hackathon.service;
+
+import mutsa.hackathon.domain.*;
+import mutsa.hackathon.dto.ExperienceMatchResponse;
+import mutsa.hackathon.repository.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class ExperienceFragmentServiceTest {
+    @Mock private DiaryRepository diaryRepository;
+    @Mock private DiaryShareRepository diaryShareRepository;
+    @Mock private SharedDiaryLogRepository sharedDiaryLogRepository;
+    @Mock private AppUserRepository appUserRepository;
+    @Mock private CreditTransactionRepository creditTransactionRepository;
+    @Mock private ExperienceFragmentProcessor experienceFragmentProcessor;
+    @Mock private ExperienceEmbeddingGenerator experienceEmbeddingGenerator;
+    @Mock private ExperienceFragmentDraftPersistenceService draftPersistenceService;
+    @Mock private ApplicationEventPublisher eventPublisher;
+
+    @InjectMocks private ExperienceFragmentService service;
+
+    @Test
+    void matchesOnlyKeywordOverlappingApprovedFragmentAboveThreshold() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "알바에서 손님 응대 때문에 힘들었다.");
+        DiaryShare matching = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("알바"), "[1.0,0.0]");
+        DiaryShare unrelated = approvedShare(30L, diary(user(3L), 31L, "source"), List.of("운동"), "[1.0,0.0]");
+
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
+        when(experienceEmbeddingGenerator.generate(queryDiary.getContent())).thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
+        when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(List.of(matching, unrelated));
+
+        Optional<ExperienceMatchResponse> result = service.findBestMatch(1L, 10L);
+
+        assertTrue(result.isPresent());
+        assertEquals(20L, result.get().shareId());
+        verify(sharedDiaryLogRepository).existsByReceiverIdAndDiaryShareId(1L, 20L);
+        verify(sharedDiaryLogRepository, never()).existsByReceiverIdAndDiaryShareId(1L, 30L);
+    }
+
+    @Test
+    void persistsReviewDraftAfterAsyncGeneration() {
+        DiaryShare requested = DiaryShare.request(diary(user(2L), 21L, "알바 일기"));
+        ExperienceFragmentDraft draft = new ExperienceFragmentDraft(
+                "익명화된 경험", "일과 관계", List.of("알바"), "알바 중 손님 응대 경험"
+        );
+
+        when(diaryShareRepository.findByIdWithDiaryAndUser(1L)).thenReturn(Optional.of(requested));
+        when(experienceFragmentProcessor.createDraft("알바 일기")).thenReturn(draft);
+
+        service.generateDraft(1L);
+
+        verify(draftPersistenceService).saveDraft(1L, draft);
+        verify(draftPersistenceService, never()).block(anyLong());
+    }
+
+    private AppUser user(Long id) {
+        AppUser user = AppUser.createKakaoUser("provider-" + id, "사용자", null, null);
+        ReflectionTestUtils.setField(user, "id", id);
+        return user;
+    }
+
+    private Diary diary(AppUser user, Long id, String content) {
+        Diary diary = Diary.create(user, content, LocalDate.now());
+        ReflectionTestUtils.setField(diary, "id", id);
+        return diary;
+    }
+
+    private DiaryShare approvedShare(Long id, Diary diary, List<String> keywords, String embedding) {
+        DiaryShare share = DiaryShare.request(diary);
+        ReflectionTestUtils.setField(share, "id", id);
+        share.requireReview("익명화된 경험", "일과 관계", keywords, "알바 경험");
+        share.approve(embedding, "test");
+        return share;
+    }
+}

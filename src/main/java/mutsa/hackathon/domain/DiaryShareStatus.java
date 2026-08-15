@@ -5,5 +5,6 @@ public enum DiaryShareStatus {
     REVIEW_REQUIRED,
     APPROVED,
     REJECTED,
+    BLOCKED,
     WITHDRAWN
 }

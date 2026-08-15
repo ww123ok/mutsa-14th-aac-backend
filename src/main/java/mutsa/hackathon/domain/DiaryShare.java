@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -44,6 +46,28 @@ public class DiaryShare extends BaseEntity {
     @Column(name = "anonymized_content", columnDefinition = "TEXT")
     private String anonymizedContent;
 
+    @Column(name = "general_topic", length = 100)
+    private String generalTopic;
+
+    @ElementCollection
+    @CollectionTable(
+            name = "diary_share_keyword",
+            joinColumns = @JoinColumn(name = "diary_share_id")
+    )
+    @Column(name = "keyword", nullable = false, length = 50)
+    @OrderColumn(name = "keyword_order")
+    @Builder.Default
+    private List<String> keywords = new ArrayList<>();
+
+    @Column(name = "matching_text", columnDefinition = "TEXT")
+    private String matchingText;
+
+    @Column(name = "embedding_json", columnDefinition = "TEXT")
+    private String embeddingJson;
+
+    @Column(name = "embedding_model", length = 100)
+    private String embeddingModel;
+
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
 
@@ -72,7 +96,12 @@ public class DiaryShare extends BaseEntity {
                 .build();
     }
 
-    public void requireReview(String anonymizedContent) {
+    public void requireReview(
+            String anonymizedContent,
+            String generalTopic,
+            List<String> keywords,
+            String matchingText
+    ) {
         if (shareStatus != DiaryShareStatus.REQUESTED) {
             throw new IllegalStateException("익명화 요청 상태에서만 검토 대기로 변경할 수 있습니다.");
         }
@@ -81,15 +110,23 @@ public class DiaryShare extends BaseEntity {
         }
 
         this.anonymizedContent = anonymizedContent.trim();
+        this.generalTopic = normalizeRequired(generalTopic);
+        this.keywords = normalizeKeywords(keywords);
+        this.matchingText = normalizeRequired(matchingText);
         this.shareStatus = DiaryShareStatus.REVIEW_REQUIRED;
         this.rejectionReason = null;
     }
 
-    public void approve() {
+    public void approve(
+            String embeddingJson,
+            String embeddingModel
+    ) {
         if (shareStatus != DiaryShareStatus.REVIEW_REQUIRED) {
             throw new IllegalStateException("검토 대기 상태에서만 공유를 승인할 수 있습니다.");
         }
 
+        this.embeddingJson = normalizeRequired(embeddingJson);
+        this.embeddingModel = normalizeRequired(embeddingModel);
         this.shareStatus = DiaryShareStatus.APPROVED;
         this.approvedAt = LocalDateTime.now();
     }
@@ -124,5 +161,36 @@ public class DiaryShare extends BaseEntity {
             throw new IllegalStateException("검토 중이거나 승인된 공유만 철회할 수 있습니다.");
         }
         this.shareStatus = DiaryShareStatus.WITHDRAWN;
+    }
+
+    public void block(String reason) {
+        if (shareStatus != DiaryShareStatus.REQUESTED) {
+            throw new IllegalStateException("Only a requested share can be blocked.");
+        }
+        this.shareStatus = DiaryShareStatus.BLOCKED;
+        this.rejectionReason = reason == null ? null : reason.trim();
+    }
+
+    private String normalizeRequired(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Experience fragment value is required.");
+        }
+        return value.trim();
+    }
+
+    private List<String> normalizeKeywords(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            throw new IllegalArgumentException("At least one keyword is required.");
+        }
+        List<String> normalized = values.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(String::trim)
+                .distinct()
+                .limit(3)
+                .toList();
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("At least one keyword is required.");
+        }
+        return new ArrayList<>(normalized);
     }
 }

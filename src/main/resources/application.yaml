@@ -65,6 +65,10 @@ app:
     # 일기에서 향후 작성 도움 질문용
     # 개인화 기억 후보를 추출하는 기능
     memory-extraction-enabled: ${OPENAI_MEMORY_EXTRACTION_ENABLED:false}
+    embedding-model: ${OPENAI_EMBEDDING_MODEL:text-embedding-3-small}
+
+  experience-sharing:
+    minimum-similarity: ${EXPERIENCE_MATCH_MINIMUM_SIMILARITY:0.78}
 
   dev:
     # 기본적으로 비활성화
