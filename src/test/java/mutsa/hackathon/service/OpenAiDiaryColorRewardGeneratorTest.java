@@ -150,7 +150,7 @@ class OpenAiDiaryColorRewardGeneratorTest {
         );
 
         assertEquals(
-                "오류를 해결했고 테스트가 성공해 뿌듯하셨군요.",
+                "밝은 화면과 오류 해결 장면이 또렷하게 이어져 밝고 선명한 방향의 색을 골랐습니다.",
                 reward.commentSummary()
         );
 
@@ -217,14 +217,21 @@ class OpenAiDiaryColorRewardGeneratorTest {
 
         assertTrue(
                 instructions.contains(
-                        "how the day felt, not what happened"
+                        "Determine Hue, Lightness, and Chroma independently"
                 )
         );
 
         assertTrue(
-                instructions.contains("피곤한")
-                        && instructions.contains("설레는")
-                        && instructions.contains("담백한")
+                instructions.contains("Do not make the color aesthetically safe")
+                        && instructions.contains("Do not compromise into an average color")
+                        && instructions.contains("colors close to white")
+                        && instructions.contains("#FFF2F2")
+        );
+
+        assertTrue(
+                instructions.contains("피곤함")
+                        && instructions.contains("설렘")
+                        && instructions.contains("해방감")
         );
 
         assertTrue(
@@ -235,12 +242,11 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         && instructions.contains("회의")
         );
 
-
         assertTrue(
-                instructions.contains("context, NOT by repetition count alone")
-                        && instructions.contains("Never convert an event or action into an inferred emotion")
-                        && instructions.contains("적어주셨어요")
-                        && instructions.contains("~하셨군요.")
+                instructions.contains("Never infer a new emotion from an event")
+                        && instructions.contains("Do not expose hidden reasoning")
+                        && instructions.contains("final character MUST be \".\"")
+                        && instructions.contains("Do not use general color psychology")
         );
 
         JsonNode format =
@@ -327,6 +333,14 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         .get("description")
                         .asText()
                         .contains("specific visual direction")
+        );
+
+        assertTrue(
+                schema.get("properties")
+                        .get("commentSummary")
+                        .get("description")
+                        .asText()
+                        .contains("final character must be '.'")
         );
     }
 
@@ -481,17 +495,17 @@ class OpenAiDiaryColorRewardGeneratorTest {
     }
 
     @Test
-    void 코멘트가_공감체_군요로_끝나지_않으면_한번_재생성한다() {
+    void 코멘트가_온점으로_끝나지_않으면_한번_재생성한다() {
         setResponses(
                 successResponse(
                         "#D99A7A",
-                        List.of("피곤한"),
-                        "오늘 많이 피곤했습니다."
+                        List.of("피곤함"),
+                        "늦은 밤의 어두운 환경과 피로감이 낮은 명도 방향을 만들었습니다!"
                 ),
                 successResponse(
                         "#C58A73",
-                        List.of("피곤한", "졸린"),
-                        "밤늦게까지 작업했고 많이 피곤하고 졸리셨군요."
+                        List.of("피곤함", "졸림"),
+                        "늦은 밤의 어두운 환경과 피로감이 낮은 명도와 차분한 채도의 방향을 만들었습니다."
                 )
         );
 
@@ -506,8 +520,22 @@ class OpenAiDiaryColorRewardGeneratorTest {
         );
 
         assertEquals(
-                "밤늦게까지 작업했고 많이 피곤하고 졸리셨군요.",
+                "늦은 밤의 어두운 환경과 피로감이 낮은 명도와 차분한 채도의 방향을 만들었습니다.",
                 reward.commentSummary()
+        );
+
+        assertTrue(
+                capturedRequestBody.get()
+                        .contains(
+                                "final character must be \\\".\\\""
+                        )
+        );
+
+        assertFalse(
+                capturedRequestBody.get()
+                        .contains(
+                                "must end in \\\"군요.\\\""
+                        )
         );
     }
 
@@ -732,7 +760,7 @@ class OpenAiDiaryColorRewardGeneratorTest {
         return successResponse(
                 colorHex,
                 keywords,
-                "오류를 해결했고 테스트가 성공해 뿌듯하셨군요."
+                "밝은 화면과 오류 해결 장면이 또렷하게 이어져 밝고 선명한 방향의 색을 골랐습니다."
         );
     }
 

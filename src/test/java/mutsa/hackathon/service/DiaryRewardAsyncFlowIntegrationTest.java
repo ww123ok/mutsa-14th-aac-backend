@@ -103,7 +103,7 @@ class DiaryRewardAsyncFlowIntegrationTest {
         );
 
         assertEquals(
-                "오류를 해결했고 테스트가 성공해 뿌듯하고 편안하셨군요. 데이빗님의 오늘의 색이에요.",
+                "밝은 화면과 오류 해결 장면이 이어져 밝고 선명한 방향의 색을 골랐습니다.",
                 completedReward.colorComment()
         );
 
@@ -228,7 +228,7 @@ class DiaryRewardAsyncFlowIntegrationTest {
                                     "성취",
                                     "안도"
                             ),
-                            "오류를 해결했고 테스트가 성공해 뿌듯하고 편안하셨군요."
+                            "밝은 화면과 오류 해결 장면이 이어져 밝고 선명한 방향의 색을 골랐습니다."
                     );
         }
     }
