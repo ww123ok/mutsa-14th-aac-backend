@@ -9,5 +9,7 @@ public interface SharedDiaryLogRepository extends JpaRepository<SharedDiaryLog, 
 
     boolean existsByReceiverIdAndDiaryShareId(Long receiverId, Long diaryShareId);
 
+    boolean existsByDiaryShareId(Long diaryShareId);
+
     Optional<SharedDiaryLog> findByIdAndReceiverId(Long logId, Long receiverId);
 }

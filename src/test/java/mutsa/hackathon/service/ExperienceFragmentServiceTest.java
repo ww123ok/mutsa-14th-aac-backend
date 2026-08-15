@@ -29,6 +29,7 @@ class ExperienceFragmentServiceTest {
     @Mock private ExperienceFragmentProcessor experienceFragmentProcessor;
     @Mock private ExperienceEmbeddingGenerator experienceEmbeddingGenerator;
     @Mock private ExperienceFragmentDraftPersistenceService draftPersistenceService;
+    @Mock private ExperienceFragmentApprovalPersistenceService approvalPersistenceService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private ExperienceFragmentService service;
