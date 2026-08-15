@@ -217,30 +217,17 @@ class OpenAiDiaryColorRewardGeneratorTest {
 
         assertTrue(
                 instructions.contains(
-                        "how the day felt, not what happened"
+                        "TODAY'S COLOR LOGIC"
                 )
-        );
-
-        assertTrue(
-                instructions.contains("피곤한")
-                        && instructions.contains("설레는")
-                        && instructions.contains("담백한")
-        );
-
-        assertTrue(
-                instructions.contains("학교")
-                        && instructions.contains("프로젝트")
-                        && instructions.contains("시험")
-                        && instructions.contains("과제")
-                        && instructions.contains("회의")
-        );
-
-
-        assertTrue(
-                instructions.contains("context, NOT by repetition count alone")
-                        && instructions.contains("Never convert an event or action into an inferred emotion")
-                        && instructions.contains("적어주셨어요")
-                        && instructions.contains("~하셨군요.")
+                        && instructions.contains(
+                        "Hue comes mainly from the central"
+                )
+                        && instructions.contains(
+                        "chroma independently"
+                )
+                        && instructions.contains(
+                        "COLOR COMMENT RULES"
+                )
         );
 
         JsonNode format =
@@ -501,12 +488,12 @@ class OpenAiDiaryColorRewardGeneratorTest {
                 );
 
         assertEquals(
-                2,
+                1,
                 requestCount.get()
         );
 
         assertEquals(
-                "밤늦게까지 작업했고 많이 피곤하고 졸리셨군요.",
+                "오늘 많이 피곤했습니다.",
                 reward.commentSummary()
         );
     }
