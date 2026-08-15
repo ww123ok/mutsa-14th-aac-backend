@@ -33,7 +33,8 @@ public record DiaryResponse(
     public record RewardSummary(
             String status,
             String colorHex,
-            List<String> keywords
+            List<String> keywords,
+            String colorComment
     ) {
 
         private static RewardSummary from(
@@ -47,7 +48,8 @@ public record DiaryResponse(
                     reward.getGenerationStatus()
                             .name(),
                     reward.getColorHex(),
-                    reward.getKeywords()
+                    reward.getKeywords(),
+                    reward.getColorComment()
             );
         }
     }

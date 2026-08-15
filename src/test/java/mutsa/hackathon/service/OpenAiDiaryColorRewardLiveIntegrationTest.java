@@ -6,6 +6,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -92,11 +94,53 @@ class OpenAiDiaryColorRewardLiveIntegrationTest {
                         )
         );
 
+        List<String> concreteTopicTerms =
+                List.of(
+                        "팀원",
+                        "백엔드",
+                        "오류",
+                        "테스트",
+                        "기능",
+                        "프로젝트",
+                        "학교",
+                        "회의",
+                        "과제",
+                        "시험"
+                );
+
+        assertTrue(
+                reward.keywords()
+                        .stream()
+                        .noneMatch(keyword ->
+                                concreteTopicTerms
+                                        .stream()
+                                        .anyMatch(keyword::contains)
+                        ),
+                "키워드는 구체적인 사건/주제어보다 감정·감각·분위기를 표현해야 합니다: "
+                        + reward.keywords()
+        );
+
+        assertNotNull(
+                reward.commentSummary()
+        );
+
+        assertTrue(
+                reward.commentSummary()
+                        .endsWith("군요.")
+        );
+
+        assertFalse(
+                reward.commentSummary()
+                        .contains("적어주셨어요")
+        );
+
         System.out.println(
                 "[OpenAI 실제 색 보상] "
                         + reward.colorHex()
                         + " "
                         + reward.keywords()
+                        + " / "
+                        + reward.commentSummary()
         );
     }
 }

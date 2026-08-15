@@ -12,14 +12,15 @@ public record DevTodayDiaryResetResponse(
 ) {
 
     public static DevTodayDiaryResetResponse notFound(
-            LocalDate recordedDate
+            LocalDate recordedDate,
+            long deletedQuestionCount
     ) {
         return new DevTodayDiaryResetResponse(
                 false,
                 null,
                 recordedDate,
                 0,
-                0,
+                deletedQuestionCount,
                 0
         );
     }

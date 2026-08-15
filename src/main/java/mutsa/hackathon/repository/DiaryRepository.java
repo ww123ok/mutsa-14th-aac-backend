@@ -61,4 +61,19 @@ public interface DiaryRepository
             LocalDate startDate,
             LocalDate endDate
     );
+
+    @Query("""
+        select diary.user.id
+        from Diary diary
+        where diary.deleted = false
+          and diary.recordedDate between :startDate and :endDate
+        group by diary.user.id
+        having count(diary.id) >= :minimumCount
+        order by diary.user.id asc
+        """)
+    List<Long> findEligibleUserIdsForWeek(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("minimumCount") long minimumCount
+    );
 }

@@ -1,6 +1,7 @@
 package mutsa.hackathon.service;
 
 import lombok.RequiredArgsConstructor;
+import mutsa.hackathon.domain.AiQuestionType;
 import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.dto.DevTodayDiaryResetResponse;
 import mutsa.hackathon.global.code.ErrorCode;
@@ -62,6 +63,14 @@ public class DevDiaryResetService {
         LocalDate today =
                 LocalDate.now(SERVICE_ZONE);
 
+        long deletedWritingHelpQuestionCount =
+                aiQuestionRepository
+                        .deleteAllByUserIdAndQuestionTypeAndAskedDate(
+                                userId,
+                                AiQuestionType.WRITING_HELP,
+                                today
+                        );
+
         Optional<Diary> diaryOptional =
                 diaryRepository
                         .findByUserIdAndRecordedDate(
@@ -71,7 +80,10 @@ public class DevDiaryResetService {
 
         if (diaryOptional.isEmpty()) {
             return DevTodayDiaryResetResponse
-                    .notFound(today);
+                    .notFound(
+                            today,
+                            deletedWritingHelpQuestionCount
+                    );
         }
 
         Diary diary =
@@ -101,11 +113,15 @@ public class DevDiaryResetService {
                                 diaryId
                         );
 
-        long deletedQuestionCount =
+        long deletedReflectionQuestionCount =
                 aiQuestionRepository
                         .deleteAllByDiaryId(
                                 diaryId
                         );
+
+        long deletedQuestionCount =
+                deletedWritingHelpQuestionCount
+                        + deletedReflectionQuestionCount;
 
         long deletedRewardCount =
                 diaryRewardRepository
