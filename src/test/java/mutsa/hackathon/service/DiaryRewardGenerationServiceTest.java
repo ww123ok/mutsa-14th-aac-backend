@@ -143,7 +143,7 @@ class DiaryRewardGenerationServiceTest {
                         "해결",
                         "안도"
                 ),
-                "문제를 해결하셨군요. 데이빗님의 오늘의 색이에요."
+                "오류 해결 장면이 또렷하게 이어져 선명한 방향의 색을 골랐습니다."
         );
 
         when(

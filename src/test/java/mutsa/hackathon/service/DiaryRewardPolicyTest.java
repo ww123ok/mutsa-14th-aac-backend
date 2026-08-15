@@ -191,45 +191,50 @@ class DiaryRewardPolicyTest {
     }
 
     @Test
-    void 색_코멘트_요약은_공감체_군요_형식을_사용한다() {
+    void 색_코멘트는_공백을_정규화하고_온점으로_끝나야_한다() {
         assertEquals(
-                "카페에서 늦게까지 작업했고 많이 피곤하셨군요.",
-                DiaryRewardPolicy.normalizeCommentSummary(
-                        "  카페에서 늦게까지 작업했고 많이 피곤하셨군요.  "
+                "늦은 밤의 어두운 환경이 낮은 명도 방향을 만들었습니다.",
+                DiaryRewardPolicy.normalizeColorCommentSummary(
+                        "  늦은 밤의 어두운 환경이   낮은 명도 방향을 만들었습니다.  "
                 )
         );
 
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                        DiaryRewardPolicy.normalizeCommentSummary(
-                                "오늘 많이 피곤했습니다."
-                        )
-        );
-    }
-
-    @Test
-    void 색_코멘트는_서버가_닉네임과_오늘의색_종결문을_붙인다() {
-        assertEquals(
-                "발표를 마친 뒤 후련하셨군요. 한재이님의 오늘의 색이에요.",
-                DiaryRewardPolicy.composeColorComment(
-                        "발표를 마친 뒤 후련하셨군요.",
-                        "한재이"
-                )
-        );
-    }
-
-    @Test
-    void 추측_분석_추천형_코멘트_요약은_거부한다() {
-        for (String summary : List.of(
-                "시험을 봐서 긴장한 것 같군요.",
-                "마음이 복잡해 보이네요군요.",
-                "민트색을 추천하고 싶군요."
+        for (String invalidComment : List.of(
+                "늦은 밤의 어두운 환경이 낮은 명도 방향을 만들었습니다!",
+                "늦은 밤의 어두운 환경이 낮은 명도 방향을 만들었나요?",
+                "늦은 밤의 어두운 환경이 낮은 명도 방향을 만들었습니다"
         )) {
             assertThrows(
                     IllegalArgumentException.class,
                     () ->
-                            DiaryRewardPolicy.normalizeCommentSummary(
+                            DiaryRewardPolicy.normalizeColorCommentSummary(
+                                    invalidComment
+                            )
+            );
+        }
+    }
+
+    @Test
+    void 색_코멘트는_닉네임_고정문구를_덧붙이지_않는다() {
+        assertEquals(
+                "밝은 화면과 또렷한 장면이 밝고 선명한 방향의 색을 만들었습니다.",
+                DiaryRewardPolicy.composeColorCommentSummary(
+                        "밝은 화면과 또렷한 장면이 밝고 선명한 방향의 색을 만들었습니다."
+                )
+        );
+    }
+
+    @Test
+    void 추측_분석_추천형_색_코멘트는_거부한다() {
+        for (String summary : List.of(
+                "시험 장면 때문에 긴장한 것 같아 어두운 방향을 골랐습니다.",
+                "마음이 복잡해 보여요. 그래서 채도를 낮췄습니다.",
+                "민트색을 추천하는 방향으로 정했습니다."
+        )) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () ->
+                            DiaryRewardPolicy.normalizeColorCommentSummary(
                                     summary
                             )
             );

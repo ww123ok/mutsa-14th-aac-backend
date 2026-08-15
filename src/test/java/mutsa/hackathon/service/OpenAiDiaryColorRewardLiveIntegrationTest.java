@@ -126,7 +126,7 @@ class OpenAiDiaryColorRewardLiveIntegrationTest {
 
         assertTrue(
                 reward.commentSummary()
-                        .endsWith("군요.")
+                        .endsWith(".")
         );
 
         assertFalse(

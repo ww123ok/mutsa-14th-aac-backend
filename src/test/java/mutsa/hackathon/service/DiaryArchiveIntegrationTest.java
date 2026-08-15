@@ -238,9 +238,7 @@ class DiaryArchiveIntegrationTest {
         );
 
         assertEquals(
-                "오늘의 기록을 남기셨군요. "
-                        + user.getNickname()
-                        + "님의 오늘의 색이에요.",
+                "기록 속 장면의 밝기와 분위기를 바탕으로 오늘의 색 방향을 정했습니다.",
                 first.reward()
                         .colorComment()
         );
@@ -679,10 +677,7 @@ class DiaryArchiveIntegrationTest {
         reward.complete(
                 colorHex,
                 keywords,
-                "오늘의 기록을 남기셨군요. "
-                        + diary.getUser()
-                        .getNickname()
-                        + "님의 오늘의 색이에요."
+                "기록 속 장면의 밝기와 분위기를 바탕으로 오늘의 색 방향을 정했습니다."
         );
 
         return diaryRewardRepository
