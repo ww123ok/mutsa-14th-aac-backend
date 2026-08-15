@@ -15,15 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class AiWritingHelpService {
-
-    private static final ZoneId SERVICE_ZONE =
-            ZoneId.of("Asia/Seoul");
 
     private static final int DAILY_LIMIT = 3;
 
@@ -36,14 +32,17 @@ public class AiWritingHelpService {
     private final WritingHelpQuestionGenerator
             writingHelpQuestionGenerator;
 
+    private final UserDayService
+            userDayService;
+
     @Transactional(readOnly = true)
     public WritingHelpStatusResponse getStatus(
             Long userId
     ) {
-        validateUserExists(userId);
-
         LocalDate today =
-                LocalDate.now(SERVICE_ZONE);
+                userDayService.currentDay(
+                        userId
+                );
 
         long usedCount =
                 countTodayQuestions(
@@ -69,7 +68,9 @@ public class AiWritingHelpService {
             Long userId
     ) {
         LocalDate today =
-                LocalDate.now(SERVICE_ZONE);
+                userDayService.currentDay(
+                        userId
+                );
 
         long usedCount =
                 countTodayQuestions(
@@ -158,17 +159,4 @@ public class AiWritingHelpService {
                 );
     }
 
-    private void validateUserExists(
-            Long userId
-    ) {
-        if (
-                userId == null
-                        || !appUserRepository
-                        .existsById(userId)
-        ) {
-            throw new ProjectException(
-                    ErrorCode.USER_NOT_FOUND
-            );
-        }
-    }
 }

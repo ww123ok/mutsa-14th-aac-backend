@@ -7,7 +7,6 @@ import mutsa.hackathon.dto.DevTodayDiaryResetResponse;
 import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AiQuestionRepository;
-import mutsa.hackathon.repository.AppUserRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import mutsa.hackathon.repository.DiaryShareRepository;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Optional;
 
 @Service
@@ -29,12 +27,6 @@ import java.util.Optional;
         havingValue = "true"
 )
 public class DevDiaryResetService {
-
-    private static final ZoneId SERVICE_ZONE =
-            ZoneId.of("Asia/Seoul");
-
-    private final AppUserRepository
-            appUserRepository;
 
     private final DiaryRepository
             diaryRepository;
@@ -54,14 +46,17 @@ public class DevDiaryResetService {
     private final AiMemoryProfileService
             aiMemoryProfileService;
 
+    private final UserDayService
+            userDayService;
+
     @Transactional
     public DevTodayDiaryResetResponse resetToday(
             Long userId
     ) {
-        validateUserExists(userId);
-
         LocalDate today =
-                LocalDate.now(SERVICE_ZONE);
+                userDayService.currentDay(
+                        userId
+                );
 
         long deletedWritingHelpQuestionCount =
                 aiQuestionRepository
@@ -150,17 +145,4 @@ public class DevDiaryResetService {
         );
     }
 
-    private void validateUserExists(
-            Long userId
-    ) {
-        if (
-                userId == null
-                        || !appUserRepository
-                        .existsById(userId)
-        ) {
-            throw new ProjectException(
-                    ErrorCode.USER_NOT_FOUND
-            );
-        }
-    }
 }
