@@ -44,10 +44,7 @@ public class DiaryRewardCompletionService {
         String colorComment =
                 DiaryRewardPolicy
                         .composeColorCommentSummary(
-                                generatedReward.commentSummary(),
-                                reward.getDiary()
-                                        .getUser()
-                                        .getNickname()
+                                generatedReward.commentSummary()
                         );
 
         reward.complete(
