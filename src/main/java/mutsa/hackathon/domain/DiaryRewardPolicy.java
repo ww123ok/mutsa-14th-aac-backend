@@ -234,6 +234,63 @@ public final class DiaryRewardPolicy {
         );
     }
 
+    public static String composeColorCommentSummary(
+            String commentSummary,
+            String nickname
+    ) {
+        return normalizeColorCommentSummary(commentSummary);
+    }
+
+    public static String normalizeColorCommentSummary(
+            String commentSummary
+    ) {
+        if (
+                commentSummary == null
+                        || commentSummary.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "Color comment is required."
+            );
+        }
+
+        String normalized =
+                commentSummary
+                        .trim()
+                        .replaceAll(
+                                "\\s+",
+                                " "
+                        );
+
+        if (
+                normalized.length()
+                        > MAX_COMMENT_SUMMARY_LENGTH
+        ) {
+            throw new IllegalArgumentException(
+                    "Color comment must be at most 220 characters."
+            );
+        }
+
+        if (!normalized.matches(".*[.!?]$")) {
+            throw new IllegalArgumentException(
+                    "Color comment must end with sentence punctuation."
+            );
+        }
+
+        if (
+                FORBIDDEN_COMMENT_FRAGMENTS
+                        .stream()
+                        .anyMatch(
+                                normalized::contains
+                        )
+        ) {
+            throw new IllegalArgumentException(
+                    "Color comment contains a forbidden phrase."
+            );
+        }
+
+        return normalized;
+    }
+
     public static String normalizeColorComment(
             String colorComment
     ) {
