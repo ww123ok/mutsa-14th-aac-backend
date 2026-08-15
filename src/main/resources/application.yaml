@@ -76,6 +76,11 @@ app:
     # 개발 서버에서만 DEV_RESET_ENABLED=true로 활성화
     reset-enabled: ${DEV_RESET_ENABLED:false}
 
+      # 테스트 전용 과거 날짜 일기 작성
+    backdated-diary-enabled: ${DEV_BACKDATED_DIARY_ENABLED:false}
+      # 테스트 API 사용이 허용된 사용자 ID
+    backdated-diary-allowed-user-id: ${DEV_BACKDATED_DIARY_ALLOWED_USER_ID:-1}
+
   weekly-reward:
     enabled: ${WEEKLY_REWARD_ENABLED:false}
 

@@ -49,9 +49,7 @@ public final class DiaryRewardPolicy {
 
     /**
      * AI 코멘트가 사용자의 기록을 멀리서 분석하거나
-     * 추측하는 말투로 변하는 대표 표현을 최소한으로 차단.
-     * 의미 판단 전체를 서버 blacklist로 해결하지 않고,
-     * 결정적으로 잡을 수 있는 형태만 방어
+     * 추측하는 말투로 변하는 대표 표현을 차단합니다.
      */
     private static final List<String>
             FORBIDDEN_COMMENT_FRAGMENTS =
@@ -68,6 +66,10 @@ public final class DiaryRewardPolicy {
     private DiaryRewardPolicy() {
     }
 
+    /**
+     * 색상 코드를 #RRGGBB 대문자 형식으로 정규화하고,
+     * DAYBIT UI 예약 색상인지 검증합니다.
+     */
     public static String normalizeColorHex(
             String colorHex
     ) {
@@ -98,6 +100,10 @@ public final class DiaryRewardPolicy {
         return normalized;
     }
 
+    /**
+     * 색 보상 키워드를 1개 이상 3개 이하로 검증하고
+     * 해시태그와 공백을 제거합니다.
+     */
     public static List<String> normalizeKeywords(
             List<String> keywords
     ) {
@@ -108,7 +114,7 @@ public final class DiaryRewardPolicy {
         }
 
         if (
-                keywords.isEmpty()
+                keywords.size() < MIN_KEYWORD_COUNT
                         || keywords.size()
                         > MAX_KEYWORD_COUNT
         ) {
@@ -143,9 +149,8 @@ public final class DiaryRewardPolicy {
     }
 
     /**
-     * OpenAI가 생성하는 첫 문장은 공감체 사실 요약만 담당.
-     * 닉네임/오늘의 색 종결문은 서버가 따로 붙여서
-     * AI가 색의 심리적 의미를 임의로 설명하지 못하게 함.
+     * OpenAI가 생성한 공감형 사실 요약을 검증합니다.
+     * AI는 닉네임 문구를 만들지 않고, 반드시 '~군요.'로 끝내야 합니다.
      */
     public static String normalizeCommentSummary(
             String commentSummary
@@ -197,6 +202,9 @@ public final class DiaryRewardPolicy {
         return normalized;
     }
 
+    /**
+     * AI가 생성한 공감형 요약 뒤에 서버가 닉네임 문구를 붙입니다.
+     */
     public static String composeColorComment(
             String commentSummary,
             String nickname
@@ -234,63 +242,33 @@ public final class DiaryRewardPolicy {
         );
     }
 
+    /**
+     * 기존 호출부와의 호환성을 위한 메서드입니다.
+     */
     public static String composeColorCommentSummary(
             String commentSummary,
             String nickname
     ) {
-        return normalizeColorCommentSummary(commentSummary);
+        return composeColorComment(
+                commentSummary,
+                nickname
+        );
     }
 
+    /**
+     * 기존 호출부와의 호환성을 위한 메서드입니다.
+     */
     public static String normalizeColorCommentSummary(
             String commentSummary
     ) {
-        if (
-                commentSummary == null
-                        || commentSummary.isBlank()
-        ) {
-            throw new IllegalArgumentException(
-                    "Color comment is required."
-            );
-        }
-
-        String normalized =
+        return normalizeCommentSummary(
                 commentSummary
-                        .trim()
-                        .replaceAll(
-                                "\\s+",
-                                " "
-                        );
-
-        if (
-                normalized.length()
-                        > MAX_COMMENT_SUMMARY_LENGTH
-        ) {
-            throw new IllegalArgumentException(
-                    "Color comment must be at most 220 characters."
-            );
-        }
-
-        if (!normalized.matches(".*[.!?]$")) {
-            throw new IllegalArgumentException(
-                    "Color comment must end with sentence punctuation."
-            );
-        }
-
-        if (
-                FORBIDDEN_COMMENT_FRAGMENTS
-                        .stream()
-                        .anyMatch(
-                                normalized::contains
-                        )
-        ) {
-            throw new IllegalArgumentException(
-                    "Color comment contains a forbidden phrase."
-            );
-        }
-
-        return normalized;
+        );
     }
 
+    /**
+     * DB에 최종 저장되는 전체 색 보상 코멘트를 검증합니다.
+     */
     public static String normalizeColorComment(
             String colorComment
     ) {

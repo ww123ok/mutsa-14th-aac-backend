@@ -61,6 +61,42 @@ public class DiaryService {
      * 2. transaction 밖에서 OpenAI 성찰 질문 호출
      * 3. 짧은 write transaction으로 결과 저장
      */
+//    public DiaryCreateResponse create(
+//            Long userId,
+//            DiaryCreateRequest request
+//    ) {
+//        LocalDate today =
+//                LocalDate.now(
+//                        SERVICE_ZONE
+//                );
+//
+//        diaryCreatePersistenceService
+//                .validateCanCreate(
+//                        userId,
+//                        today
+//                );
+//
+//        GeneratedReflectionQuestion
+//                generatedQuestion =
+//                generateReflectionQuestion(
+//                        request.content()
+//                );
+//
+//        return diaryCreatePersistenceService
+//                .persist(
+//                        userId,
+//                        request,
+//                        today,
+//                        generatedQuestion
+//                                .questionText(),
+//                        generatedQuestion
+//                                .generationSource()
+//                );
+//    }
+    /**
+     * 정상 운영용 일기 작성.
+     * 서버의 오늘 날짜를 사용합니다.
+     */
     public DiaryCreateResponse create(
             Long userId,
             DiaryCreateRequest request
@@ -70,10 +106,43 @@ public class DiaryService {
                         SERVICE_ZONE
                 );
 
+        return createForRecordedDate(
+                userId,
+                request,
+                today
+        );
+    }
+
+    /**
+     * 지정한 날짜로 일기를 생성하는 공통 흐름입니다.
+     *
+     * 정상 일기 API는 오늘 날짜를 전달하고,
+     * 테스트 전용 API만 검증된 과거 날짜를 전달합니다.
+     *
+     * 기존 저장 흐름을 그대로 사용하므로
+     * 일기, 성찰 질문, 색 보상 생성이 모두 수행됩니다.
+     */
+    public DiaryCreateResponse createForRecordedDate(
+            Long userId,
+            DiaryCreateRequest request,
+            LocalDate recordedDate
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "일기 작성 요청은 필수입니다."
+            );
+        }
+
+        if (recordedDate == null) {
+            throw new IllegalArgumentException(
+                    "일기 작성 날짜는 필수입니다."
+            );
+        }
+
         diaryCreatePersistenceService
                 .validateCanCreate(
                         userId,
-                        today
+                        recordedDate
                 );
 
         GeneratedReflectionQuestion
@@ -86,14 +155,13 @@ public class DiaryService {
                 .persist(
                         userId,
                         request,
-                        today,
+                        recordedDate,
                         generatedQuestion
                                 .questionText(),
                         generatedQuestion
                                 .generationSource()
                 );
     }
-
     /**
      * 월간 아카이브의 공식 조회.
      * 한 번의 요청으로 해당 월의 모든 일기와

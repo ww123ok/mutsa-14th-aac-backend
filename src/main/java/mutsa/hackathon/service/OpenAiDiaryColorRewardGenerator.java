@@ -327,7 +327,7 @@ public class OpenAiDiaryColorRewardGenerator
                         model,
                         false,
                         MAX_OUTPUT_TOKENS,
-                        INSTRUCTIONS,
+                        LEGACY_INSTRUCTIONS,
                         buildInput(
                                 diaryContent,
                                 retryAfterPolicyViolation
