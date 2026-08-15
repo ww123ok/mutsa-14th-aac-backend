@@ -34,7 +34,7 @@ public record DiaryColorReward(
 
         commentSummary =
                 DiaryRewardPolicy
-                        .normalizeCommentSummary(
+                        .normalizeColorCommentSummary(
                                 commentSummary
                         );
     }

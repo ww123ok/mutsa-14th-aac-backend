@@ -326,7 +326,7 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         .get("commentSummary")
                         .get("description")
                         .asText()
-                        .contains("ending in '군요.'")
+                        .contains("specific visual direction")
         );
     }
 

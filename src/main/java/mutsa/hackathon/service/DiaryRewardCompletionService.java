@@ -43,7 +43,7 @@ public class DiaryRewardCompletionService {
 
         String colorComment =
                 DiaryRewardPolicy
-                        .composeColorComment(
+                        .composeColorCommentSummary(
                                 generatedReward.commentSummary(),
                                 reward.getDiary()
                                         .getUser()
