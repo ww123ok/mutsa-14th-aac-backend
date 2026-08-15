@@ -91,6 +91,7 @@ public class ExperienceFragmentService {
         ExperienceEmbedding queryEmbedding = experienceEmbeddingGenerator.generate(queryDiary.getContent());
         String queryText = queryDiary.getContent().toLowerCase(Locale.ROOT);
         return diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED).stream()
+                .filter(share -> !share.getDiary().isDeleted())
                 .filter(share -> !share.getDiary().getUser().getId().equals(receiverId))
                 .filter(share -> share.getKeywords().stream().anyMatch(keyword -> queryText.contains(keyword.toLowerCase(Locale.ROOT))))
                 .filter(share -> !sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiverId, share.getId()))
@@ -105,6 +106,7 @@ public class ExperienceFragmentService {
         AppUser receiver = appUserRepository.findById(receiverId).orElseThrow(() -> new ProjectException(ErrorCode.USER_NOT_FOUND));
         DiaryShare share = diaryShareRepository.findByIdWithDiaryAndUser(shareId)
                 .filter(candidate -> candidate.getShareStatus() == DiaryShareStatus.APPROVED)
+                .filter(candidate -> !candidate.getDiary().isDeleted())
                 .orElseThrow(() -> new ProjectException(ErrorCode.SHARE_NOT_FOUND));
         if (sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiverId, shareId)) {
             throw new ProjectException(ErrorCode.SHARED_DIARY_ALREADY_RECEIVED);

@@ -11,5 +11,7 @@ public interface SharedDiaryLogRepository extends JpaRepository<SharedDiaryLog, 
 
     boolean existsByDiaryShareId(Long diaryShareId);
 
+    long deleteAllByDiaryShareId(Long diaryShareId);
+
     Optional<SharedDiaryLog> findByIdAndReceiverId(Long logId, Long receiverId);
 }

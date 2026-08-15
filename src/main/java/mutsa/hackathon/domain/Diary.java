@@ -87,6 +87,14 @@ public class Diary extends BaseEntity {
         this.deletedAt = LocalDateTime.now();
     }
 
+    public void restore() {
+        if (!deleted) {
+            return;
+        }
+        this.deleted = false;
+        this.deletedAt = null;
+    }
+
     public void markMemoryApplied() {
         if (memoryAppliedAt == null) {
             this.memoryAppliedAt = LocalDateTime.now();

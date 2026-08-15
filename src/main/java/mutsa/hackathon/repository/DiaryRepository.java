@@ -24,6 +24,12 @@ public interface DiaryRepository
     );
 
     Optional<Diary>
+    findByIdAndUserIdAndDeletedTrue(
+            Long diaryId,
+            Long userId
+    );
+
+    Optional<Diary>
     findByUserIdAndRecordedDateAndDeletedFalse(
             Long userId,
             LocalDate recordedDate
@@ -60,6 +66,11 @@ public interface DiaryRepository
             Long userId,
             LocalDate startDate,
             LocalDate endDate
+    );
+
+    List<Diary>
+    findAllByUserIdAndDeletedTrueOrderByDeletedAtDesc(
+            Long userId
     );
 
     @Query("""

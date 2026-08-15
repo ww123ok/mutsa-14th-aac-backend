@@ -9,6 +9,8 @@ import mutsa.hackathon.dto.DiaryCreateResponse;
 import mutsa.hackathon.dto.DiaryDetailResponse;
 import mutsa.hackathon.dto.DiaryResponse;
 import mutsa.hackathon.dto.DiaryRewardResponse;
+import mutsa.hackathon.dto.DiaryTrashDetailResponse;
+import mutsa.hackathon.dto.DiaryTrashResponse;
 import mutsa.hackathon.dto.ReflectionAnswerRequest;
 import mutsa.hackathon.dto.ReflectionAnswerResponse;
 import mutsa.hackathon.global.ApiResponse;
@@ -17,6 +19,7 @@ import mutsa.hackathon.security.CustomOAuth2User;
 import mutsa.hackathon.service.DiaryReflectionService;
 import mutsa.hackathon.service.DiaryRewardService;
 import mutsa.hackathon.service.DiaryService;
+import mutsa.hackathon.service.DiaryTrashService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -32,6 +35,9 @@ import java.util.List;
 public class DiaryController {
 
     private final DiaryService diaryService;
+
+    private final DiaryTrashService
+            diaryTrashService;
 
     private final DiaryRewardService
             diaryRewardService;
@@ -94,6 +100,82 @@ public class DiaryController {
 
         return ApiResponse.onSuccess(
                 response
+        );
+    }
+
+    @GetMapping("/trash")
+    public ApiResponse<List<DiaryTrashResponse>>
+    getTrash(
+            @AuthenticationPrincipal
+            CustomOAuth2User user
+    ) {
+        List<DiaryTrashResponse> response =
+                diaryTrashService.getTrash(
+                        user.getKakaoUserProfile()
+                                .id()
+                );
+
+        return ApiResponse.onSuccess(
+                response
+        );
+    }
+
+    @GetMapping("/trash/{diaryId}")
+    public ApiResponse<DiaryTrashDetailResponse>
+    getTrashDiary(
+            @AuthenticationPrincipal
+            CustomOAuth2User user,
+
+            @PathVariable
+            Long diaryId
+    ) {
+        DiaryTrashDetailResponse response =
+                diaryTrashService.getTrashDiary(
+                        user.getKakaoUserProfile()
+                                .id(),
+                        diaryId
+                );
+
+        return ApiResponse.onSuccess(
+                response
+        );
+    }
+
+    @PatchMapping("/trash/{diaryId}/restore")
+    public ApiResponse<Void> restoreDiary(
+            @AuthenticationPrincipal
+            CustomOAuth2User user,
+
+            @PathVariable
+            Long diaryId
+    ) {
+        diaryTrashService.restore(
+                user.getKakaoUserProfile()
+                        .id(),
+                diaryId
+        );
+
+        return ApiResponse.onSuccess(
+                null
+        );
+    }
+
+    @DeleteMapping("/trash/{diaryId}")
+    public ApiResponse<Void> permanentlyDeleteDiary(
+            @AuthenticationPrincipal
+            CustomOAuth2User user,
+
+            @PathVariable
+            Long diaryId
+    ) {
+        diaryTrashService.permanentlyDelete(
+                user.getKakaoUserProfile()
+                        .id(),
+                diaryId
+        );
+
+        return ApiResponse.onSuccess(
+                null
         );
     }
 

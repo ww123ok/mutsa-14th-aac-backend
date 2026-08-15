@@ -35,11 +35,16 @@ public class DiaryRewardGenerationService {
         DiaryReward reward =
                 diaryRewardRepository
                         .findByIdWithDiary(rewardId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "존재하지 않는 색 보상입니다."
-                                )
-                        );
+                        .orElse(null);
+
+        /*
+         * 휴지통에서 영구 삭제된 직후 비동기 이벤트가
+         * 늦게 도착할 수 있으므로 이미 제거된 보상은
+         * 정상적인 취소 상태로 간주합니다.
+         */
+        if (reward == null) {
+            return;
+        }
 
         if (
                 reward.getGenerationStatus()

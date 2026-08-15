@@ -99,6 +99,12 @@ public enum ErrorCode
             "일기 내용은 필수입니다."
     ),
 
+    TRASH_DIARY_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "DIARY404_2",
+            "휴지통에 존재하지 않는 일기입니다."
+    ),
+
     DEV_DIARY_RESET_SHARED_DIARY_BLOCKED(
             HttpStatus.CONFLICT,
             "DEV409_1",

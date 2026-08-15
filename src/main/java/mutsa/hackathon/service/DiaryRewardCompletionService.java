@@ -35,7 +35,8 @@ public class DiaryRewardCompletionService {
                 findReward(rewardId);
 
         if (
-                reward.getGenerationStatus()
+                reward == null
+                        || reward.getGenerationStatus()
                         != RewardGenerationStatus.PENDING
         ) {
             return;
@@ -66,7 +67,8 @@ public class DiaryRewardCompletionService {
                 findReward(rewardId);
 
         if (
-                reward.getGenerationStatus()
+                reward == null
+                        || reward.getGenerationStatus()
                         != RewardGenerationStatus.PENDING
         ) {
             return;
@@ -82,10 +84,6 @@ public class DiaryRewardCompletionService {
     ) {
         return diaryRewardRepository
                 .findById(rewardId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "존재하지 않는 색 보상입니다."
-                        )
-                );
+                .orElse(null);
     }
 }
