@@ -133,6 +133,25 @@ class DiaryRewardGenerationServiceTest {
     }
 
     @Test
+    void 영구삭제되어_이미_없는_보상의_비동기_이벤트는_무시한다() {
+        when(
+                diaryRewardRepository
+                        .findByIdWithDiary(200L)
+        ).thenReturn(
+                Optional.empty()
+        );
+
+        diaryRewardGenerationService.generate(
+                200L
+        );
+
+        verifyNoInteractions(
+                diaryColorRewardGenerator,
+                diaryRewardCompletionService
+        );
+    }
+
+    @Test
     void 이미_완료된_보상은_다시_생성하지_않는다() {
         DiaryReward reward =
                 createPendingReward();

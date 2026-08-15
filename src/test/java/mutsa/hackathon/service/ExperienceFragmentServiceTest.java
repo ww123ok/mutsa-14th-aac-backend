@@ -2,6 +2,8 @@ package mutsa.hackathon.service;
 
 import mutsa.hackathon.domain.*;
 import mutsa.hackathon.dto.ExperienceMatchResponse;
+import mutsa.hackathon.global.code.ErrorCode;
+import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +56,47 @@ class ExperienceFragmentServiceTest {
         assertEquals(20L, result.get().shareId());
         verify(sharedDiaryLogRepository).existsByReceiverIdAndDiaryShareId(1L, 20L);
         verify(sharedDiaryLogRepository, never()).existsByReceiverIdAndDiaryShareId(1L, 30L);
+    }
+
+    @Test
+    void deletedSourceDiaryIsExcludedFromExperienceMatching() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "알바에서 손님 응대 때문에 힘들었다.");
+        Diary deletedSource = diary(user(2L), 21L, "source");
+        DiaryShare matching = approvedShare(20L, deletedSource, List.of("알바"), "[1.0,0.0]");
+        deletedSource.softDelete();
+
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
+        when(experienceEmbeddingGenerator.generate(queryDiary.getContent())).thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
+        when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(List.of(matching));
+
+        Optional<ExperienceMatchResponse> result = service.findBestMatch(1L, 10L);
+
+        assertTrue(result.isEmpty());
+        verify(sharedDiaryLogRepository, never()).existsByReceiverIdAndDiaryShareId(anyLong(), anyLong());
+    }
+
+    @Test
+    void deletedSourceDiaryCannotBeReceivedWhileItIsInTrash() {
+        AppUser receiver = user(1L);
+        Diary deletedSource = diary(user(2L), 21L, "source");
+        DiaryShare share = approvedShare(20L, deletedSource, List.of("알바"), "[1.0,0.0]");
+        deletedSource.softDelete();
+
+        when(appUserRepository.findById(1L)).thenReturn(Optional.of(receiver));
+        when(diaryShareRepository.findByIdWithDiaryAndUser(20L)).thenReturn(Optional.of(share));
+
+        ProjectException exception = assertThrows(
+                ProjectException.class,
+                () -> service.receive(1L, 20L)
+        );
+
+        assertEquals(ErrorCode.SHARE_NOT_FOUND, exception.getErrorCode());
+        verify(sharedDiaryLogRepository, never()).save(any());
+        verify(creditTransactionRepository, never()).save(any());
     }
 
     @Test
