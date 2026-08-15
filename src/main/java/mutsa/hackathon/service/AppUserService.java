@@ -106,6 +106,9 @@ public class AppUserService {
                 request.nickname(),
                 request.job(),
                 request.reminderTime(),
+                request.dayStartTime() == null
+                        ? user.getDayStartTime()
+                        : request.dayStartTime(),
                 requestedConsent
         );
 

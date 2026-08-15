@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -29,9 +28,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class DiaryService {
-
-    private static final ZoneId SERVICE_ZONE =
-            ZoneId.of("Asia/Seoul");
 
     private static final String
             FALLBACK_REFLECTION_QUESTION =
@@ -55,6 +51,9 @@ public class DiaryService {
     private final DiaryCreatePersistenceService
             diaryCreatePersistenceService;
 
+    private final UserDayService
+            userDayService;
+
     /**
      * 이 메서드에는 의도적으로 @Transactional을 붙이지 않음.
      * 1. 짧은 read-only transaction으로 작성 가능 여부 확인
@@ -66,8 +65,8 @@ public class DiaryService {
             DiaryCreateRequest request
     ) {
         LocalDate today =
-                LocalDate.now(
-                        SERVICE_ZONE
+                userDayService.currentDay(
+                        userId
                 );
 
         diaryCreatePersistenceService

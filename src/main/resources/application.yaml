@@ -89,11 +89,16 @@ app:
     stale-minutes: ${WEEKLY_REWARD_STALE_MINUTES:30}
     image-url-expiration-minutes: ${WEEKLY_REWARD_IMAGE_URL_EXPIRATION_MINUTES:15}
 
-    # 일요일이 끝난 직후인 월요일 00:05 KST 최초 생성
-    initial-cron: "${WEEKLY_REWARD_INITIAL_CRON:0 5 0 * * MON}"
+    # 사용자별 DAYBIT 시작 시간 경계를 확인하는 poll 주기.
+    # 매분 확인하지만 실제 생성은 각 사용자의 월요일 시작 시간 + 5분에만 수행.
+    boundary-cron: "${WEEKLY_REWARD_BOUNDARY_CRON:0 * * * * *}"
 
-    # 월요일 동안 매시간 15분에 누락·실패·중단 작업 복구
-    retry-cron: "${WEEKLY_REWARD_RETRY_CRON:0 15 * * * MON}"
+    # 사용자별 하루 시작 후 주간 보상 자동 생성을 지연할 시간
+    schedule-delay-minutes: ${WEEKLY_REWARD_SCHEDULE_DELAY_MINUTES:5}
+
+    # 일간 색 보상 지연·S3 장애·서버 중단 복구를 위해
+    # 월·화요일 매시간 15분에 이미 생성 시각이 지난 사용자만 재검사
+    retry-cron: "${WEEKLY_REWARD_RETRY_CRON:0 15 * * * MON,TUE}"
 
     s3:
       region: ${AWS_REGION:ap-northeast-2}
