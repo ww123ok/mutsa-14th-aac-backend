@@ -77,6 +77,9 @@ public class DiaryShare extends BaseEntity {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    @Column(name = "review_available_at")
+    private LocalDateTime reviewAvailableAt;
+
     @Column(name = "rewarded_at")
     private LocalDateTime rewardedAt;
 
@@ -114,6 +117,7 @@ public class DiaryShare extends BaseEntity {
         this.keywords = normalizeKeywords(keywords);
         this.matchingText = normalizeRequired(matchingText);
         this.shareStatus = DiaryShareStatus.REVIEW_REQUIRED;
+        this.reviewAvailableAt = LocalDateTime.now();
         this.rejectionReason = null;
     }
 
