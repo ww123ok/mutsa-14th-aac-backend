@@ -69,10 +69,41 @@ public class DiaryService {
                         userId
                 );
 
+        return createForRecordedDate(
+                userId,
+                request,
+                today
+        );
+    }
+
+    /**
+     * 개발용 날짜 지정 일기 API가 기존 생성 흐름을
+     * 그대로 재사용할 수 있도록 제공하는 메서드.
+     *
+     * 일반 사용자용 Controller는 이 메서드를 직접
+     * 노출하지 않으며 기존 create()를 계속 사용합니다.
+     */
+    public DiaryCreateResponse createForRecordedDate(
+            Long userId,
+            DiaryCreateRequest request,
+            LocalDate recordedDate
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "일기 작성 요청은 필수입니다."
+            );
+        }
+
+        if (recordedDate == null) {
+            throw new IllegalArgumentException(
+                    "일기 작성 날짜는 필수입니다."
+            );
+        }
+
         diaryCreatePersistenceService
                 .validateCanCreate(
                         userId,
-                        today
+                        recordedDate
                 );
 
         GeneratedReflectionQuestion
@@ -85,7 +116,7 @@ public class DiaryService {
                 .persist(
                         userId,
                         request,
-                        today,
+                        recordedDate,
                         generatedQuestion
                                 .questionText(),
                         generatedQuestion
