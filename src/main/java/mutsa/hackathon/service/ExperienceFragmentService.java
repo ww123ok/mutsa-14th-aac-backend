@@ -83,6 +83,11 @@ public class ExperienceFragmentService {
                 .map(ExperienceFragmentResponse::from).toList();
     }
 
+
+    @Transactional(readOnly = true)
+    public ExperienceFragmentReviewResponse review(Long userId, Long shareId) {
+        return ExperienceFragmentReviewResponse.from(ownedShare(userId, shareId));
+    }
     /** Hybrid matching: exact approved-keyword overlap narrows candidates, cosine similarity ranks them. */
     @Transactional(readOnly = true)
     public Optional<ExperienceMatchResponse> findBestMatch(Long receiverId, Long diaryId) {

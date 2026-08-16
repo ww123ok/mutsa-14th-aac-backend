@@ -3,6 +3,7 @@ package mutsa.hackathon.presentation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.dto.ExperienceFragmentResponse;
+import mutsa.hackathon.dto.ExperienceFragmentReviewResponse;
 import mutsa.hackathon.dto.ExperienceMatchRequest;
 import mutsa.hackathon.dto.ExperienceMatchResponse;
 import mutsa.hackathon.dto.ReceivedExperienceFragmentResponse;
@@ -32,6 +33,14 @@ public class  ExperienceFragmentController {
         return ApiResponse.onSuccess(experienceFragmentService.mine(user.getKakaoUserProfile().id()));
     }
 
+
+    @GetMapping("/{shareId}/review")
+    public ApiResponse<ExperienceFragmentReviewResponse> review(
+            @AuthenticationPrincipal CustomOAuth2User user,
+            @PathVariable Long shareId
+    ) {
+        return ApiResponse.onSuccess(experienceFragmentService.review(user.getKakaoUserProfile().id(), shareId));
+    }
     @PostMapping("/{shareId}/approve")
     public ApiResponse<ExperienceFragmentResponse> approve(@AuthenticationPrincipal CustomOAuth2User user,
                                                             @PathVariable Long shareId) {
