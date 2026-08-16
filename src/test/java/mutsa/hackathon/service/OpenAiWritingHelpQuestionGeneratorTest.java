@@ -21,13 +21,14 @@ class OpenAiWritingHelpQuestionGeneratorTest {
                         "student",
                         "{\"ongoingTopics\":[{\"text\":\"diet and exercise concern\"}]}",
                         1,
+                        List.of(),
                         List.of()
                 )
         );
 
         assertTrue(
                 input.contains(
-                        "AVAILABLE - personalization is required"
+                        "AVAILABLE - use as context without assuming it happened today"
                 )
         );
         assertTrue(
@@ -45,6 +46,7 @@ class OpenAiWritingHelpQuestionGeneratorTest {
                         "student",
                         null,
                         1,
+                        List.of(),
                         List.of()
                 )
         );
@@ -57,6 +59,33 @@ class OpenAiWritingHelpQuestionGeneratorTest {
         assertTrue(
                 input.contains(
                         "(no approved personalization memory)"
+                )
+        );
+    }
+
+    @Test
+    void earlierQuestions_areIncludedToPreventRepeatedStatusQuestions() {
+        String input = generator.buildInput(
+                new WritingHelpPrompt(
+                        "test-user",
+                        "student",
+                        "{\"stableMemories\":[{\"text\":\"has a dog\"}]}",
+                        1,
+                        List.of(),
+                        List.of(
+                                "Has the dog recovered?"
+                        )
+                )
+        );
+
+        assertTrue(
+                input.contains(
+                        "Earlier writing-help questions:"
+                )
+        );
+        assertTrue(
+                input.contains(
+                        "Has the dog recovered?"
                 )
         );
     }

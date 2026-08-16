@@ -47,13 +47,17 @@ public class OpenAiWritingHelpQuestionGenerator
 
             Personalization rules:
             - The input explicitly states whether approved personalization memory is available.
-            - When approved personalization memory is available, select one relevant
-              memory as the central subject of the question. Do not replace it with
-              a generic daily question.
+            - When approved personalization memory is available, use one relevant
+              memory as context when it can naturally help the user start today's diary.
             - When more than one memory is available, prefer an ongoing topic first,
               then use a stable memory or the user's work/study context.
-            - Only use a generic daily question when approved personalization memory
-              is unavailable.
+            - Never assume that a remembered activity, event, concern, or emotion is
+              happening today. Do not turn past context into a claim about today.
+            - For a past or recent memory, use open phrasing such as "recently",
+              "these days", or "since then". Ask whether it connects to today rather
+              than presuming that it does.
+            - A generic daily question is allowed when no memory can be used without
+              making an unsupported assumption about today.
             - A personalized question should feel familiar, not invasive.
             - Do not quote the memory profile or imply that it was stored. Phrase the
               question as a natural continuation of what the user has shared.
@@ -204,6 +208,11 @@ public class OpenAiWritingHelpQuestionGenerator
                         prompt.previousQuestions()
                 );
 
+        String earlierQuestions =
+                buildPreviousQuestions(
+                        prompt.earlierQuestions()
+                );
+
         String angleGuide =
                 resolveAngleGuide(
                         prompt.questionOrder()
@@ -224,24 +233,36 @@ public class OpenAiWritingHelpQuestionGenerator
                 Questions already asked today:
                 %s
 
+                Earlier writing-help questions:
+                %s
+
                 Create the next diary-writing question now.
 
                 Important:
                 If previous questions exist, choose a substantially different
                 topic or reflective angle whenever the available context allows it.
                 Do not produce a cosmetic paraphrase of an earlier question.
+                Do not ask again about the same specific fact, problem, or status
+                that an earlier writing-help question already covered. For example,
+                if an earlier question asked whether a pet recovered, do not ask
+                about that recovery again while the approved memory still describes
+                the same situation. You may use a different aspect of the pet, or a
+                different memory instead.
+                Revisit that subject only when the approved personalization memory
+                clearly contains a newer development, resolution, or changed status.
                 """.formatted(
                 nickname,
                 job,
                 hasApprovedMemory(
                         prompt.memoryProfile()
                 )
-                        ? "AVAILABLE - personalization is required"
+                        ? "AVAILABLE - use as context without assuming it happened today"
                         : "UNAVAILABLE - a generic question is allowed",
                 memoryProfile,
                 prompt.questionOrder(),
                 angleGuide,
-                previousQuestions
+                previousQuestions,
+                earlierQuestions
         );
     }
 
