@@ -10,6 +10,7 @@ import mutsa.hackathon.global.code.SuccessCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.security.CustomOAuth2User;
 import mutsa.hackathon.service.DevDatedDiaryService;
+import mutsa.hackathon.service.DevTestPasswordVerifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,12 +38,21 @@ public class DevDatedDiaryController {
     private final DevDatedDiaryService
             devDatedDiaryService;
 
+    private final DevTestPasswordVerifier
+            devTestPasswordVerifier;
+
     @PostMapping
     public ResponseEntity<
             ApiResponse<DiaryCreateResponse>
             > create(
             @AuthenticationPrincipal
             CustomOAuth2User user,
+
+            @RequestHeader(
+                    value = DevTestPasswordVerifier.HEADER_NAME,
+                    required = false
+            )
+            String password,
 
             @RequestParam
             @DateTimeFormat(
@@ -59,10 +70,11 @@ public class DevDatedDiaryController {
             );
         }
 
+        devTestPasswordVerifier.verify(password);
+
         DiaryCreateResponse response =
                 devDatedDiaryService.create(
-                        user.getKakaoUserProfile()
-                                .id(),
+                        user.getKakaoUserProfile().id(),
                         recordedDate,
                         request
                 );
