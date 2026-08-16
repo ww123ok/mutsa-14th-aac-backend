@@ -533,7 +533,7 @@ class AiWritingHelpServiceTest {
                 user,
                 "최근 알바에서 기억에 남은 순간은 무엇인가요?",
                 1,
-                today.minusDays(2),
+                today.minusDays(10),
                 QuestionGenerationSource.AI
         );
 
@@ -545,7 +545,7 @@ class AiWritingHelpServiceTest {
         when(aiQuestionRepository.findTop12ByUserIdAndQuestionTypeOrderByAskedDateDescQuestionOrderDesc(
                 3L, AiQuestionType.WRITING_HELP)).thenReturn(List.of(oldQuestion));
         when(diaryRepository.findByUserIdAndRecordedDateBeforeAndDeletedFalseOrderByRecordedDateDescCreatedAtDesc(
-                eq(3L), eq(today), any())).thenReturn(List.of(recentDiary));
+                eq(3L), any(LocalDate.class), any())).thenReturn(List.of(recentDiary));
         when(writingHelpQuestionGenerator.generate(any(WritingHelpPrompt.class)))
                 .thenReturn("알바에서 가장 오래 남은 순간은 무엇인가요?");
         when(aiQuestionRepository.save(any(AiQuestion.class))).thenAnswer(invocation -> invocation.getArgument(0));
