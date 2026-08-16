@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.dto.ExperienceFragmentResponse;
 import mutsa.hackathon.dto.ExperienceFragmentReviewResponse;
+import mutsa.hackathon.dto.ExperienceFragmentFeedbackRequest;
+import mutsa.hackathon.dto.ExperienceFragmentFeedbackResponse;
 import mutsa.hackathon.dto.ExperienceMatchRequest;
 import mutsa.hackathon.dto.ExperienceMatchResponse;
 import mutsa.hackathon.dto.ReceivedExperienceFragmentResponse;
@@ -33,7 +35,6 @@ public class  ExperienceFragmentController {
         return ApiResponse.onSuccess(experienceFragmentService.mine(user.getKakaoUserProfile().id()));
     }
 
-
     @GetMapping("/{shareId}/review")
     public ApiResponse<ExperienceFragmentReviewResponse> review(
             @AuthenticationPrincipal CustomOAuth2User user,
@@ -41,6 +42,7 @@ public class  ExperienceFragmentController {
     ) {
         return ApiResponse.onSuccess(experienceFragmentService.review(user.getKakaoUserProfile().id(), shareId));
     }
+
     @PostMapping("/{shareId}/approve")
     public ApiResponse<ExperienceFragmentResponse> approve(@AuthenticationPrincipal CustomOAuth2User user,
                                                             @PathVariable Long shareId) {
@@ -63,5 +65,24 @@ public class  ExperienceFragmentController {
     public ApiResponse<ReceivedExperienceFragmentResponse> receive(@AuthenticationPrincipal CustomOAuth2User user,
                                                                     @PathVariable Long shareId) {
         return ApiResponse.onSuccess(experienceFragmentService.receive(user.getKakaoUserProfile().id(), shareId));
+    }
+
+    @PostMapping("/deliveries/{deliveryId}/feedback")
+    public ApiResponse<ExperienceFragmentFeedbackResponse> submitFeedback(
+            @AuthenticationPrincipal CustomOAuth2User user,
+            @PathVariable Long deliveryId,
+            @Valid @RequestBody ExperienceFragmentFeedbackRequest request
+    ) {
+        return ApiResponse.onSuccess(experienceFragmentService.submitFeedback(
+                user.getKakaoUserProfile().id(), deliveryId, request));
+    }
+
+    @GetMapping("/{shareId}/feedbacks")
+    public ApiResponse<List<ExperienceFragmentFeedbackResponse>> feedbacks(
+            @AuthenticationPrincipal CustomOAuth2User user,
+            @PathVariable Long shareId
+    ) {
+        return ApiResponse.onSuccess(experienceFragmentService.firstThreeFeedbacks(
+                user.getKakaoUserProfile().id(), shareId));
     }
 }

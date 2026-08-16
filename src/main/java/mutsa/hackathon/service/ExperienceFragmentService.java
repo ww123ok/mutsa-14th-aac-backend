@@ -99,6 +99,29 @@ public class ExperienceFragmentService {
         diaryShareRepository.findIdsReadyForAutoApproval(DiaryShareStatus.REVIEW_REQUIRED, cutoff)
                 .forEach(this::autoApprove);
     }
+
+    @Transactional
+    public ExperienceFragmentFeedbackResponse submitFeedback(
+            Long receiverId,
+            Long deliveryId,
+            ExperienceFragmentFeedbackRequest request
+    ) {
+        SharedDiaryLog delivery = sharedDiaryLogRepository.findByIdAndReceiverId(deliveryId, receiverId)
+                .orElseThrow(() -> new ProjectException(ErrorCode.SHARED_DIARY_NOT_AVAILABLE));
+        delivery.recordFeedbackSummary(request.content());
+        return ExperienceFragmentFeedbackResponse.from(delivery);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExperienceFragmentFeedbackResponse> firstThreeFeedbacks(Long senderId, Long shareId) {
+        ownedShare(senderId, shareId);
+        return sharedDiaryLogRepository
+                .findTop3ByDiaryShareIdAndFeedbackSummaryIsNotNullOrderByFeedbackSubmittedAtAscIdAsc(shareId)
+                .stream()
+                .map(ExperienceFragmentFeedbackResponse::from)
+                .toList();
+    }
+
     /** Hybrid matching: exact approved-keyword overlap narrows candidates, cosine similarity ranks them. */
     @Transactional(readOnly = true)
     public Optional<ExperienceMatchResponse> findBestMatch(Long receiverId, Long diaryId) {
