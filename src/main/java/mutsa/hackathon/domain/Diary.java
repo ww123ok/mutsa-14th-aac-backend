@@ -56,6 +56,16 @@ public class Diary extends BaseEntity {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    /**
+     * 기존 운영 DB 사용자는 컬럼 추가 직후 null일 수 있으므로
+     * nullable 상태를 허용하고 isHidden()에서 false로 해석합니다.
+     */
+    @Column(name = "is_hidden")
+    private Boolean hidden;
+
+    @Column(name = "hidden_at")
+    private LocalDateTime hiddenAt;
+
     @Column(name = "memory_applied_at")
     private LocalDateTime memoryAppliedAt;
 
@@ -76,7 +86,28 @@ public class Diary extends BaseEntity {
                 .content(content.trim())
                 .recordedDate(recordedDate)
                 .deleted(false)
+                .hidden(false)
                 .build();
+    }
+
+    public boolean isHidden() {
+        return Boolean.TRUE.equals(hidden);
+    }
+
+    public void hide() {
+        if (deleted || isHidden()) {
+            return;
+        }
+        this.hidden = true;
+        this.hiddenAt = LocalDateTime.now();
+    }
+
+    public void unhide() {
+        if (deleted || !isHidden()) {
+            return;
+        }
+        this.hidden = false;
+        this.hiddenAt = null;
     }
 
     public void softDelete() {
@@ -85,6 +116,8 @@ public class Diary extends BaseEntity {
         }
         this.deleted = true;
         this.deletedAt = LocalDateTime.now();
+        this.hidden = false;
+        this.hiddenAt = null;
     }
 
     public void restore() {
@@ -93,6 +126,8 @@ public class Diary extends BaseEntity {
         }
         this.deleted = false;
         this.deletedAt = null;
+        this.hidden = false;
+        this.hiddenAt = null;
     }
 
     public void markMemoryApplied() {

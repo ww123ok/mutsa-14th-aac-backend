@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.dto.DiaryCreateRequest;
 import mutsa.hackathon.dto.DiaryCreateResponse;
 import mutsa.hackathon.dto.DiaryDetailResponse;
+import mutsa.hackathon.dto.DiaryHiddenResponse;
 import mutsa.hackathon.dto.DiaryResponse;
 import mutsa.hackathon.dto.DiaryRewardResponse;
 import mutsa.hackathon.dto.DiaryTrashDetailResponse;
@@ -97,6 +98,23 @@ public class DiaryController {
                                 year,
                                 month
                         );
+
+        return ApiResponse.onSuccess(
+                response
+        );
+    }
+
+    @GetMapping("/hidden")
+    public ApiResponse<List<DiaryHiddenResponse>>
+    getHiddenDiaries(
+            @AuthenticationPrincipal
+            CustomOAuth2User user
+    ) {
+        List<DiaryHiddenResponse> response =
+                diaryService.getHiddenDiaries(
+                        user.getKakaoUserProfile()
+                                .id()
+                );
 
         return ApiResponse.onSuccess(
                 response
@@ -198,6 +216,44 @@ public class DiaryController {
 
         return ApiResponse.onSuccess(
                 response
+        );
+    }
+
+    @PatchMapping("/{diaryId}/hide")
+    public ApiResponse<Void> hideDiary(
+            @AuthenticationPrincipal
+            CustomOAuth2User user,
+
+            @PathVariable
+            Long diaryId
+    ) {
+        diaryService.hideDiary(
+                user.getKakaoUserProfile()
+                        .id(),
+                diaryId
+        );
+
+        return ApiResponse.onSuccess(
+                null
+        );
+    }
+
+    @PatchMapping("/{diaryId}/unhide")
+    public ApiResponse<Void> unhideDiary(
+            @AuthenticationPrincipal
+            CustomOAuth2User user,
+
+            @PathVariable
+            Long diaryId
+    ) {
+        diaryService.unhideDiary(
+                user.getKakaoUserProfile()
+                        .id(),
+                diaryId
+        );
+
+        return ApiResponse.onSuccess(
+                null
         );
     }
 

@@ -9,6 +9,7 @@ import mutsa.hackathon.domain.QuestionGenerationSource;
 import mutsa.hackathon.dto.DiaryCreateRequest;
 import mutsa.hackathon.dto.DiaryCreateResponse;
 import mutsa.hackathon.dto.DiaryDetailResponse;
+import mutsa.hackathon.dto.DiaryHiddenResponse;
 import mutsa.hackathon.dto.DiaryResponse;
 import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
@@ -147,7 +148,7 @@ public class DiaryService {
 
         List<Diary> diaries =
                 diaryRepository
-                        .findAllByUserIdAndRecordedDateBetweenAndDeletedFalseOrderByRecordedDateAsc(
+                        .findVisibleByUserIdAndRecordedDateBetween(
                                 userId,
                                 yearMonth.atDay(1),
                                 yearMonth.atEndOfMonth()
@@ -189,6 +190,83 @@ public class DiaryService {
                         )
                 )
                 .toList();
+    }
+
+    /**
+     * 숨김 일기 목록 조회.
+     * 숨김은 삭제와 별개의 상태이며 일반 월간 아카이브에서만
+     * 제외됩니다. 숨김 목록에서는 최근 숨긴 일기부터 반환합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<DiaryHiddenResponse> getHiddenDiaries(
+            Long userId
+    ) {
+        List<Diary> diaries =
+                diaryRepository
+                        .findAllByUserIdAndDeletedFalseAndHiddenTrueOrderByHiddenAtDesc(
+                                userId
+                        );
+
+        if (diaries.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, DiaryReward> rewardsByDiaryId =
+                diaryRewardRepository
+                        .findAllByDiaryIdIn(
+                                diaries.stream()
+                                        .map(Diary::getId)
+                                        .toList()
+                        )
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        reward ->
+                                                reward
+                                                        .getDiary()
+                                                        .getId(),
+                                        Function.identity()
+                                )
+                        );
+
+        return diaries.stream()
+                .map(diary ->
+                        DiaryHiddenResponse.from(
+                                diary,
+                                rewardsByDiaryId.get(
+                                        diary.getId()
+                                )
+                        )
+                )
+                .toList();
+    }
+
+    @Transactional
+    public void hideDiary(
+            Long userId,
+            Long diaryId
+    ) {
+        Diary diary =
+                findActiveDiary(
+                        userId,
+                        diaryId
+                );
+
+        diary.hide();
+    }
+
+    @Transactional
+    public void unhideDiary(
+            Long userId,
+            Long diaryId
+    ) {
+        Diary diary =
+                findActiveDiary(
+                        userId,
+                        diaryId
+                );
+
+        diary.unhide();
     }
 
     /**
