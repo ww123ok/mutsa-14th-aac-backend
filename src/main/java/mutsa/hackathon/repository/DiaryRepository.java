@@ -74,9 +74,11 @@ public interface DiaryRepository
             Long userId,
             LocalDate recordedDate,
             Pageable pageable
-    findAllByUserIdAndDeletedTrueOrderByDeletedAtDesc(
-            Long userId
     );
+    List<Diary>
+findAllByUserIdAndDeletedTrueOrderByDeletedAtDesc(
+        Long userId
+);
 
     @Query("""
         select diary.user.id
