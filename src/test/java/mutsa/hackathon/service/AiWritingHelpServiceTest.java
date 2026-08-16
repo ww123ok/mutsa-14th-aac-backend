@@ -53,6 +53,10 @@ class AiWritingHelpServiceTest {
     private UserDayService
             userDayService;
 
+    @Mock
+    private AiMemoryProfileService
+            aiMemoryProfileService;
+
     @InjectMocks
     private AiWritingHelpService
             aiWritingHelpService;
@@ -75,6 +79,17 @@ class AiWritingHelpServiceTest {
                 )
                 .thenReturn(
                         USER_DAY
+                );
+
+        lenient()
+                .when(
+                        aiMemoryProfileService
+                                .findNextWritingHelpMemory(
+                                        anyLong()
+                                )
+                )
+                .thenReturn(
+                        Optional.empty()
                 );
     }
 
@@ -257,6 +272,19 @@ class AiWritingHelpServiceTest {
                 Optional.of(user)
         );
 
+        WritingHelpMemoryContext memoryContext =
+                new WritingHelpMemoryContext(
+                        10L,
+                        "{\"ongoingTopics\":[{\"text\":\"diet concern\"}]}"
+                );
+
+        when(
+                aiMemoryProfileService
+                        .findNextWritingHelpMemory(1L)
+        ).thenReturn(
+                Optional.of(memoryContext)
+        );
+
         when(
                 aiQuestionRepository
                         .findAllByUserIdAndQuestionTypeAndAskedDateOrderByQuestionOrderAsc(
@@ -356,6 +384,23 @@ class AiWritingHelpServiceTest {
         assertTrue(
                 prompt.previousQuestions()
                         .isEmpty()
+        );
+
+        assertTrue(
+                prompt.earlierQuestions()
+                        .isEmpty()
+        );
+
+        assertEquals(
+                memoryContext.memoryProfile(),
+                prompt.memoryProfile()
+        );
+
+        verify(
+                aiMemoryProfileService
+        ).markWritingHelpMemoryUsed(
+                1L,
+                10L
         );
     }
 
