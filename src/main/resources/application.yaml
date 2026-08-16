@@ -78,7 +78,7 @@ app:
     # 기본적으로 비활성화
     # 개발 서버에서만 DEV_RESET_ENABLED=true로 활성화
     reset-enabled: ${DEV_RESET_ENABLED:false}
-
+    dated-diary-enabled: ${DEV_DATED_DIARY_ENABLED:false}
       # 양수: 비밀번호 + 특정 ID 모두 검사
       # 0 이하: 비밀번호를 통과한 모든 로그인 사용자 허용
     dated-diary-allowed-user-id: ${DEV_DATED_DIARY_ALLOWED_USER_ID:-1}
