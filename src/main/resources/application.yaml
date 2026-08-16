@@ -70,6 +70,9 @@ app:
 
   experience-sharing:
     minimum-similarity: ${EXPERIENCE_MATCH_MINIMUM_SIMILARITY:0.78}
+    auto-approval-enabled: ${EXPERIENCE_AUTO_APPROVAL_ENABLED:true}
+    auto-approval-days: ${EXPERIENCE_AUTO_APPROVAL_DAYS:5}
+    auto-approval-cron: "${EXPERIENCE_AUTO_APPROVAL_CRON:0 0 * * * *}"
 
   dev:
     # 기본적으로 비활성화

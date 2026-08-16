@@ -50,6 +50,9 @@ public class SharedDiaryLog extends BaseEntity {
     @Column(name = "feedback_summary", length = 1000)
     private String feedbackSummary;
 
+    @Column(name = "feedback_submitted_at")
+    private LocalDateTime feedbackSubmittedAt;
+
     public static SharedDiaryLog create(
             AppUser receiver,
             DiaryShare diaryShare,
@@ -83,8 +86,14 @@ public class SharedDiaryLog extends BaseEntity {
     }
 
     public void recordFeedbackSummary(String feedbackSummary) {
-        this.feedbackSummary = feedbackSummary == null
-                ? null
-                : feedbackSummary.trim();
+        if (this.feedbackSubmittedAt != null) {
+            throw new IllegalStateException("Feedback has already been submitted.");
+        }
+        if (feedbackSummary == null || feedbackSummary.isBlank()) {
+            throw new IllegalArgumentException("Feedback is required.");
+        }
+
+        this.feedbackSummary = feedbackSummary.trim();
+        this.feedbackSubmittedAt = LocalDateTime.now();
     }
 }
