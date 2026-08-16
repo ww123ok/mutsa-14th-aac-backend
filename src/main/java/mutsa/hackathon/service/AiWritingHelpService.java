@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.domain.AiQuestion;
 import mutsa.hackathon.domain.AiQuestionType;
 import mutsa.hackathon.domain.AppUser;
-import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.domain.QuestionGenerationSource;
 import mutsa.hackathon.dto.WritingHelpQuestionResponse;
 import mutsa.hackathon.dto.WritingHelpStatusResponse;
@@ -12,8 +11,6 @@ import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.AppUserRepository;
-import mutsa.hackathon.repository.DiaryRepository;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,18 +23,11 @@ public class AiWritingHelpService {
 
     private static final int DAILY_LIMIT = 3;
 
-    private static final int RECENT_DIARY_LIMIT = 5;
-
-    private static final int RECENT_DIARY_CONTENT_LIMIT = 400;
-
     private final AppUserRepository
             appUserRepository;
 
     private final AiQuestionRepository
             aiQuestionRepository;
-
-    private final DiaryRepository
-            diaryRepository;
 
     private final WritingHelpQuestionGenerator
             writingHelpQuestionGenerator;
@@ -117,29 +107,6 @@ public class AiWritingHelpService {
                         )
                         .toList();
 
-        List<String> recentQuestionHistory =
-                aiQuestionRepository
-                        .findTop12ByUserIdAndQuestionTypeOrderByAskedDateDescQuestionOrderDesc(
-                                userId,
-                                AiQuestionType.WRITING_HELP
-                        )
-                        .stream()
-                        .filter(question -> !today.equals(question.getAskedDate()))
-                        .map(AiQuestion::getQuestionText)
-                        .limit(10)
-                        .toList();
-
-        List<String> recentDiaryContexts =
-                diaryRepository
-                        .findByUserIdAndRecordedDateBeforeAndDeletedFalseOrderByRecordedDateDescCreatedAtDesc(
-                                userId,
-                                today,
-                                PageRequest.of(0, RECENT_DIARY_LIMIT)
-                        )
-                        .stream()
-                        .map(this::toRecentDiaryContext)
-                        .toList();
-
         int questionOrder =
                 Math.toIntExact(
                         usedCount + 1
@@ -151,9 +118,7 @@ public class AiWritingHelpService {
                         user.getJob(),
                         user.getAiMemoryProfile(),
                         questionOrder,
-                        previousQuestions,
-                        recentQuestionHistory,
-                        recentDiaryContexts
+                        previousQuestions
                 );
 
         /*
@@ -208,13 +173,4 @@ public class AiWritingHelpService {
         }
     }
 
-    private String toRecentDiaryContext(Diary diary) {
-        String normalizedContent = diary.getContent()
-                .replaceAll("\\s+", " ")
-                .trim();
-        if (normalizedContent.length() > RECENT_DIARY_CONTENT_LIMIT) {
-            normalizedContent = normalizedContent.substring(0, RECENT_DIARY_CONTENT_LIMIT) + "…";
-        }
-        return diary.getRecordedDate() + ": " + normalizedContent;
-    }
 }

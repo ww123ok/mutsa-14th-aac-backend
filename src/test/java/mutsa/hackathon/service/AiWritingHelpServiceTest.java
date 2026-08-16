@@ -3,7 +3,6 @@ package mutsa.hackathon.service;
 import mutsa.hackathon.domain.AiQuestion;
 import mutsa.hackathon.domain.AiQuestionType;
 import mutsa.hackathon.domain.AppUser;
-import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.domain.QuestionGenerationSource;
 import mutsa.hackathon.dto.WritingHelpQuestionResponse;
 import mutsa.hackathon.dto.WritingHelpStatusResponse;
@@ -11,7 +10,6 @@ import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.AppUserRepository;
-import mutsa.hackathon.repository.DiaryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +19,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,10 +44,6 @@ class AiWritingHelpServiceTest {
     @Mock
     private AiQuestionRepository
             aiQuestionRepository;
-
-    @Mock
-    private DiaryRepository
-            diaryRepository;
 
     @Mock
     private WritingHelpQuestionGenerator
@@ -520,43 +513,4 @@ class AiWritingHelpServiceTest {
         ).findById(any());
     }
 
-    @Test
-    void includesRecentDiaryAndQuestionHistoryInPersonalizationPrompt() {
-        AppUser user = AppUser.createKakaoUser("provider-context", "하늘", null, null);
-        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-        Diary recentDiary = Diary.create(
-                user,
-                "카페 알바에서 주문이 밀려 손님 응대가 부담스러웠다.",
-                today.minusDays(1)
-        );
-        AiQuestion oldQuestion = AiQuestion.createWritingHelp(
-                user,
-                "최근 알바에서 기억에 남은 순간은 무엇인가요?",
-                1,
-                today.minusDays(10),
-                QuestionGenerationSource.AI
-        );
-
-        when(aiQuestionRepository.countByUserIdAndQuestionTypeAndAskedDate(
-                eq(3L), eq(AiQuestionType.WRITING_HELP), any(LocalDate.class))).thenReturn(0L);
-        when(appUserRepository.findById(3L)).thenReturn(Optional.of(user));
-        when(aiQuestionRepository.findAllByUserIdAndQuestionTypeAndAskedDateOrderByQuestionOrderAsc(
-                eq(3L), eq(AiQuestionType.WRITING_HELP), any(LocalDate.class))).thenReturn(List.of());
-        when(aiQuestionRepository.findTop12ByUserIdAndQuestionTypeOrderByAskedDateDescQuestionOrderDesc(
-                3L, AiQuestionType.WRITING_HELP)).thenReturn(List.of(oldQuestion));
-        when(diaryRepository.findByUserIdAndRecordedDateBeforeAndDeletedFalseOrderByRecordedDateDescCreatedAtDesc(
-                eq(3L), any(LocalDate.class), any())).thenReturn(List.of(recentDiary));
-        when(writingHelpQuestionGenerator.generate(any(WritingHelpPrompt.class)))
-                .thenReturn("알바에서 가장 오래 남은 순간은 무엇인가요?");
-        when(aiQuestionRepository.save(any(AiQuestion.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        aiWritingHelpService.generateQuestion(3L);
-
-        ArgumentCaptor<WritingHelpPrompt> captor = ArgumentCaptor.forClass(WritingHelpPrompt.class);
-        verify(writingHelpQuestionGenerator).generate(captor.capture());
-        assertEquals(List.of("최근 알바에서 기억에 남은 순간은 무엇인가요?"),
-                captor.getValue().recentQuestionHistory());
-        assertEquals(List.of(today.minusDays(1) + ": 카페 알바에서 주문이 밀려 손님 응대가 부담스러웠다."),
-                captor.getValue().recentDiaryContexts());
-    }
 }
