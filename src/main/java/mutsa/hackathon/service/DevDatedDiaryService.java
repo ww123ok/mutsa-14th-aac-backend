@@ -11,13 +11,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.ZoneId;
 
-/**
- * 개발·QA 환경에서 실제 저장 흐름을 이용하여
- * 날짜가 지정된 일기를 생성합니다.
- *
- * 더미 데이터나 별도 저장 로직을 만들지 않고
- * DiaryService의 기존 성찰 질문·일간 보상 흐름을 재사용합니다.
- */
 @Service
 @ConditionalOnProperty(
         prefix = "app.dev",
@@ -30,14 +23,27 @@ public class DevDatedDiaryService {
             ZoneId.of("Asia/Seoul");
 
     private final DiaryService diaryService;
+
+    /*
+     * 양수이면 비밀번호와 사용자 ID를 모두 검사합니다.
+     * 0 이하이면 비밀번호를 통과한 모든 로그인 사용자를
+     * 허용합니다.
+     */
     private final long allowedUserId;
+
     private final long maxPastDays;
 
     public DevDatedDiaryService(
             DiaryService diaryService,
-            @Value("${app.dev.dated-diary-allowed-user-id:-1}")
+
+            @Value(
+                    "${app.dev.dated-diary-allowed-user-id:-1}"
+            )
             long allowedUserId,
-            @Value("${app.dev.dated-diary-max-past-days:3650}")
+
+            @Value(
+                    "${app.dev.dated-diary-max-past-days:3650}"
+            )
             long maxPastDays
     ) {
         this.diaryService = diaryService;
@@ -61,10 +67,21 @@ public class DevDatedDiaryService {
     }
 
     private void validateAllowedUser(Long userId) {
+        if (userId == null) {
+            throw new ProjectException(
+                    ErrorCode.ACCESS_DENIED
+            );
+        }
+
+        /*
+         * 양수 ID가 설정된 경우에만 추가 제한합니다.
+         * -1 또는 0이면 비밀번호를 통과한 모든
+         * 로그인 사용자를 허용합니다.
+         */
         if (
-                userId == null
-                        || allowedUserId < 1
-                        || userId.longValue() != allowedUserId
+                allowedUserId > 0
+                        && userId.longValue()
+                        != allowedUserId
         ) {
             throw new ProjectException(
                     ErrorCode.ACCESS_DENIED
@@ -99,7 +116,11 @@ public class DevDatedDiaryService {
         LocalDate earliestAllowedDate =
                 today.minusDays(maxPastDays);
 
-        if (recordedDate.isBefore(earliestAllowedDate)) {
+        if (
+                recordedDate.isBefore(
+                        earliestAllowedDate
+                )
+        ) {
             throw new IllegalArgumentException(
                     "설정된 과거 날짜 허용 범위를 벗어났습니다."
             );

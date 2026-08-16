@@ -79,15 +79,17 @@ app:
     # 개발 서버에서만 DEV_RESET_ENABLED=true로 활성화
     reset-enabled: ${DEV_RESET_ENABLED:false}
 
-    # 개발·QA 전용 날짜 지정 일기 작성 기능.
-    # 기본값은 비활성화이며 허용된 한 사용자만 사용할 수 있음.
-    dated-diary-enabled: ${DEV_DATED_DIARY_ENABLED:false}
+      # 양수: 비밀번호 + 특정 ID 모두 검사
+      # 0 이하: 비밀번호를 통과한 모든 로그인 사용자 허용
     dated-diary-allowed-user-id: ${DEV_DATED_DIARY_ALLOWED_USER_ID:-1}
+
     dated-diary-max-past-days: ${DEV_DATED_DIARY_MAX_PAST_DAYS:3650}
+
+      # 실제 비밀번호가 아닌 SHA-256 해시만 저장
+    test-password-sha256: ${DEV_TEST_PASSWORD_SHA256:}
 
   weekly-reward:
     enabled: ${WEEKLY_REWARD_ENABLED:false}
-
     # 로컬·스테이징에서 실제 작성 일기의 수동 생성 확인에만 사용
     # 운영 환경에서는 반드시 false
     manual-trigger-enabled: ${WEEKLY_REWARD_MANUAL_TRIGGER_ENABLED:false}
