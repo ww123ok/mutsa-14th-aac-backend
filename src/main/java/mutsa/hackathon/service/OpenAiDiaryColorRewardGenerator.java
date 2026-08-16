@@ -33,7 +33,7 @@ public class OpenAiDiaryColorRewardGenerator
         implements DiaryColorRewardGenerator {
 
     private static final int
-            MAX_OUTPUT_TOKENS = 450;
+            MAX_OUTPUT_TOKENS = 700;
 
     private static final int
             MAX_DIARY_CONTENT_LENGTH = 8_000;
@@ -63,7 +63,7 @@ public class OpenAiDiaryColorRewardGenerator
             Return exactly one structured result containing:
             - colorHex: one RGB hexadecimal color in #RRGGBB format
             - keywords: one to three short Korean mood-oriented keywords
-            - commentSummary: one or two concise Korean sentences explaining why the diary led
+            - commentSummary: two or three short Korean sentences explaining why the diary led
               to this specific visual color direction
 
             Do not add fields beyond this contract.
@@ -394,30 +394,74 @@ public class OpenAiDiaryColorRewardGenerator
             - Do not use directly negative identity-like labels such as
               "외로운", "슬픈", "우울한", or "불행한".
 
-            COLOR COMMENT RULES:
-            - commentSummary is the short user-facing explanation of why this diary led to this color.
-            - It is NOT a generic diary summary and NOT a report of hidden reasoning.
-            - Use only one or two central diary elements needed to explain the visual direction.
-            - Explain the relevant visual direction in natural Korean, such as Hue, brightness,
-              darkness, softness, mutedness, saturation, warmth, coolness, or overall intensity.
-            - Describe those as choices for THIS diary, never as universal meanings of a color.
+            COLOR COMMENT ROLE:
+            commentSummary explains why Today's Color took its final visual form based on
+            this diary. It is not a full diary summary, general color psychology,
+            hidden reasoning, an art critique, or therapy-like empathy.
+
+            COLOR COMMENT CONTENT:
+            - Select only the diary feature, scene, state, explicitly stated emotion,
+              change, or contrast that most strongly influenced the color.
+            - Prefer a directly supported relationship or transition over a keyword list,
+              such as light becoming brighter, movement increasing, or one scene
+              contrasting with another. Never invent a causal relationship.
+            - First describe the relevant diary feature. Then explain how it corresponds
+              to the final color's actual visual direction.
+            - Explain no more than two useful visual characteristics, such as
+              brighter/darker, lighter/deeper, more vivid/softer, stronger/gentler,
+              clearer/more subdued, or warmer/cooler.
+            - Do not add unrelated diary events merely to make the comment longer.
+
+            EMOTION AND MEANING SAFETY:
             - Use only emotions and internal states explicitly stated by the user.
-            - Never infer an emotion from an event.
-            - Never alter emotional intensity or invent causes, lessons, meanings, or personality claims.
-            - Do not use general color psychology such as blue=calm, red=passion, yellow=happiness,
-              green=recovery, purple=creativity, or gray=depression.
-            - Do not recommend a color.
-            - Do not use a nickname.
-            - Do not include HEX codes.
-            - Do not invent a poetic or psychological color name.
-            - Do not use detached reporting phrases such as "적어주셨어요", "기록되어 있어요",
-              or "기록으로 남아 있어요".
-            - Use one or two concise Korean sentences only.
+            - Never infer an emotion from an event, alter its intensity, replace it with
+              a similar emotion, invent its cause, generalize it to the whole day,
+              or derive a lesson, personality claim, or psychological meaning.
+            - Never use universal color psychology such as blue=calm, red=passion,
+              yellow=happiness, green=healing, purple=creativity, or gray=depression.
+            - Do not recommend a color, praise the user, encourage the user,
+              diagnose the user, or force a positive interpretation.
+
+            EVERYDAY VISUAL LANGUAGE:
+            - Write in natural Korean that an ordinary user can understand immediately.
+            - Translate internal Hue, Lightness, and Chroma reasoning into everyday words.
+            - Prefer expressions such as 밝아졌어요, 어두워졌어요, 짙어졌어요,
+              연해졌어요, 선명해졌어요, 또렷해졌어요, 부드러워졌어요,
+              강해졌어요, 따뜻해졌어요, 서늘해졌어요, 힘이 빠졌어요,
+              or 조금 가라앉았어요 when they match the actual color.
+            - Do not use technical terms such as 명도, 채도, Hue, Lightness,
+              Chroma, 톤다운, or 온도감 in the final comment.
+            - Describe the color itself as naturally changing. Avoid language that portrays
+              the AI as manually designing it, including 만들었어요, 조정했어요,
+              눌렀어요, 반영했어요, 적용했어요, 작용했어요,
+              '~쪽으로 가게 됐어요', or '~로 만들었어요'.
+
+            TONE AND WORDING:
+            - Keep the tone conversational, calm, direct, lightly expressive,
+              personal without intrusion, and easy to read.
+            - Avoid poetic or sentimental expressions such as 담았어요, 머금었어요,
+              스며들었어요, 품었어요, 간직했어요, 남겨두었어요, or 색에 새겼어요.
+            - Do not routinely say "이 색으로 남았어요" or "오늘은 이런 색으로 남았어요".
+            - Do not use detached reporting phrases such as "적어주셨어요",
+              "기록되어 있어요", or "기록으로 남아 있어요".
+            - Do not include a nickname, HEX code, or a color name such as 민트,
+              바이올렛, 청록, 인디고, 오렌지, 코랄, 퍼플, or 네이비.
+            - Do not include an exact clock time. Express it as a period such as
+              아침, 낮, 저녁, 늦은 밤, or 새벽 only when supported.
+
+            ACTUAL COLOR CONSISTENCY:
+            - Every description must match the actual final colorHex generated in this result.
+            - Do not call it vivid when it is visibly muted, bright when it is dark,
+              light when it is deep, or clear when it contains strong grayness.
+            - Internally inspect the final HEX before choosing visual adjectives.
+
+            LENGTH AND FORMAT:
+            - Write two or three short Korean sentences by default.
+            - If the diary is extremely short, still use two concise sentences.
             - EVERY sentence must end with a period.
             - The final character MUST be ".".
-            - Do not end with "!", "?", or "군요." as a required style.
-              A natural Korean sentence may use any appropriate ending as long as it ends with ".".
-            - Keep the explanation concise enough for a diary reward card.
+            - Do not end with "!" or "?".
+            - Keep the complete comment within 220 Korean characters for the mobile reward card.
 
             FINAL CHECK:
             Before returning the structured result, verify internally:
@@ -435,7 +479,13 @@ public class OpenAiDiaryColorRewardGenerator
             12) Did I avoid weakening the result merely because it might feel too vivid?
             13) Is the color specific to this diary rather than merely broadly attractive?
             14) Is colorHex the original Today's Color rather than a UI-adjusted color?
-            15) Does commentSummary end with a period "."?
+            15) Does commentSummary explain why the actual final color looks this way,
+                rather than merely summarize the diary?
+            16) Do all visual adjectives match the generated colorHex?
+            17) Did I avoid technical color terms, poetic language, color names,
+                exact clock times, and language implying manual AI manipulation?
+            18) Does commentSummary contain two or three short Korean sentences,
+                with every sentence and the final character ending in a period "."?
 
             MOST IMPORTANT PRINCIPLES:
             Do not make the color aesthetically safe.
@@ -628,7 +678,9 @@ public class OpenAiDiaryColorRewardGenerator
                 - Do not return concrete topic, event, task, or proper-noun keywords.
                 - commentSummary must explain this diary's visual color direction,
                   must not infer an unstated emotion, and must not use general color psychology.
-                - commentSummary must contain one or two concise Korean sentences,
+                - commentSummary must contain two or three short Korean sentences,
+                  must use ordinary visual language that matches the final colorHex,
+                  and must avoid technical color terms, color names, and poetic language.
                   every sentence must end with a period, and the final character must be ".".
                 """
                         : "";
@@ -691,7 +743,7 @@ public class OpenAiDiaryColorRewardGenerator
                                         "string",
 
                                         "description",
-                                        "One or two concise Korean sentences explaining the specific visual direction chosen for today's color. Use only central diary evidence and explicitly stated emotions. Do not expose internal reasoning, infer emotions, alter emotional intensity, use general color psychology, recommend a color, use a nickname, or include HEX codes. Every sentence must end with a period and the final character must be '.'."
+                                        "Two or three short Korean sentences explaining why the final color actually looks this way. Use only central diary evidence and explicitly stated emotions. Use ordinary non-technical visual language, match all visual adjectives to colorHex, and avoid inferred emotions, general color psychology, poetic language, color names, exact clock times, recommendations, nicknames, and HEX codes. Every sentence must end with a period and the final character must be '.'."
                                 )
                         ),
 
@@ -710,7 +762,7 @@ public class OpenAiDiaryColorRewardGenerator
                 new OpenAiJsonSchemaFormat(
                         "json_schema",
                         "diary_color_reward",
-                        "A DAYBIT Today's Color result containing one diary-specific original color, one to three mood-oriented keywords, and a concise Korean visual-basis comment ending with a period.",
+                        "A DAYBIT Today's Color result containing one diary-specific original color, one to three mood-oriented keywords, and a two-to-three-sentence Korean visual-basis comment ending with a period.",
                         true,
                         schema
                 );

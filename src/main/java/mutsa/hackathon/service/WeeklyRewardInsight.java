@@ -7,11 +7,15 @@ public record WeeklyRewardInsight(
         String title,
         String summary,
         List<String> keywords,
+        WeeklyVisualCategory visualCategory,
         String visualMotif
 ) {
     public WeeklyRewardInsight {
         title = normalizeRequired(title, 100, "주간 제목은 필수입니다.");
         summary = normalizeRequired(summary, 1000, "주간 설명은 필수입니다.");
+        if (visualCategory == null) {
+            throw new IllegalArgumentException("주간 이미지 카테고리는 필수입니다.");
+        }
         visualMotif = normalizeRequired(visualMotif, 1200, "이미지 모티프는 필수입니다.");
 
         LinkedHashSet<String> values = new LinkedHashSet<>();

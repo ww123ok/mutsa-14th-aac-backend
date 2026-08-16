@@ -40,8 +40,14 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
     @Value("${app.weekly-reward.openai.image-model:gpt-image-2}")
     private String model;
 
-    @Value("${app.weekly-reward.openai.image-size:1024x1024}")
-    private String size;
+    @Value("${app.weekly-reward.openai.image-square-size:${app.weekly-reward.openai.image-size:1024x1024}}")
+    private String squareSize;
+
+    @Value("${app.weekly-reward.openai.image-portrait-size:1024x1536}")
+    private String portraitSize;
+
+    @Value("${app.weekly-reward.openai.image-landscape-size:1536x1024}")
+    private String landscapeSize;
 
     @Value("${app.weekly-reward.openai.image-quality:medium}")
     private String quality;
@@ -63,12 +69,19 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
             );
         }
 
+        String requestSize = WeeklyImagePromptFactory.resolveImageSize(
+                insight.visualCategory(),
+                squareSize,
+                portraitSize,
+                landscapeSize
+        );
+
         OpenAiImageRequest request =
                 new OpenAiImageRequest(
                         model,
                         buildPrompt(context, insight),
                         1,
-                        size,
+                        requestSize,
                         quality,
                         "opaque",
                         "auto",
@@ -138,71 +151,9 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
                 )
                 .orElse("#D6A45C");
 
-        return """
-                Create one polished weekly reward image for DAYBIT,
-                a mobile diary archive.
-
-                SELECTED VISUAL DIRECTION:
-                %s
-
-                WEEKLY COLOR PALETTE:
-                %s
-
-                WEEKLY KEYWORDS FOR CONTEXT ONLY:
-                %s
-
-                GLOBAL REQUIREMENTS:
-                - Create one integrated scene or composition.
-                - Do not create a collage, calendar, storyboard,
-                  or list of separate daily scenes.
-                - Use the supplied palette as primary, supporting,
-                  and accent colors.
-                - The colors do not need equal visual weight.
-                - Keep one clear focal composition.
-                - Use only places, actions, objects, situations,
-                  and visual details supported by the visual direction.
-                - Do not invent emotions, relationships, events,
-                  symbols, or happy resolutions.
-                - If the week contains difficulty, represent it through
-                  a safe and restrained everyday scene without frightening,
-                  hopeless, or oppressive exaggeration.
-                - Do not display a recognizable person
-                  or visible human face.
-                - Do not imitate Studio Ghibli, any named artist,
-                  studio, franchise, copyrighted character,
-                  existing movie poster, logo, or brand identity.
-
-                NEGATIVE CONSTRAINTS:
-                - No overly lyrical or vague emotional illustration.
-                - No monochrome or nearly monochrome composition.
-                - No abstract color wash, floating symbolic fragments,
-                  empty dream haze, ambiguous surrealism,
-                  or unresolved visual metaphor.
-                - No grotesque anatomy, horror, blood, violence,
-                  self-harm, medical distress, threatening imagery,
-                  despair, or oppressive darkness.
-                - No glossy AI portrait, synthetic skin,
-                  malformed hands, uncanny faces, excessive HDR,
-                  plastic lighting, or artificial photo artifacts.
-                - No watermark, signature, logo, brand mark,
-                  random letters, or unreadable text.
-                - Do not render a user interface, calendar,
-                  phone frame, color swatch list,
-                  or explanation panel.
-
-                FINAL OUTPUT:
-                - Produce exactly one cohesive and finished image.
-                - Keep the result contemporary,
-                  visually intentional, shareable,
-                  and appropriate for a wellness diary.
-                - Do not force a positive interpretation.
-                """.formatted(
-                insight.visualMotif(),
-                palette,
-                String.join(
-                        ", ",
-                        insight.keywords()
-                )
+        return WeeklyImagePromptFactory.buildPrompt(
+                insight,
+                palette
         );
     }
 

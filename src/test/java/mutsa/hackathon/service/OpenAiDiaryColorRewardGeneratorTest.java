@@ -150,7 +150,8 @@ class OpenAiDiaryColorRewardGeneratorTest {
         );
 
         assertEquals(
-                "밝은 화면과 오류 해결 장면이 또렷하게 이어져 밝고 선명한 방향의 색을 골랐습니다.",
+                "밝은 화면과 오류 해결 장면이 또렷하게 이어졌어요. "
+                        + "빛과 움직임의 대비가 커지면서 색도 밝고 선명해졌어요.",
                 reward.commentSummary()
         );
 
@@ -186,7 +187,7 @@ class OpenAiDiaryColorRewardGeneratorTest {
         );
 
         assertEquals(
-                450,
+                700,
                 request.get(
                                 "max_output_tokens"
                         )
@@ -246,7 +247,14 @@ class OpenAiDiaryColorRewardGeneratorTest {
                 instructions.contains("Never infer a new emotion from an event")
                         && instructions.contains("Do not expose hidden reasoning")
                         && instructions.contains("final character MUST be \".\"")
-                        && instructions.contains("Do not use general color psychology")
+                        && instructions.contains("Never use universal color psychology")
+        );
+
+        assertTrue(
+                instructions.contains("two or three short Korean sentences")
+                        && instructions.contains("ACTUAL COLOR CONSISTENCY")
+                        && instructions.contains("Do not include an exact clock time")
+                        && instructions.contains("Do not use technical terms")
         );
 
         JsonNode format =
@@ -332,7 +340,7 @@ class OpenAiDiaryColorRewardGeneratorTest {
                         .get("commentSummary")
                         .get("description")
                         .asText()
-                        .contains("specific visual direction")
+                        .contains("why the final color actually looks this way")
         );
 
         assertTrue(
@@ -760,7 +768,8 @@ class OpenAiDiaryColorRewardGeneratorTest {
         return successResponse(
                 colorHex,
                 keywords,
-                "밝은 화면과 오류 해결 장면이 또렷하게 이어져 밝고 선명한 방향의 색을 골랐습니다."
+                "밝은 화면과 오류 해결 장면이 또렷하게 이어졌어요. "
+                        + "빛과 움직임의 대비가 커지면서 색도 밝고 선명해졌어요."
         );
     }
 

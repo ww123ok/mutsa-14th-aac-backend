@@ -117,7 +117,13 @@ app:
 
     # 주간 보상 전용 OpenAI 설정
     openai:
-      text-model: ${OPENAI_WEEKLY_TEXT_MODEL:gpt-5.6-terra}
-      image-model: ${OPENAI_IMAGE_MODEL:gpt-image-2}
-      image-size: ${OPENAI_IMAGE_SIZE:1024x1024}
-      image-quality: ${OPENAI_IMAGE_QUALITY:medium}
+        text-model: ${OPENAI_WEEKLY_TEXT_MODEL:gpt-5.6-terra}
+        image-model: ${OPENAI_IMAGE_MODEL:gpt-image-2}
+
+        # 기존 정방형 설정과의 호환성을 유지
+        image-size: ${OPENAI_IMAGE_SIZE:1024x1024}
+        image-square-size: ${OPENAI_IMAGE_SQUARE_SIZE:${OPENAI_IMAGE_SIZE:1024x1024}}
+        image-portrait-size: ${OPENAI_IMAGE_PORTRAIT_SIZE:1024x1536}
+        image-landscape-size: ${OPENAI_IMAGE_LANDSCAPE_SIZE:1536x1024}
+
+        image-quality: ${OPENAI_IMAGE_QUALITY:medium}
