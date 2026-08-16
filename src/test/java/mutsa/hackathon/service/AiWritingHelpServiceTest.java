@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -522,7 +523,7 @@ class AiWritingHelpServiceTest {
     @Test
     void includesRecentDiaryAndQuestionHistoryInPersonalizationPrompt() {
         AppUser user = AppUser.createKakaoUser("provider-context", "하늘", null, null);
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         Diary recentDiary = Diary.create(
                 user,
                 "카페 알바에서 주문이 밀려 손님 응대가 부담스러웠다.",
