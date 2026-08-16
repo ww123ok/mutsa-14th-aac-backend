@@ -4,6 +4,7 @@ import mutsa.hackathon.domain.Diary;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -69,9 +70,15 @@ public interface DiaryRepository
     );
 
     List<Diary>
-    findAllByUserIdAndDeletedTrueOrderByDeletedAtDesc(
-            Long userId
+    findByUserIdAndRecordedDateBeforeAndDeletedFalseOrderByRecordedDateDescCreatedAtDesc(
+            Long userId,
+            LocalDate recordedDate,
+            Pageable pageable
     );
+    List<Diary>
+findAllByUserIdAndDeletedTrueOrderByDeletedAtDesc(
+        Long userId
+);
 
     @Query("""
         select diary.user.id
