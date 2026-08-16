@@ -30,6 +30,12 @@ public interface AiQuestionRepository
             LocalDate askedDate
     );
 
+    List<AiQuestion>
+    findTop12ByUserIdAndQuestionTypeOrderByAskedDateDescQuestionOrderDesc(
+            Long userId,
+            AiQuestionType questionType
+    );
+
     Optional<AiQuestion> findByIdAndUserId(
             Long questionId,
             Long userId

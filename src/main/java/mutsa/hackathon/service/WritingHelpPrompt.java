@@ -7,8 +7,20 @@ public record WritingHelpPrompt(
         String job,
         String memoryProfile,
         int questionOrder,
-        List<String> previousQuestions
+        List<String> previousQuestions,
+        List<String> recentQuestionHistory,
+        List<String> recentDiaryContexts
 ) {
+
+    public WritingHelpPrompt(
+            String nickname,
+            String job,
+            String memoryProfile,
+            int questionOrder,
+            List<String> previousQuestions
+    ) {
+        this(nickname, job, memoryProfile, questionOrder, previousQuestions, List.of(), List.of());
+    }
 
     public WritingHelpPrompt {
         if (questionOrder < 1 || questionOrder > 3) {
@@ -23,5 +35,13 @@ public record WritingHelpPrompt(
                         : List.copyOf(
                         previousQuestions
                 );
+
+        recentQuestionHistory = recentQuestionHistory == null
+                ? List.of()
+                : List.copyOf(recentQuestionHistory);
+
+        recentDiaryContexts = recentDiaryContexts == null
+                ? List.of()
+                : List.copyOf(recentDiaryContexts);
     }
 }
