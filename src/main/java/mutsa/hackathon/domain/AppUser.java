@@ -118,6 +118,14 @@ public class AppUser extends BaseEntity {
     @Column(name = "diary_reminder_time")
     private LocalTime diaryReminderTime;
 
+    /**
+     * DAYBIT에서 사용하는 논리적 하루의 시작 시간.
+     * 기존 사용자 row에는 컬럼 추가 전 데이터가 null일 수 있으므로
+     * getDayStartTime()에서 00:00을 기본값으로 해석.
+     */
+    @Column(name = "day_start_time")
+    private LocalTime dayStartTime;
+
     @Column(
             name = "ai_memory_consent",
             nullable = false
@@ -184,6 +192,7 @@ public class AppUser extends BaseEntity {
                                 profileImage
                         )
                 )
+                .dayStartTime(LocalTime.MIDNIGHT)
                 .aiMemoryConsent(false)
                 .credit(0)
                 .lastLoginAt(
@@ -226,6 +235,7 @@ public class AppUser extends BaseEntity {
                                 "암호화된 비밀번호는 필수입니다."
                         )
                 )
+                .dayStartTime(LocalTime.MIDNIGHT)
                 .aiMemoryConsent(false)
                 .credit(0)
                 .lastLoginAt(
@@ -264,10 +274,30 @@ public class AppUser extends BaseEntity {
                 LocalDateTime.now();
     }
 
+    /**
+     * 기존 내부 호출과의 호환을 위한 overload.
+     * 오늘 시작 시간을 명시하지 않으면 현재 설정을 그대로 유지.
+     */
     public void updatePersonalSettings(
             String nickname,
             String job,
             LocalTime diaryReminderTime,
+            boolean aiMemoryConsent
+    ) {
+        updatePersonalSettings(
+                nickname,
+                job,
+                diaryReminderTime,
+                getDayStartTime(),
+                aiMemoryConsent
+        );
+    }
+
+    public void updatePersonalSettings(
+            String nickname,
+            String job,
+            LocalTime diaryReminderTime,
+            LocalTime dayStartTime,
             boolean aiMemoryConsent
     ) {
         this.nickname =
@@ -289,6 +319,10 @@ public class AppUser extends BaseEntity {
         this.diaryReminderTime =
                 diaryReminderTime;
 
+        updateDayStartTime(
+                dayStartTime
+        );
+
         updateAiMemoryConsent(
                 aiMemoryConsent
         );
@@ -300,6 +334,28 @@ public class AppUser extends BaseEntity {
             this.onboardingCompletedAt =
                     LocalDateTime.now();
         }
+    }
+
+    /**
+     * 기존 사용자 데이터에서 day_start_time이 null인 경우에도
+     * 기존 자정 기준 동작을 유지
+     */
+    public LocalTime getDayStartTime() {
+        return dayStartTime == null
+                ? LocalTime.MIDNIGHT
+                : dayStartTime;
+    }
+
+    public void updateDayStartTime(
+            LocalTime dayStartTime
+    ) {
+        if (dayStartTime == null) {
+            throw new IllegalArgumentException(
+                    "오늘 시작 시간은 필수입니다."
+            );
+        }
+
+        this.dayStartTime = dayStartTime;
     }
 
     public void addCredit(int amount) {

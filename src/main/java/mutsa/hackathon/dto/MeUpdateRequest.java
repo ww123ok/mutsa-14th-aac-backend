@@ -28,8 +28,35 @@ public record MeUpdateRequest(
         @JsonFormat(pattern = "HH:mm")
         LocalTime reminderTime,
 
+        /*
+         * 기존 프론트 요청과의 하위 호환을 위해 optional.
+         * 생략하면 현재 사용자의 설정을 유지하며,
+         * 신규 사용자의 기본값은 00:00.
+         */
+        @JsonFormat(pattern = "HH:mm")
+        LocalTime dayStartTime,
+
         @NotNull(message = "AI 기억 활용 동의 여부는 필수입니다.")
         Boolean aiMemoryConsent
 
 ) {
+
+        /**
+         * 기존 테스트/내부 호출의 4개 인자 생성자 호환.
+         * dayStartTime을 생략한 PATCH 요청과 동일하게 처리.
+         */
+        public MeUpdateRequest(
+                String nickname,
+                String job,
+                LocalTime reminderTime,
+                Boolean aiMemoryConsent
+        ) {
+                this(
+                        nickname,
+                        job,
+                        reminderTime,
+                        null,
+                        aiMemoryConsent
+                );
+        }
 }

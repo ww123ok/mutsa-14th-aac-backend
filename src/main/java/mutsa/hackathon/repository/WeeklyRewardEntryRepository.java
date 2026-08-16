@@ -15,6 +15,19 @@ public interface WeeklyRewardEntryRepository
             Long weeklyRewardId
     );
 
+    List<WeeklyRewardEntry>
+    findAllByDiaryId(
+            Long diaryId
+    );
+
+    long deleteAllByDiaryId(
+            Long diaryId
+    );
+
+    long deleteAllByWeeklyRewardId(
+            Long weeklyRewardId
+    );
+
     @Query("""
             select entry
             from WeeklyRewardEntry entry

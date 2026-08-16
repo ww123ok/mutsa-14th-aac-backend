@@ -25,6 +25,12 @@ public interface DiaryRepository
     );
 
     Optional<Diary>
+    findByIdAndUserIdAndDeletedTrue(
+            Long diaryId,
+            Long userId
+    );
+
+    Optional<Diary>
     findByUserIdAndRecordedDateAndDeletedFalse(
             Long userId,
             LocalDate recordedDate
@@ -68,6 +74,8 @@ public interface DiaryRepository
             Long userId,
             LocalDate recordedDate,
             Pageable pageable
+    findAllByUserIdAndDeletedTrueOrderByDeletedAtDesc(
+            Long userId
     );
 
     @Query("""
