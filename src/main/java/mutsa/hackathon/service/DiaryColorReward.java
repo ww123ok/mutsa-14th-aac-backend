@@ -12,7 +12,7 @@ import java.util.List;
  * 일기의 감정·감각·분위기를 보여주는 1~3개의 짧은 키워드
  * commentSummary:
  * 일기 속 시각적 단서와 명시된 감정을 바탕으로 오늘의 색이 선택된 이유를
- * 1~2개의 짧은 한국어 문장으로 설명하며 마지막은 반드시 온점(.)으로 종료
+ * 2~3개의 짧은 한국어 문장으로 설명하며 마지막은 반드시 온점(.)으로 종료
  */
 public record DiaryColorReward(
         String colorHex,

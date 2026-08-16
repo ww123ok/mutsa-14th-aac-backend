@@ -43,7 +43,10 @@ public class FallbackWeeklyRewardInsightFactory {
                 title,
                 summary,
                 List.copyOf(keywords),
-                "서로 다른 색의 생활 장면과 사물이 한 주의 흐름으로 연결되는 구성"
+                WeeklyVisualCategory.GRAPHIC_POSTER,
+                "Create one controlled graphic composition using two to four diary-supported "
+                        + "objects or actions as bold flat shapes, with a clear hierarchy and "
+                        + "the weekly colors distributed as primary, supporting, and accent colors."
         );
     }
 }

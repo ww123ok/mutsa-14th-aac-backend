@@ -29,6 +29,7 @@ class FallbackWeeklyPosterGeneratorTest {
                 "한 주의 기록",
                 "세 개의 기록이 이어졌습니다.",
                 List.of("기록", "흐름"),
+                WeeklyVisualCategory.GRAPHIC_POSTER,
                 "색 조각이 이어진 장면"
         );
 
