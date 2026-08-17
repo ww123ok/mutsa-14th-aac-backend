@@ -20,6 +20,8 @@ public interface ExperienceFragmentArrivalRepository extends JpaRepository<Exper
     @Query("""
             select arrival from ExperienceFragmentArrival arrival
             join fetch arrival.diaryShare share
+            join fetch share.diary sharedDiary
+            join fetch arrival.queryDiary queryDiary
             where arrival.receiver.id = :receiverId
             and arrival.status = :status
             order by arrival.createdAt desc

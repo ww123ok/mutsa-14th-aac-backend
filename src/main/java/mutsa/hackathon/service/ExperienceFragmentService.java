@@ -47,7 +47,7 @@ public class ExperienceFragmentService {
         Diary diary = diaryRepository.findByIdAndUserIdAndDeletedFalse(diaryId, userId)
                 .orElseThrow(() -> new ProjectException(ErrorCode.DIARY_NOT_FOUND));
         if (diaryShareRepository.existsByDiaryId(diaryId)) {
-            throw new IllegalStateException("An experience fragment already exists for this diary.");
+            throw new ProjectException(ErrorCode.SHARE_ALREADY_REQUESTED);
         }
         DiaryShare share = diaryShareRepository.save(DiaryShare.request(diary));
         eventPublisher.publishEvent(new ExperienceFragmentGenerationRequested(share.getId()));
@@ -77,6 +77,7 @@ public class ExperienceFragmentService {
     @Transactional
     public ExperienceFragmentResponse reject(Long userId, Long shareId) {
         DiaryShare share = ownedShare(userId, shareId);
+        requireReviewRequired(share);
         share.reject(null);
         return ExperienceFragmentResponse.from(share);
     }
@@ -181,11 +182,22 @@ public class ExperienceFragmentService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ExperienceFragmentInboxResponse> inbox(Long receiverId) {
-        return experienceFragmentArrivalRepository
+        List<ExperienceFragmentArrival> arrivals = experienceFragmentArrivalRepository
                 .findAllByReceiverIdAndStatusWithShare(receiverId, ExperienceFragmentArrivalStatus.PENDING)
                 .stream()
+                .toList();
+
+        List<ExperienceFragmentArrival> staleArrivals = arrivals.stream()
+                .filter(arrival -> !isDeliverableArrival(arrival))
+                .toList();
+        if (!staleArrivals.isEmpty()) {
+            experienceFragmentArrivalRepository.deleteAll(staleArrivals);
+        }
+
+        return arrivals.stream()
+                .filter(this::isDeliverableArrival)
                 .map(ExperienceFragmentInboxResponse::from)
                 .toList();
     }
@@ -211,6 +223,11 @@ public class ExperienceFragmentService {
                 .filter(candidate -> candidate.getStatus() == ExperienceFragmentArrivalStatus.PENDING)
                 .orElseThrow(() -> new ProjectException(ErrorCode.SHARED_DIARY_NOT_AVAILABLE));
 
+        if (!isDeliverableArrival(arrival)) {
+            experienceFragmentArrivalRepository.delete(arrival);
+            throw new ProjectException(ErrorCode.SHARED_DIARY_NOT_AVAILABLE);
+        }
+
         ReceivedExperienceFragmentResponse response = deliver(
                 arrival.getReceiver(),
                 arrival.getDiaryShare()
@@ -220,6 +237,9 @@ public class ExperienceFragmentService {
     }
 
     private ReceivedExperienceFragmentResponse deliver(AppUser receiver, DiaryShare share) {
+        if (!isDeliverableShare(share)) {
+            throw new ProjectException(ErrorCode.SHARED_DIARY_NOT_AVAILABLE);
+        }
         if (sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiver.getId(), share.getId())) {
             throw new ProjectException(ErrorCode.SHARED_DIARY_ALREADY_RECEIVED);
         }
@@ -272,9 +292,7 @@ public class ExperienceFragmentService {
     }
 
     private ExperienceFragmentResponse approveReviewRequiredShare(DiaryShare share, Long userId) {
-        if (share.getShareStatus() != DiaryShareStatus.REVIEW_REQUIRED) {
-            throw new IllegalStateException("This fragment cannot be approved.");
-        }
+        requireReviewRequired(share);
         ExperienceEmbedding embedding = experienceEmbeddingGenerator.generate(share.getMatchingText());
         return approvalPersistenceService.approve(userId, share.getId(), embedding);
     }
@@ -303,6 +321,23 @@ public class ExperienceFragmentService {
         double dot = 0, leftNorm = 0, rightNorm = 0;
         for (int i = 0; i < left.size(); i++) { dot += left.get(i) * right.get(i); leftNorm += left.get(i) * left.get(i); rightNorm += right.get(i) * right.get(i); }
         return leftNorm == 0 || rightNorm == 0 ? 0 : dot / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
+    }
+
+    private boolean isDeliverableArrival(ExperienceFragmentArrival arrival) {
+        return arrival.getStatus() == ExperienceFragmentArrivalStatus.PENDING
+                && !arrival.getQueryDiary().isDeleted()
+                && isDeliverableShare(arrival.getDiaryShare());
+    }
+
+    private boolean isDeliverableShare(DiaryShare share) {
+        return share.getShareStatus() == DiaryShareStatus.APPROVED
+                && !share.getDiary().isDeleted();
+    }
+
+    private void requireReviewRequired(DiaryShare share) {
+        if (share.getShareStatus() != DiaryShareStatus.REVIEW_REQUIRED) {
+            throw new ProjectException(ErrorCode.SHARE_REVIEW_NOT_AVAILABLE);
+        }
     }
 
     private DiaryShare ownedShare(Long userId, Long shareId) {

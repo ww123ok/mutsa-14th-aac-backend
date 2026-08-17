@@ -153,6 +153,12 @@ public enum ErrorCode
             "이미 공유 요청한 일기입니다."
     ),
 
+    SHARE_REVIEW_NOT_AVAILABLE(
+            HttpStatus.CONFLICT,
+            "SHARE409_3",
+            "현재 상태에서는 경험조각 검토를 진행할 수 없습니다."
+    ),
+
     SHARED_DIARY_NOT_AVAILABLE(
             HttpStatus.NOT_FOUND,
             "SHARE404_2",
