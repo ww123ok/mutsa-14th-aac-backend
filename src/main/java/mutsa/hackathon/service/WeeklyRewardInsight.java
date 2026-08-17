@@ -16,7 +16,7 @@ public record WeeklyRewardInsight(
         if (visualCategory == null) {
             throw new IllegalArgumentException("주간 이미지 카테고리는 필수입니다.");
         }
-        visualMotif = normalizeRequired(visualMotif, 1200, "이미지 모티프는 필수입니다.");
+        visualMotif = normalizeRequired(visualMotif, 2200, "이미지 모티프는 필수입니다.");
 
         LinkedHashSet<String> values = new LinkedHashSet<>();
         if (keywords != null) {

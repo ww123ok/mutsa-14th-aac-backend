@@ -3,7 +3,7 @@ package mutsa.hackathon.service;
 public enum WeeklyVisualCategory {
     GRAPHIC_POSTER(ImageAspect.PORTRAIT),
     PHOTO_LANDSCAPE(ImageAspect.LANDSCAPE),
-    NON_HUMAN_CHARACTER(ImageAspect.SQUARE),
+    NON_HUMAN_CHARACTER(ImageAspect.PORTRAIT),
     OIL_ACRYLIC(ImageAspect.SQUARE),
     ALBUM_COVER(ImageAspect.LANDSCAPE),
     PIXEL_ART(ImageAspect.SQUARE),
