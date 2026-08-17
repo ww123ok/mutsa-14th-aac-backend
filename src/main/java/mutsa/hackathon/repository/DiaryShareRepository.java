@@ -29,6 +29,8 @@ public interface DiaryShareRepository
             DiaryShareStatus shareStatus
     );
 
+    boolean existsByShareStatus(DiaryShareStatus shareStatus);
+
     @Query("""
             select share from DiaryShare share
             join fetch share.diary diary

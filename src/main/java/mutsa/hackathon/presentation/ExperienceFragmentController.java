@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.dto.ExperienceFragmentResponse;
 import mutsa.hackathon.dto.ExperienceMatchRequest;
 import mutsa.hackathon.dto.ExperienceMatchResponse;
+import mutsa.hackathon.dto.ExperienceFragmentInboxResponse;
 import mutsa.hackathon.dto.ReceivedExperienceFragmentResponse;
 import mutsa.hackathon.global.ApiResponse;
 import mutsa.hackathon.security.CustomOAuth2User;
@@ -32,6 +33,11 @@ public class  ExperienceFragmentController {
         return ApiResponse.onSuccess(experienceFragmentService.mine(user.getKakaoUserProfile().id()));
     }
 
+    @GetMapping("/inbox")
+    public ApiResponse<List<ExperienceFragmentInboxResponse>> inbox(@AuthenticationPrincipal CustomOAuth2User user) {
+        return ApiResponse.onSuccess(experienceFragmentService.inbox(user.getKakaoUserProfile().id()));
+    }
+
     @PostMapping("/{shareId}/approve")
     public ApiResponse<ExperienceFragmentResponse> approve(@AuthenticationPrincipal CustomOAuth2User user,
                                                             @PathVariable Long shareId) {
@@ -54,5 +60,13 @@ public class  ExperienceFragmentController {
     public ApiResponse<ReceivedExperienceFragmentResponse> receive(@AuthenticationPrincipal CustomOAuth2User user,
                                                                     @PathVariable Long shareId) {
         return ApiResponse.onSuccess(experienceFragmentService.receive(user.getKakaoUserProfile().id(), shareId));
+    }
+
+    @PostMapping("/inbox/{arrivalId}/receive")
+    public ApiResponse<ReceivedExperienceFragmentResponse> receiveFromInbox(
+            @AuthenticationPrincipal CustomOAuth2User user,
+            @PathVariable Long arrivalId
+    ) {
+        return ApiResponse.onSuccess(experienceFragmentService.receiveFromInbox(user.getKakaoUserProfile().id(), arrivalId));
     }
 }

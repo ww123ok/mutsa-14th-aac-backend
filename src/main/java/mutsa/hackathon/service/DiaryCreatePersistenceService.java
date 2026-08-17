@@ -139,6 +139,12 @@ public class DiaryCreatePersistenceService {
                 )
         );
 
+        eventPublisher.publishEvent(
+                new ExperienceFragmentMatchingRequested(
+                        diary.getId()
+                )
+        );
+
         if (
                 request
                         .shouldUseDiaryContentForPersonalization()
