@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -168,78 +167,6 @@ class OpenAiDiaryReflectionQuestionGeneratorTest {
                 requestBody.contains(
                         "\"model\":\"test-model\""
                 )
-        );
-    }
-
-    @Test
-    void 편집기_타임스탬프는_OpenAI_입력에서_제거하고_본문_시간표현은_유지한다() {
-
-        generator.generate(
-                new DiaryReflectionPrompt(
-                        """
-                        AM 2:12
-                        하이하
-
-                        PM 10:03
-                        오늘 점심으로 파스타를 먹었다. 맛있었다.
-                        오전 11시에 친구를 만났다.
-                        """
-                )
-        );
-
-        String requestBody =
-                capturedRequestBody.get();
-
-        assertTrue(
-                requestBody.contains(
-                        "하이하"
-                )
-        );
-
-        assertTrue(
-                requestBody.contains(
-                        "오늘 점심으로 파스타를 먹었다. 맛있었다."
-                )
-        );
-
-        assertTrue(
-                requestBody.contains(
-                        "오전 11시에 친구를 만났다."
-                )
-        );
-
-        assertFalse(
-                requestBody.contains(
-                        "AM 2:12"
-                )
-        );
-
-        assertFalse(
-                requestBody.contains(
-                        "PM 10:03"
-                )
-        );
-    }
-
-    @Test
-    void 타임스탬프만_있으면_OpenAI를_호출하지_않는다() {
-
-        assertThrows(
-                IllegalStateException.class,
-                () ->
-                        generator.generate(
-                                new DiaryReflectionPrompt(
-                                        """
-                                        AM 2:12
-                                        PM 10:03
-                                        """
-                                )
-                        )
-        );
-
-        assertEquals(
-                null,
-                capturedRequestBody.get()
         );
     }
 

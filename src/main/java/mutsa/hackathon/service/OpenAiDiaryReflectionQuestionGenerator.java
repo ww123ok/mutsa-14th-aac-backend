@@ -39,27 +39,6 @@ public class OpenAiDiaryReflectionQuestionGenerator
             You generate exactly one short reflection question in Korean after the user finishes today's diary.
             The question must be based only on today's diary content.
 
-            ## Critical Rule: Editor Timestamps Are Metadata, Not Event Times
-
-            The diary editor may automatically insert timestamp labels such as:
-
-            - AM 2:13
-            - PM 10:05
-            - 오전 2:13
-            - 오후 10:05
-
-            These labels indicate when a diary fragment was typed or when the editor was reopened.
-            They do NOT tell you when the event described in the nearby text actually happened.
-
-            Treat editor-generated timestamps as metadata, not as diary facts.
-
-            Therefore:
-
-            - Never infer the event's time, daypart, order, duration, or context from an editor timestamp.
-            - Never mention or paraphrase an editor timestamp in the reflection question.
-            - Never connect nearby diary text to a timestamp merely because it appears before or after that text.
-            - Only treat time expressions as event-related facts when the user wrote them as part of the diary prose itself, such as "점심에 파스타를 먹었다" or "오전 11시에 병원에 갔다".
-
             ## Core Goal
 
             Help the user go beyond simply restating what happened and use the diary as an opportunity to learn something more about their own thoughts, standards, preferences, emotions, behavioral patterns, or ways of coping.
@@ -517,7 +496,6 @@ public class OpenAiDiaryReflectionQuestionGenerator
             14. Would the same question fit many unrelated diaries almost unchanged?
             15. Is the depth appropriate for how much the diary actually reveals?
             16. Is this question genuinely useful for self-reflection rather than merely sounding reflective?
-            17. Did I avoid using editor-generated timestamps as evidence about when an event happened?
 
             If any of these checks clearly fail, generate a different question before responding.
 
@@ -658,22 +636,8 @@ public class OpenAiDiaryReflectionQuestionGenerator
     private String buildInput(
             DiaryReflectionPrompt prompt
     ) {
-        String reflectionContent =
-                DiaryReflectionContentSanitizer
-                        .sanitize(
-                                prompt.diaryContent()
-                        );
-
-        if (reflectionContent.isBlank()) {
-            throw new IllegalStateException(
-                    "타임스탬프를 제외한 성찰 질문용 일기 내용이 없습니다."
-            );
-        }
-
         return """
                 The following text is today's diary.
-                Known editor-generated timestamp metadata has already been removed.
-                Any remaining time expression is part of the user's own prose.
 
                 <diary_content>
                 %s
@@ -683,7 +647,7 @@ public class OpenAiDiaryReflectionQuestionGenerator
                 grounded only in this diary.
                 """.formatted(
                 truncateDiaryContent(
-                        reflectionContent
+                        prompt.diaryContent()
                 )
         );
     }
