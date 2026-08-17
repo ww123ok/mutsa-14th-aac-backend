@@ -181,6 +181,12 @@ public enum ErrorCode
             HttpStatus.NOT_FOUND,
             "WEEKLY_REWARD404",
             "존재하지 않는 주간 보상입니다."
+    ),
+
+    WEEKLY_REWARD_NOT_VIEWABLE(
+            HttpStatus.CONFLICT,
+            "WEEKLY_REWARD409",
+            "아직 확인할 수 없는 주간 보상입니다."
     );
 
     private final HttpStatus status;

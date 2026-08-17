@@ -24,8 +24,13 @@ public record WeeklyRewardResponse(
         List<String> keywords,
         List<DailyColor> dailyColors,
 
+        boolean viewed,
+
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-        LocalDateTime generatedAt
+        LocalDateTime generatedAt,
+
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        LocalDateTime viewedAt
 ) {
     public static WeeklyRewardResponse from(
             WeeklyReward reward,
@@ -53,7 +58,9 @@ public record WeeklyRewardResponse(
                 reward.getSummary(),
                 reward.getKeywords(),
                 entries.stream().map(DailyColor::from).toList(),
-                reward.getGeneratedAt()
+                reward.isViewed(),
+                reward.getGeneratedAt(),
+                reward.getViewedAt()
         );
     }
 

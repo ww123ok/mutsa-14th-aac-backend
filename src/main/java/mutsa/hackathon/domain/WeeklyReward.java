@@ -115,6 +115,9 @@ public class WeeklyReward extends BaseEntity {
     @Column(name = "generated_at")
     private LocalDateTime generatedAt;
 
+    @Column(name = "viewed_at")
+    private LocalDateTime viewedAt;
+
     public static WeeklyReward createPending(
             AppUser user,
             LocalDate weekStartDate,
@@ -209,6 +212,16 @@ public class WeeklyReward extends BaseEntity {
         generationStatus = WeeklyRewardStatus.FAILED;
         generationStartedAt = null;
         failureReason = trimToLength(reason, 500);
+    }
+
+    public void markViewed() {
+        if (viewedAt == null) {
+            viewedAt = LocalDateTime.now();
+        }
+    }
+
+    public boolean isViewed() {
+        return viewedAt != null;
     }
 
     public List<String> getKeywords() {

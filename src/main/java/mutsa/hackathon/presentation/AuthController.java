@@ -225,6 +225,17 @@ public class AuthController {
         );
     }
 
+    @PatchMapping("/me/tutorial-completion")
+    public ApiResponse<MeResponse> completeTutorial(
+            @AuthenticationPrincipal CustomOAuth2User user
+    ) {
+        return ApiResponse.onSuccess(
+                appUserService.completeTutorial(
+                        user.getKakaoUserProfile().id()
+                )
+        );
+    }
+
     @PostMapping("/auth/refresh")
     public ApiResponse<AuthTokenResponse>
     refresh(
