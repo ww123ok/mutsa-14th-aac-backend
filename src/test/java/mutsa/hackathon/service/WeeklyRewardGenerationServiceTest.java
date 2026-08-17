@@ -1,0 +1,165 @@
+package mutsa.hackathon.service;
+
+import mutsa.hackathon.domain.WeeklyRewardImageSource;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class WeeklyRewardGenerationServiceTest {
+
+    @Mock
+    private WeeklyRewardClaimService claimService;
+    @Mock
+    private OpenAiWeeklyVisualPlanGenerator visualPlanGenerator;
+    @Mock
+    private FallbackWeeklyVisualPlanFactory fallbackVisualPlanFactory;
+    @Mock
+    private OpenAiWeeklyImageGenerator imageGenerator;
+    @Mock
+    private FallbackWeeklyPosterGenerator fallbackPosterGenerator;
+    @Mock
+    private OpenAiWeeklyRewardResultTextGenerator resultTextGenerator;
+    @Mock
+    private FallbackWeeklyRewardResultTextFactory fallbackResultTextFactory;
+    @Mock
+    private WeeklyImageStorage imageStorage;
+    @Mock
+    private WeeklyRewardCompletionService completionService;
+
+    private WeeklyRewardGenerationService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new WeeklyRewardGenerationService(
+                claimService,
+                visualPlanGenerator,
+                fallbackVisualPlanFactory,
+                imageGenerator,
+                fallbackPosterGenerator,
+                resultTextGenerator,
+                fallbackResultTextFactory,
+                imageStorage,
+                completionService
+        );
+    }
+
+    @Test
+    void 시각기획과_이미지를_먼저_만든뒤_최종문구를_생성하고_저장한다() {
+        WeeklyRewardGenerationContext context = context();
+        WeeklyVisualPlan visualPlan = visualPlan();
+        GeneratedWeeklyImage image = image();
+        WeeklyRewardResultText resultText = resultText();
+        StoredWeeklyImage storedImage = new StoredWeeklyImage(
+                "weekly/10/result.webp",
+                "image/webp"
+        );
+
+        when(claimService.claim(10L)).thenReturn(
+                WeeklyRewardClaimService.ClaimResult.claimed(context)
+        );
+        when(visualPlanGenerator.generate(context)).thenReturn(visualPlan);
+        when(imageGenerator.generate(context, visualPlan)).thenReturn(image);
+        when(resultTextGenerator.generate(context, visualPlan, image))
+                .thenReturn(resultText);
+        when(imageStorage.store(context, image)).thenReturn(storedImage);
+
+        service.generate(10L);
+
+        InOrder order = inOrder(
+                claimService,
+                visualPlanGenerator,
+                imageGenerator,
+                resultTextGenerator,
+                imageStorage,
+                completionService
+        );
+
+        order.verify(claimService).claim(10L);
+        order.verify(visualPlanGenerator).generate(context);
+        order.verify(imageGenerator).generate(context, visualPlan);
+        order.verify(resultTextGenerator).generate(context, visualPlan, image);
+        order.verify(imageStorage).store(context, image);
+        order.verify(completionService).complete(
+                10L,
+                resultText,
+                image,
+                storedImage
+        );
+
+        verify(fallbackVisualPlanFactory, never()).create(context);
+        verify(fallbackPosterGenerator, never()).generate(context, visualPlan);
+        verify(fallbackResultTextFactory, never()).create(
+                context,
+                visualPlan
+        );
+    }
+
+    private WeeklyRewardGenerationContext context() {
+        return new WeeklyRewardGenerationContext(
+                10L,
+                20L,
+                LocalDate.of(2026, 8, 3),
+                LocalDate.of(2026, 8, 9),
+                List.of(
+                        new WeeklyRewardGenerationContext.DayRecord(
+                                LocalDate.of(2026, 8, 3),
+                                "팀 작업을 정리했다.",
+                                "#D6A45C",
+                                List.of("작업")
+                        ),
+                        new WeeklyRewardGenerationContext.DayRecord(
+                                LocalDate.of(2026, 8, 5),
+                                "저녁에 동네를 걸었다.",
+                                "#6A8FB3",
+                                List.of("산책")
+                        ),
+                        new WeeklyRewardGenerationContext.DayRecord(
+                                LocalDate.of(2026, 8, 7),
+                                "집에서 쉬었다.",
+                                "#C9878A",
+                                List.of("휴식")
+                        )
+                )
+        );
+    }
+
+    private WeeklyVisualPlan visualPlan() {
+        return new WeeklyVisualPlan(
+                WeeklyVisualCategory.GRAPHIC_POSTER,
+                String.join(
+                        " ",
+                        java.util.Collections.nCopies(80, "visual")
+                )
+        );
+    }
+
+    private GeneratedWeeklyImage image() {
+        return new GeneratedWeeklyImage(
+                new byte[]{1, 2, 3},
+                "image/webp",
+                "webp",
+                WeeklyRewardImageSource.AI
+        );
+    }
+
+    private WeeklyRewardResultText resultText() {
+        return new WeeklyRewardResultText(
+                "작업과 산책이 이어진 한 주",
+                "이번 주에는 작업을 정리하는 시간이 있었습니다. "
+                        + "저녁에는 동네를 걷거나 집에서 쉬었습니다.",
+                List.of("작업 정리", "저녁 산책")
+        );
+    }
+}

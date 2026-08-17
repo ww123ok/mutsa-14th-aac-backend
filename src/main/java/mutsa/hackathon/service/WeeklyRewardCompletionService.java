@@ -25,7 +25,7 @@ public class WeeklyRewardCompletionService {
     @Transactional
     public void complete(
             Long rewardId,
-            WeeklyRewardInsight insight,
+            WeeklyRewardResultText resultText,
             GeneratedWeeklyImage image,
             StoredWeeklyImage storedImage
     ) {
@@ -35,9 +35,9 @@ public class WeeklyRewardCompletionService {
                 ));
 
         reward.complete(
-                insight.title(),
-                insight.summary(),
-                insight.keywords(),
+                resultText.title(),
+                resultText.summary(),
+                resultText.keywords(),
                 storedImage.key(),
                 storedImage.contentType(),
                 image.source(),
