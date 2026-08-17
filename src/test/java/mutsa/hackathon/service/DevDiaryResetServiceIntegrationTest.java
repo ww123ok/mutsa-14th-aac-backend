@@ -6,6 +6,7 @@ import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.domain.DiaryReward;
 import mutsa.hackathon.domain.DiaryShare;
+import mutsa.hackathon.domain.ExperienceFragmentArrival;
 import mutsa.hackathon.domain.QuestionGenerationSource;
 import mutsa.hackathon.domain.SharedDiaryLog;
 import mutsa.hackathon.domain.UserMemoryCategory;
@@ -18,6 +19,7 @@ import mutsa.hackathon.repository.AppUserRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import mutsa.hackathon.repository.DiaryShareRepository;
+import mutsa.hackathon.repository.ExperienceFragmentArrivalRepository;
 import mutsa.hackathon.repository.SharedDiaryLogRepository;
 import mutsa.hackathon.repository.UserMemoryItemRepository;
 import mutsa.hackathon.util.MemoryHashGenerator;
@@ -80,6 +82,10 @@ class DevDiaryResetServiceIntegrationTest {
     @Autowired
     private SharedDiaryLogRepository
             sharedDiaryLogRepository;
+
+    @Autowired
+    private ExperienceFragmentArrivalRepository
+            experienceFragmentArrivalRepository;
 
     @Autowired
     private AiMemoryProfileService
@@ -403,6 +409,110 @@ class DevDiaryResetServiceIntegrationTest {
     }
 
     @Test
+    void 오늘_일기가_queryDiary인_도착정보도_초기화할_수_있다() {
+        LocalDate today = LocalDate.now(SERVICE_ZONE);
+        AppUser receiver = saveUser();
+        AppUser sender = saveUser();
+
+        Diary queryDiary = diaryRepository.saveAndFlush(
+                Diary.create(
+                        receiver,
+                        "오늘은 다른 사람의 경험을 추천받을 기준 일기다.",
+                        today
+                )
+        );
+
+        Diary sourceDiary = diaryRepository.saveAndFlush(
+                Diary.create(
+                        sender,
+                        "어제 비슷한 일을 겪었다.",
+                        today.minusDays(1)
+                )
+        );
+
+        DiaryShare sourceShare = saveApprovedShare(
+                sourceDiary,
+                "비슷한 일을 겪은 익명 경험"
+        );
+
+        ExperienceFragmentArrival arrival =
+                experienceFragmentArrivalRepository.saveAndFlush(
+                        ExperienceFragmentArrival.pending(
+                                receiver,
+                                queryDiary,
+                                sourceShare
+                        )
+                );
+
+        DevTodayDiaryResetResponse response =
+                devDiaryResetService.resetToday(receiver.getId());
+
+        assertTrue(response.deleted());
+        assertFalse(diaryRepository.findById(queryDiary.getId()).isPresent());
+        assertFalse(
+                experienceFragmentArrivalRepository
+                        .existsById(arrival.getId())
+        );
+
+        // 추천 원본 경험은 수신자의 오늘 일기 초기화와 무관하므로 유지한다.
+        assertTrue(diaryRepository.findById(sourceDiary.getId()).isPresent());
+        assertTrue(diaryShareRepository.findById(sourceShare.getId()).isPresent());
+    }
+
+    @Test
+    void 미수신_공유일기와_그_share를_참조하는_도착정보를_함께_초기화한다() {
+        LocalDate today = LocalDate.now(SERVICE_ZONE);
+        AppUser sender = saveUser();
+        AppUser receiver = saveUser();
+
+        Diary sourceDiary = diaryRepository.saveAndFlush(
+                Diary.create(
+                        sender,
+                        "오늘 공유를 만들었지만 아직 상대가 수신하지 않았다.",
+                        today
+                )
+        );
+
+        DiaryShare share = saveApprovedShare(
+                sourceDiary,
+                "아직 수신되지 않은 익명 경험"
+        );
+
+        Diary receiverQueryDiary = diaryRepository.saveAndFlush(
+                Diary.create(
+                        receiver,
+                        "어제 작성한 수신자의 기준 일기",
+                        today.minusDays(1)
+                )
+        );
+
+        ExperienceFragmentArrival arrival =
+                experienceFragmentArrivalRepository.saveAndFlush(
+                        ExperienceFragmentArrival.pending(
+                                receiver,
+                                receiverQueryDiary,
+                                share
+                        )
+                );
+
+        DevTodayDiaryResetResponse response =
+                devDiaryResetService.resetToday(sender.getId());
+
+        assertTrue(response.deleted());
+        assertFalse(diaryRepository.findById(sourceDiary.getId()).isPresent());
+        assertFalse(diaryShareRepository.findById(share.getId()).isPresent());
+        assertFalse(
+                experienceFragmentArrivalRepository
+                        .existsById(arrival.getId())
+        );
+
+        // 상대 사용자의 기준 일기는 삭제하지 않는다.
+        assertTrue(
+                diaryRepository.findById(receiverQueryDiary.getId()).isPresent()
+        );
+    }
+
+    @Test
     void blocksResetWhenExperienceFragmentWasDeliveredToAnotherUser() {
         LocalDate today = LocalDate.now(SERVICE_ZONE);
         AppUser sender = saveUser();
@@ -430,6 +540,21 @@ class DevDiaryResetServiceIntegrationTest {
         assertEquals(ErrorCode.DEV_DIARY_RESET_SHARED_DIARY_BLOCKED, exception.getErrorCode());
         assertTrue(diaryRepository.findById(diary.getId()).isPresent());
         assertTrue(diaryShareRepository.findById(share.getId()).isPresent());
+    }
+
+    private DiaryShare saveApprovedShare(
+            Diary diary,
+            String anonymizedContent
+    ) {
+        DiaryShare share = DiaryShare.request(diary);
+        share.requireReview(
+                anonymizedContent,
+                "일상",
+                java.util.List.of("경험"),
+                anonymizedContent + " 일상 경험"
+        );
+        share.approve("[1.0,0.0]", "test");
+        return diaryShareRepository.saveAndFlush(share);
     }
 
     private AppUser saveUser() {

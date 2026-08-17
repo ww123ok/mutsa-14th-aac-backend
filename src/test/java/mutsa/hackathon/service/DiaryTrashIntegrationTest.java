@@ -5,6 +5,7 @@ import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.domain.DiaryReward;
 import mutsa.hackathon.domain.DiaryShare;
+import mutsa.hackathon.domain.ExperienceFragmentArrival;
 import mutsa.hackathon.domain.QuestionGenerationSource;
 import mutsa.hackathon.domain.SharedDiaryLog;
 import mutsa.hackathon.domain.UserMemoryCategory;
@@ -20,6 +21,7 @@ import mutsa.hackathon.repository.AppUserRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import mutsa.hackathon.repository.DiaryShareRepository;
+import mutsa.hackathon.repository.ExperienceFragmentArrivalRepository;
 import mutsa.hackathon.repository.SharedDiaryLogRepository;
 import mutsa.hackathon.repository.UserMemoryItemRepository;
 import mutsa.hackathon.repository.WeeklyRewardEntryRepository;
@@ -68,6 +70,9 @@ class DiaryTrashIntegrationTest {
 
     @Autowired
     private SharedDiaryLogRepository sharedDiaryLogRepository;
+
+    @Autowired
+    private ExperienceFragmentArrivalRepository experienceFragmentArrivalRepository;
 
     @Autowired
     private WeeklyRewardRepository weeklyRewardRepository;
@@ -248,6 +253,95 @@ class DiaryTrashIntegrationTest {
     }
 
     @Test
+    void 영구삭제는_경험조각_도착의_queryDiary와_diaryShare_FK를_함께_정리한다() {
+        AppUser owner = saveUser("trash-arrival-owner");
+        AppUser receiver = saveUser("trash-arrival-receiver");
+        AppUser otherSender = saveUser("trash-arrival-other-sender");
+
+        Diary targetDiary = saveDiary(
+                owner,
+                LocalDate.of(2026, 8, 10),
+                "도착 정보와 연결된 영구 삭제 대상 일기"
+        );
+
+        DiaryShare targetShare = saveApprovedShare(
+                targetDiary,
+                "삭제 대상 공유 경험"
+        );
+
+        Diary receiverQueryDiary = saveDiary(
+                receiver,
+                LocalDate.of(2026, 8, 10),
+                "삭제 대상 공유 경험을 추천받은 기준 일기"
+        );
+
+        ExperienceFragmentArrival sourceShareArrival =
+                experienceFragmentArrivalRepository.saveAndFlush(
+                        ExperienceFragmentArrival.pending(
+                                receiver,
+                                receiverQueryDiary,
+                                targetShare
+                        )
+                );
+
+        Diary otherSourceDiary = saveDiary(
+                otherSender,
+                LocalDate.of(2026, 8, 11),
+                "삭제 대상 일기에 도착한 다른 사용자의 경험"
+        );
+
+        DiaryShare otherShare = saveApprovedShare(
+                otherSourceDiary,
+                "다른 사용자의 공유 경험"
+        );
+
+        ExperienceFragmentArrival queryDiaryArrival =
+                experienceFragmentArrivalRepository.saveAndFlush(
+                        ExperienceFragmentArrival.pending(
+                                owner,
+                                targetDiary,
+                                otherShare
+                        )
+                );
+
+        diaryService.deleteDiary(
+                owner.getId(),
+                targetDiary.getId()
+        );
+
+        diaryTrashService.permanentlyDelete(
+                owner.getId(),
+                targetDiary.getId()
+        );
+
+        assertFalse(
+                experienceFragmentArrivalRepository
+                        .existsById(sourceShareArrival.getId())
+        );
+        assertFalse(
+                experienceFragmentArrivalRepository
+                        .existsById(queryDiaryArrival.getId())
+        );
+        assertTrue(
+                diaryRepository.findById(targetDiary.getId()).isEmpty()
+        );
+        assertTrue(
+                diaryShareRepository.findById(targetShare.getId()).isEmpty()
+        );
+
+        // 삭제 대상과 무관한 상대방의 원본 데이터는 유지한다.
+        assertTrue(
+                diaryRepository.findById(receiverQueryDiary.getId()).isPresent()
+        );
+        assertTrue(
+                diaryRepository.findById(otherSourceDiary.getId()).isPresent()
+        );
+        assertTrue(
+                diaryShareRepository.findById(otherShare.getId()).isPresent()
+        );
+    }
+
+    @Test
     void 다른_사용자와_일반_일기는_휴지통_API로_복원하거나_영구삭제할_수_없다() {
         AppUser owner = saveUser("trash-owner-policy");
         AppUser other = saveUser("trash-other-policy");
@@ -315,6 +409,21 @@ class DiaryTrashIntegrationTest {
                         recordedDate
                 )
         );
+    }
+
+    private DiaryShare saveApprovedShare(
+            Diary diary,
+            String anonymizedContent
+    ) {
+        DiaryShare share = DiaryShare.request(diary);
+        share.requireReview(
+                anonymizedContent,
+                "일상",
+                List.of("경험"),
+                anonymizedContent + " 일상 경험"
+        );
+        share.approve("[0.1,0.2]", "test-embedding");
+        return diaryShareRepository.saveAndFlush(share);
     }
 
     private DiaryReward saveCompletedReward(
