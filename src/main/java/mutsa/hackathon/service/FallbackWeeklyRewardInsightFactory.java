@@ -44,9 +44,13 @@ public class FallbackWeeklyRewardInsightFactory {
                 summary,
                 List.copyOf(keywords),
                 WeeklyVisualCategory.GRAPHIC_POSTER,
-                "Create one controlled graphic composition using two to four diary-supported "
-                        + "objects or actions as bold flat shapes, with a clear hierarchy and "
-                        + "the weekly colors distributed as primary, supporting, and accent colors."
+                "Build a portrait flat graphic poster around one large asymmetric diagonal "
+                        + "silhouette occupying the main visual field. Add three supporting "
+                        + "cropped geometric planes, one narrow halftone trail, and a small "
+                        + "misregistered print layer. Keep broad pure-white negative space, "
+                        + "no literal scene and no recognizable photographic object. Use the "
+                        + "strongest weekly color on the dominant mass, a second color on the "
+                        + "supporting planes, and the remaining colors only as small accents."
         );
     }
 }

@@ -30,6 +30,7 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
             25 * 1024 * 1024;
 
     private final RestClient.Builder restClientBuilder;
+    private final OpenAiWeeklyImageQualityValidator qualityValidator;
 
     @Value("${app.openai.api-key:}")
     private String apiKey;
@@ -51,6 +52,12 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
 
     @Value("${app.weekly-reward.openai.image-quality:medium}")
     private String quality;
+
+    @Value("${app.weekly-reward.openai.image-max-generation-attempts:2}")
+    private int maxGenerationAttempts;
+
+    @Value("${app.weekly-reward.openai.image-validation-strict:true}")
+    private boolean strictValidation;
 
     @Override
     public GeneratedWeeklyImage generate(
@@ -76,18 +83,87 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
                 landscapeSize
         );
 
-        OpenAiImageRequest request =
-                new OpenAiImageRequest(
-                        model,
-                        buildPrompt(context, insight),
-                        1,
-                        requestSize,
-                        quality,
-                        "opaque",
-                        "auto",
-                        "webp",
-                        "daybit-user-" + context.userId()
+        String basePrompt = buildPrompt(context, insight);
+        String currentPrompt = basePrompt;
+        int attempts = normalizeAttempts(maxGenerationAttempts);
+
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            log.info(
+                    "Weekly image request: promptVersion=V3, category={}, "
+                            + "size={}, attempt={}, promptLength={}",
+                    insight.visualCategory(),
+                    requestSize,
+                    attempt,
+                    currentPrompt.length()
+            );
+
+            GeneratedWeeklyImage image = requestImage(
+                    context,
+                    currentPrompt,
+                    requestSize
+            );
+
+            WeeklyImageQualityReview review = qualityValidator.review(
+                    image,
+                    insight.visualCategory(),
+                    requestSize
+            );
+
+            if (!review.reviewed() || review.approved()) {
+                return image;
+            }
+
+            log.warn(
+                    "Weekly image rejected by quality gate: category={}, "
+                            + "attempt={}, violations={}",
+                    insight.visualCategory(),
+                    attempt,
+                    review.violations()
+            );
+
+            if (attempt == attempts) {
+                if (strictValidation) {
+                    throw new IllegalStateException(
+                            "주간 이미지가 카테고리 품질 검수를 통과하지 못했습니다."
+                    );
+                }
+
+                log.warn(
+                        "Weekly image quality retries exhausted; returning the last "
+                                + "generated image because strict validation is disabled: category={}",
+                        insight.visualCategory()
                 );
+                return image;
+            }
+
+            currentPrompt = WeeklyImagePromptFactory.buildRetryPrompt(
+                    basePrompt,
+                    insight.visualCategory(),
+                    review
+            );
+        }
+
+        throw new IllegalStateException(
+                "주간 이미지 생성 시도 횟수가 올바르지 않습니다."
+        );
+    }
+
+    private GeneratedWeeklyImage requestImage(
+            WeeklyRewardGenerationContext context,
+            String prompt,
+            String requestSize
+    ) {
+        OpenAiImageRequest request = new OpenAiImageRequest(
+                model,
+                prompt,
+                1,
+                requestSize,
+                quality,
+                "opaque",
+                "auto",
+                "webp",
+                "daybit-user-" + context.userId()
+        );
 
         try {
             OpenAiImageResponse response =
@@ -132,6 +208,13 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
                     exception
             );
         }
+    }
+
+    private int normalizeAttempts(int value) {
+        if (value < 1) {
+            return 1;
+        }
+        return Math.min(value, 3);
     }
 
     private String buildPrompt(
