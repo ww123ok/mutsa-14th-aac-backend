@@ -2,6 +2,8 @@ package mutsa.hackathon.service;
 
 import mutsa.hackathon.domain.*;
 import mutsa.hackathon.dto.ExperienceMatchResponse;
+import mutsa.hackathon.dto.ExperienceFragmentFeedbackRequest;
+import mutsa.hackathon.dto.ReceivedExperienceFragmentListResponse;
 import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.*;
