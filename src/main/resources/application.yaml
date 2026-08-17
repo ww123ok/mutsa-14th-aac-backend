@@ -70,15 +70,26 @@ app:
 
   experience-sharing:
     minimum-similarity: ${EXPERIENCE_MATCH_MINIMUM_SIMILARITY:0.78}
+    auto-approval-enabled: ${EXPERIENCE_AUTO_APPROVAL_ENABLED:true}
+    auto-approval-days: ${EXPERIENCE_AUTO_APPROVAL_DAYS:5}
+    auto-approval-cron: "${EXPERIENCE_AUTO_APPROVAL_CRON:0 0 * * * *}"
 
   dev:
     # 기본적으로 비활성화
     # 개발 서버에서만 DEV_RESET_ENABLED=true로 활성화
     reset-enabled: ${DEV_RESET_ENABLED:false}
+    dated-diary-enabled: ${DEV_DATED_DIARY_ENABLED:false}
+      # 양수: 비밀번호 + 특정 ID 모두 검사
+      # 0 이하: 비밀번호를 통과한 모든 로그인 사용자 허용
+    dated-diary-allowed-user-id: ${DEV_DATED_DIARY_ALLOWED_USER_ID:-1}
+
+    dated-diary-max-past-days: ${DEV_DATED_DIARY_MAX_PAST_DAYS:3650}
+
+      # 실제 비밀번호가 아닌 SHA-256 해시만 저장
+    test-password-sha256: ${DEV_TEST_PASSWORD_SHA256:}
 
   weekly-reward:
     enabled: ${WEEKLY_REWARD_ENABLED:false}
-
     # 로컬·스테이징에서 실제 작성 일기의 수동 생성 확인에만 사용
     # 운영 환경에서는 반드시 false
     manual-trigger-enabled: ${WEEKLY_REWARD_MANUAL_TRIGGER_ENABLED:false}
@@ -89,11 +100,16 @@ app:
     stale-minutes: ${WEEKLY_REWARD_STALE_MINUTES:30}
     image-url-expiration-minutes: ${WEEKLY_REWARD_IMAGE_URL_EXPIRATION_MINUTES:15}
 
-    # 일요일이 끝난 직후인 월요일 00:05 KST 최초 생성
-    initial-cron: "${WEEKLY_REWARD_INITIAL_CRON:0 5 0 * * MON}"
+    # 사용자별 DAYBIT 시작 시간 경계를 확인하는 poll 주기.
+    # 매분 확인하지만 실제 생성은 각 사용자의 월요일 시작 시간 + 5분에만 수행.
+    boundary-cron: "${WEEKLY_REWARD_BOUNDARY_CRON:0 * * * * *}"
 
-    # 월요일 동안 매시간 15분에 누락·실패·중단 작업 복구
-    retry-cron: "${WEEKLY_REWARD_RETRY_CRON:0 15 * * * MON}"
+    # 사용자별 하루 시작 후 주간 보상 자동 생성을 지연할 시간
+    schedule-delay-minutes: ${WEEKLY_REWARD_SCHEDULE_DELAY_MINUTES:5}
+
+    # 일간 색 보상 지연·S3 장애·서버 중단 복구를 위해
+    # 월·화요일 매시간 15분에 이미 생성 시각이 지난 사용자만 재검사
+    retry-cron: "${WEEKLY_REWARD_RETRY_CRON:0 15 * * * MON,TUE}"
 
     s3:
       region: ${AWS_REGION:ap-northeast-2}
@@ -105,3 +121,9 @@ app:
       image-model: ${OPENAI_IMAGE_MODEL:gpt-image-2}
       image-size: ${OPENAI_IMAGE_SIZE:1024x1024}
       image-quality: ${OPENAI_IMAGE_QUALITY:medium}
+
+      image-validation-enabled: ${OPENAI_WEEKLY_IMAGE_VALIDATION_ENABLED:true}
+      image-validation-model: ${OPENAI_WEEKLY_IMAGE_VALIDATION_MODEL:${OPENAI_WEEKLY_TEXT_MODEL:gpt-5.6-terra}}
+      image-validation-detail: ${OPENAI_WEEKLY_IMAGE_VALIDATION_DETAIL:low}
+      image-max-generation-attempts: ${OPENAI_WEEKLY_IMAGE_MAX_GENERATION_ATTEMPTS:2}
+      image-validation-strict: ${OPENAI_WEEKLY_IMAGE_VALIDATION_STRICT:true}

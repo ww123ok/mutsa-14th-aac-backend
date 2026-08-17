@@ -16,6 +16,9 @@ public record MeResponse(
         @JsonFormat(pattern = "HH:mm")
         LocalTime reminderTime,
 
+        @JsonFormat(pattern = "HH:mm")
+        LocalTime dayStartTime,
+
         boolean aiMemoryConsent,
         boolean onboardingCompleted,
 
@@ -33,6 +36,7 @@ public record MeResponse(
                 user.getProfileImage(),
                 user.getJob(),
                 user.getDiaryReminderTime(),
+                user.getDayStartTime(),
                 user.isAiMemoryConsent(),
                 user.isOnboardingCompleted(),
                 user.getOnboardingCompletedAt(),

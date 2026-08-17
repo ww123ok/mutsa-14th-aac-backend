@@ -43,7 +43,14 @@ public class FallbackWeeklyRewardInsightFactory {
                 title,
                 summary,
                 List.copyOf(keywords),
-                "서로 다른 색의 생활 장면과 사물이 한 주의 흐름으로 연결되는 구성"
+                WeeklyVisualCategory.GRAPHIC_POSTER,
+                "Build a portrait flat graphic poster around one large asymmetric diagonal "
+                        + "silhouette occupying the main visual field. Add three supporting "
+                        + "cropped geometric planes, one narrow halftone trail, and a small "
+                        + "misregistered print layer. Keep broad pure-white negative space, "
+                        + "no literal scene and no recognizable photographic object. Use the "
+                        + "strongest weekly color on the dominant mass, a second color on the "
+                        + "supporting planes, and the remaining colors only as small accents."
         );
     }
 }

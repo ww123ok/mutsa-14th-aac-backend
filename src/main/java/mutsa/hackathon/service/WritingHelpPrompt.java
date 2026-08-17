@@ -7,9 +7,9 @@ public record WritingHelpPrompt(
         String job,
         String memoryProfile,
         int questionOrder,
-        List<String> previousQuestions
+        List<String> previousQuestions,
+        List<String> earlierQuestions
 ) {
-
     public WritingHelpPrompt {
         if (questionOrder < 1 || questionOrder > 3) {
             throw new IllegalArgumentException(
@@ -22,6 +22,13 @@ public record WritingHelpPrompt(
                         ? List.of()
                         : List.copyOf(
                         previousQuestions
+                );
+
+        earlierQuestions =
+                earlierQuestions == null
+                        ? List.of()
+                        : List.copyOf(
+                        earlierQuestions
                 );
     }
 }

@@ -30,6 +30,7 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
             25 * 1024 * 1024;
 
     private final RestClient.Builder restClientBuilder;
+    private final OpenAiWeeklyImageQualityValidator qualityValidator;
 
     @Value("${app.openai.api-key:}")
     private String apiKey;
@@ -40,11 +41,23 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
     @Value("${app.weekly-reward.openai.image-model:gpt-image-2}")
     private String model;
 
-    @Value("${app.weekly-reward.openai.image-size:1024x1024}")
-    private String size;
+    @Value("${app.weekly-reward.openai.image-square-size:${app.weekly-reward.openai.image-size:1024x1024}}")
+    private String squareSize;
+
+    @Value("${app.weekly-reward.openai.image-portrait-size:1024x1536}")
+    private String portraitSize;
+
+    @Value("${app.weekly-reward.openai.image-landscape-size:1536x1024}")
+    private String landscapeSize;
 
     @Value("${app.weekly-reward.openai.image-quality:medium}")
     private String quality;
+
+    @Value("${app.weekly-reward.openai.image-max-generation-attempts:2}")
+    private int maxGenerationAttempts;
+
+    @Value("${app.weekly-reward.openai.image-validation-strict:true}")
+    private boolean strictValidation;
 
     @Override
     public GeneratedWeeklyImage generate(
@@ -63,18 +76,94 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
             );
         }
 
-        OpenAiImageRequest request =
-                new OpenAiImageRequest(
-                        model,
-                        buildPrompt(context, insight),
-                        1,
-                        size,
-                        quality,
-                        "opaque",
-                        "auto",
-                        "webp",
-                        "daybit-user-" + context.userId()
+        String requestSize = WeeklyImagePromptFactory.resolveImageSize(
+                insight.visualCategory(),
+                squareSize,
+                portraitSize,
+                landscapeSize
+        );
+
+        String basePrompt = buildPrompt(context, insight);
+        String currentPrompt = basePrompt;
+        int attempts = normalizeAttempts(maxGenerationAttempts);
+
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            log.info(
+                    "Weekly image request: promptVersion=V3, category={}, "
+                            + "size={}, attempt={}, promptLength={}",
+                    insight.visualCategory(),
+                    requestSize,
+                    attempt,
+                    currentPrompt.length()
+            );
+
+            GeneratedWeeklyImage image = requestImage(
+                    context,
+                    currentPrompt,
+                    requestSize
+            );
+
+            WeeklyImageQualityReview review = qualityValidator.review(
+                    image,
+                    insight.visualCategory(),
+                    requestSize
+            );
+
+            if (!review.reviewed() || review.approved()) {
+                return image;
+            }
+
+            log.warn(
+                    "Weekly image rejected by quality gate: category={}, "
+                            + "attempt={}, violations={}",
+                    insight.visualCategory(),
+                    attempt,
+                    review.violations()
+            );
+
+            if (attempt == attempts) {
+                if (strictValidation) {
+                    throw new IllegalStateException(
+                            "주간 이미지가 카테고리 품질 검수를 통과하지 못했습니다."
+                    );
+                }
+
+                log.warn(
+                        "Weekly image quality retries exhausted; returning the last "
+                                + "generated image because strict validation is disabled: category={}",
+                        insight.visualCategory()
                 );
+                return image;
+            }
+
+            currentPrompt = WeeklyImagePromptFactory.buildRetryPrompt(
+                    basePrompt,
+                    insight.visualCategory(),
+                    review
+            );
+        }
+
+        throw new IllegalStateException(
+                "주간 이미지 생성 시도 횟수가 올바르지 않습니다."
+        );
+    }
+
+    private GeneratedWeeklyImage requestImage(
+            WeeklyRewardGenerationContext context,
+            String prompt,
+            String requestSize
+    ) {
+        OpenAiImageRequest request = new OpenAiImageRequest(
+                model,
+                prompt,
+                1,
+                requestSize,
+                quality,
+                "opaque",
+                "auto",
+                "webp",
+                "daybit-user-" + context.userId()
+        );
 
         try {
             OpenAiImageResponse response =
@@ -121,6 +210,13 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
         }
     }
 
+    private int normalizeAttempts(int value) {
+        if (value < 1) {
+            return 1;
+        }
+        return Math.min(value, 3);
+    }
+
     private String buildPrompt(
             WeeklyRewardGenerationContext context,
             WeeklyRewardInsight insight
@@ -138,71 +234,9 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
                 )
                 .orElse("#D6A45C");
 
-        return """
-                Create one polished weekly reward image for DAYBIT,
-                a mobile diary archive.
-
-                SELECTED VISUAL DIRECTION:
-                %s
-
-                WEEKLY COLOR PALETTE:
-                %s
-
-                WEEKLY KEYWORDS FOR CONTEXT ONLY:
-                %s
-
-                GLOBAL REQUIREMENTS:
-                - Create one integrated scene or composition.
-                - Do not create a collage, calendar, storyboard,
-                  or list of separate daily scenes.
-                - Use the supplied palette as primary, supporting,
-                  and accent colors.
-                - The colors do not need equal visual weight.
-                - Keep one clear focal composition.
-                - Use only places, actions, objects, situations,
-                  and visual details supported by the visual direction.
-                - Do not invent emotions, relationships, events,
-                  symbols, or happy resolutions.
-                - If the week contains difficulty, represent it through
-                  a safe and restrained everyday scene without frightening,
-                  hopeless, or oppressive exaggeration.
-                - Do not display a recognizable person
-                  or visible human face.
-                - Do not imitate Studio Ghibli, any named artist,
-                  studio, franchise, copyrighted character,
-                  existing movie poster, logo, or brand identity.
-
-                NEGATIVE CONSTRAINTS:
-                - No overly lyrical or vague emotional illustration.
-                - No monochrome or nearly monochrome composition.
-                - No abstract color wash, floating symbolic fragments,
-                  empty dream haze, ambiguous surrealism,
-                  or unresolved visual metaphor.
-                - No grotesque anatomy, horror, blood, violence,
-                  self-harm, medical distress, threatening imagery,
-                  despair, or oppressive darkness.
-                - No glossy AI portrait, synthetic skin,
-                  malformed hands, uncanny faces, excessive HDR,
-                  plastic lighting, or artificial photo artifacts.
-                - No watermark, signature, logo, brand mark,
-                  random letters, or unreadable text.
-                - Do not render a user interface, calendar,
-                  phone frame, color swatch list,
-                  or explanation panel.
-
-                FINAL OUTPUT:
-                - Produce exactly one cohesive and finished image.
-                - Keep the result contemporary,
-                  visually intentional, shareable,
-                  and appropriate for a wellness diary.
-                - Do not force a positive interpretation.
-                """.formatted(
-                insight.visualMotif(),
-                palette,
-                String.join(
-                        ", ",
-                        insight.keywords()
-                )
+        return WeeklyImagePromptFactory.buildPrompt(
+                insight,
+                palette
         );
     }
 

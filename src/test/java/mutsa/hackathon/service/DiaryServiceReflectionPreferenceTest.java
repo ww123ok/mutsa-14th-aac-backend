@@ -6,6 +6,7 @@ import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -16,9 +17,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.time.LocalDate;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,8 +51,33 @@ class DiaryServiceReflectionPreferenceTest {
     private DiaryCreatePersistenceService
             diaryCreatePersistenceService;
 
+    @Mock
+    private UserDayService
+            userDayService;
+
     @InjectMocks
     private DiaryService diaryService;
+
+    private static final LocalDate
+            USER_DAY = LocalDate.of(
+            2026,
+            8,
+            14
+    );
+
+    @BeforeEach
+    void setUpUserDay() {
+        lenient()
+                .when(
+                        userDayService
+                                .currentDay(
+                                        anyLong()
+                                )
+                )
+                .thenReturn(
+                        USER_DAY
+                );
+    }
 
     @Test
     void 개인화_반영을_거부해도_성찰질문은_오늘_일기내용을_사용한다() {
@@ -193,6 +223,52 @@ class DiaryServiceReflectionPreferenceTest {
                 any(),
                 any(),
                 any()
+        );
+    }
+
+    @Test
+    void 사용자_오늘_기준일을_일기_저장에_전달한다() {
+        DiaryCreateRequest request =
+                new DiaryCreateRequest(
+                        "새벽에 작성한 일기",
+                        true
+                );
+
+        when(
+                diaryReflectionQuestionGenerator
+                        .generate(
+                                any(
+                                        DiaryReflectionPrompt.class
+                                )
+                        )
+        ).thenReturn(
+                "새벽 기록에서 가장 기억나는 장면은 무엇인가요?"
+        );
+
+        diaryService.create(
+                1L,
+                request
+        );
+
+        verify(
+                diaryCreatePersistenceService
+        ).validateCanCreate(
+                1L,
+                USER_DAY
+        );
+
+        verify(
+                diaryCreatePersistenceService
+        ).persist(
+                eq(1L),
+                eq(request),
+                eq(USER_DAY),
+                eq(
+                        "새벽 기록에서 가장 기억나는 장면은 무엇인가요?"
+                ),
+                eq(
+                        QuestionGenerationSource.AI
+                )
         );
     }
 

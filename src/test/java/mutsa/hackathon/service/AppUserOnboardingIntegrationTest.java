@@ -56,6 +56,11 @@ class AppUserOnboardingIntegrationTest {
                 before.aiMemoryConsent()
         );
 
+        assertEquals(
+                LocalTime.MIDNIGHT,
+                before.dayStartTime()
+        );
+
         MeResponse response =
                 appUserService.updateMe(
                         user.getId(),
@@ -63,6 +68,7 @@ class AppUserOnboardingIntegrationTest {
                                 "  데이빗  ",
                                 "  대학생  ",
                                 LocalTime.of(21, 0),
+                                LocalTime.of(6, 0),
                                 true
                         )
                 );
@@ -80,6 +86,11 @@ class AppUserOnboardingIntegrationTest {
         assertEquals(
                 LocalTime.of(21, 0),
                 response.reminderTime()
+        );
+
+        assertEquals(
+                LocalTime.of(6, 0),
+                response.dayStartTime()
         );
 
         assertTrue(
@@ -216,6 +227,38 @@ class AppUserOnboardingIntegrationTest {
 
         assertNull(
                 savedUser.getAiMemoryProfile()
+        );
+    }
+
+    @Test
+    void 오늘_시작_시간을_생략하면_기존_설정을_유지한다() {
+        AppUser user = saveUser();
+
+        appUserService.updateMe(
+                user.getId(),
+                new MeUpdateRequest(
+                        "데이빗",
+                        "대학생",
+                        LocalTime.of(21, 0),
+                        LocalTime.of(6, 0),
+                        true
+                )
+        );
+
+        MeResponse response =
+                appUserService.updateMe(
+                        user.getId(),
+                        new MeUpdateRequest(
+                                "데이빗",
+                                "대학생",
+                                LocalTime.of(22, 0),
+                                true
+                        )
+                );
+
+        assertEquals(
+                LocalTime.of(6, 0),
+                response.dayStartTime()
         );
     }
 

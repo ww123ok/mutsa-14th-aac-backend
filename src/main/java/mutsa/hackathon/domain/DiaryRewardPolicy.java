@@ -143,11 +143,18 @@ public final class DiaryRewardPolicy {
     }
 
     /**
-     * OpenAI가 생성하는 첫 문장은 공감체 사실 요약만 담당.
-     * 닉네임/오늘의 색 종결문은 서버가 따로 붙여서
-     * AI가 색의 심리적 의미를 임의로 설명하지 못하게 함.
+     * 최종 사용자 노출 색상 코멘트는 AI가 생성한 시각적 근거 설명을 그대로 사용합니다.
+     * 닉네임 기반 고정 문구는 더 이상 서버에서 덧붙이지 않음
      */
-    public static String normalizeCommentSummary(
+    public static String composeColorCommentSummary(
+            String commentSummary
+    ) {
+        return normalizeColorCommentSummary(
+                commentSummary
+        );
+    }
+
+    public static String normalizeColorCommentSummary(
             String commentSummary
     ) {
         if (
@@ -155,7 +162,7 @@ public final class DiaryRewardPolicy {
                         || commentSummary.isBlank()
         ) {
             throw new IllegalArgumentException(
-                    "색 보상 코멘트 요약은 필수입니다."
+                    "Color comment is required."
             );
         }
 
@@ -172,13 +179,13 @@ public final class DiaryRewardPolicy {
                         > MAX_COMMENT_SUMMARY_LENGTH
         ) {
             throw new IllegalArgumentException(
-                    "색 보상 코멘트 요약은 220자 이하여야 합니다."
+                    "Color comment must be at most 220 characters."
             );
         }
 
-        if (!normalized.endsWith("군요.")) {
+        if (!normalized.endsWith(".")) {
             throw new IllegalArgumentException(
-                    "색 보상 코멘트 요약은 공감체 '~군요.'로 마무리해야 합니다."
+                    "Color comment must end with a period '.'."
             );
         }
 
@@ -190,48 +197,11 @@ public final class DiaryRewardPolicy {
                         )
         ) {
             throw new IllegalArgumentException(
-                    "색 보상 코멘트에는 추측·분석·추천 표현을 사용할 수 없습니다."
+                    "Color comment contains a forbidden phrase."
             );
         }
 
         return normalized;
-    }
-
-    public static String composeColorComment(
-            String commentSummary,
-            String nickname
-    ) {
-        String normalizedSummary =
-                normalizeCommentSummary(
-                        commentSummary
-                );
-
-        if (
-                nickname == null
-                        || nickname.isBlank()
-        ) {
-            throw new IllegalArgumentException(
-                    "색 보상 코멘트에 사용할 닉네임은 필수입니다."
-            );
-        }
-
-        String normalizedNickname =
-                nickname
-                        .trim()
-                        .replaceAll(
-                                "\\s+",
-                                " "
-                        );
-
-        String colorComment =
-                normalizedSummary
-                        + " "
-                        + normalizedNickname
-                        + "님의 오늘의 색이에요.";
-
-        return normalizeColorComment(
-                colorComment
-        );
     }
 
     public static String normalizeColorComment(

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -77,6 +78,57 @@ public class AiMemoryProfileService {
                 );
 
         user.updateAiMemoryProfile(profileJson);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<WritingHelpMemoryContext>
+    findNextWritingHelpMemory(
+            Long userId
+    ) {
+        AppUser user = findUser(userId);
+
+        if (!user.isAiMemoryConsent()) {
+            return Optional.empty();
+        }
+
+        return userMemoryItemRepository
+                .findActiveApprovedMemories(
+                        userId,
+                        UserMemoryStatus.APPROVED,
+                        LocalDateTime.now()
+                )
+                .stream()
+                .filter(memory ->
+                        memory.getLastUsedAt() == null
+                )
+                .findFirst()
+                .map(memory ->
+                        new WritingHelpMemoryContext(
+                                memory.getId(),
+                                aiMemoryProfileBuilder.build(
+                                        List.of(memory)
+                                )
+                        )
+                );
+    }
+
+    @Transactional
+    public void markWritingHelpMemoryUsed(
+            Long userId,
+            Long memoryId
+    ) {
+        if (memoryId == null) {
+            return;
+        }
+
+        userMemoryItemRepository
+                .findByIdAndUserId(
+                        memoryId,
+                        userId
+                )
+                .ifPresent(
+                        UserMemoryItem::markUsed
+                );
     }
 
     /**

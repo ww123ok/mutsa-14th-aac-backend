@@ -5,19 +5,26 @@ import mutsa.hackathon.domain.AiQuestionType;
 import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.domain.DiaryReward;
+import mutsa.hackathon.domain.DiaryShare;
 import mutsa.hackathon.domain.QuestionGenerationSource;
+import mutsa.hackathon.domain.SharedDiaryLog;
 import mutsa.hackathon.domain.UserMemoryCategory;
 import mutsa.hackathon.domain.UserMemoryItem;
 import mutsa.hackathon.dto.DevTodayDiaryResetResponse;
+import mutsa.hackathon.global.code.ErrorCode;
+import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.AppUserRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
+import mutsa.hackathon.repository.DiaryShareRepository;
+import mutsa.hackathon.repository.SharedDiaryLogRepository;
 import mutsa.hackathon.repository.UserMemoryItemRepository;
 import mutsa.hackathon.util.MemoryHashGenerator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -26,6 +33,7 @@ import java.time.ZoneId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(
@@ -35,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
                 "app.openai.reward-enabled=false"
         }
 )
+@ActiveProfiles("dev-reset-test")
 class DevDiaryResetServiceIntegrationTest {
 
     private static final ZoneId SERVICE_ZONE =
@@ -63,6 +72,14 @@ class DevDiaryResetServiceIntegrationTest {
     @Autowired
     private UserMemoryItemRepository
             userMemoryItemRepository;
+
+    @Autowired
+    private DiaryShareRepository
+            diaryShareRepository;
+
+    @Autowired
+    private SharedDiaryLogRepository
+            sharedDiaryLogRepository;
 
     @Autowired
     private AiMemoryProfileService
@@ -367,6 +384,52 @@ class DevDiaryResetServiceIntegrationTest {
                                 today
                         )
         );
+    }
+
+    @Test
+    void resetsTodayDiaryAndUnreceivedExperienceFragmentTogether() {
+        LocalDate today = LocalDate.now(SERVICE_ZONE);
+        AppUser user = saveUser();
+        Diary diary = diaryRepository.saveAndFlush(
+                Diary.create(user, "오늘 알바에서 손님 응대가 부담스러웠다.", today)
+        );
+        DiaryShare share = diaryShareRepository.saveAndFlush(DiaryShare.request(diary));
+
+        DevTodayDiaryResetResponse response = devDiaryResetService.resetToday(user.getId());
+
+        assertTrue(response.deleted());
+        assertFalse(diaryRepository.findById(diary.getId()).isPresent());
+        assertFalse(diaryShareRepository.findById(share.getId()).isPresent());
+    }
+
+    @Test
+    void blocksResetWhenExperienceFragmentWasDeliveredToAnotherUser() {
+        LocalDate today = LocalDate.now(SERVICE_ZONE);
+        AppUser sender = saveUser();
+        AppUser receiver = saveUser();
+        Diary diary = diaryRepository.saveAndFlush(
+                Diary.create(sender, "오늘 알바에서 손님 응대가 부담스러웠다.", today)
+        );
+        DiaryShare share = DiaryShare.request(diary);
+        share.requireReview(
+                "업무 상황을 일반화한 경험입니다.",
+                "일과 부담",
+                java.util.List.of("알바"),
+                "알바 업무 부담 경험"
+        );
+        share.approve("[1.0,0.0]", "test");
+        share = diaryShareRepository.saveAndFlush(share);
+        DiaryShare persistedShare = diaryShareRepository.findByIdWithDiaryAndUser(share.getId()).orElseThrow();
+        sharedDiaryLogRepository.saveAndFlush(SharedDiaryLog.create(receiver, persistedShare, 1));
+
+        ProjectException exception = assertThrows(
+                ProjectException.class,
+                () -> devDiaryResetService.resetToday(sender.getId())
+        );
+
+        assertEquals(ErrorCode.DEV_DIARY_RESET_SHARED_DIARY_BLOCKED, exception.getErrorCode());
+        assertTrue(diaryRepository.findById(diary.getId()).isPresent());
+        assertTrue(diaryShareRepository.findById(share.getId()).isPresent());
     }
 
     private AppUser saveUser() {

@@ -15,15 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class AiWritingHelpService {
-
-    private static final ZoneId SERVICE_ZONE =
-            ZoneId.of("Asia/Seoul");
 
     private static final int DAILY_LIMIT = 3;
 
@@ -36,14 +33,20 @@ public class AiWritingHelpService {
     private final WritingHelpQuestionGenerator
             writingHelpQuestionGenerator;
 
+    private final UserDayService
+            userDayService;
+
+    private final AiMemoryProfileService
+            aiMemoryProfileService;
+
     @Transactional(readOnly = true)
     public WritingHelpStatusResponse getStatus(
             Long userId
     ) {
-        validateUserExists(userId);
-
         LocalDate today =
-                LocalDate.now(SERVICE_ZONE);
+                userDayService.currentDay(
+                        userId
+                );
 
         long usedCount =
                 countTodayQuestions(
@@ -69,7 +72,9 @@ public class AiWritingHelpService {
             Long userId
     ) {
         LocalDate today =
-                LocalDate.now(SERVICE_ZONE);
+                userDayService.currentDay(
+                        userId
+                );
 
         long usedCount =
                 countTodayQuestions(
@@ -106,18 +111,44 @@ public class AiWritingHelpService {
                         )
                         .toList();
 
+        List<String> earlierQuestions =
+                aiQuestionRepository
+                        .findTop12ByUserIdAndQuestionTypeAndAskedDateBeforeOrderByAskedDateDescQuestionOrderDesc(
+                                userId,
+                                AiQuestionType.WRITING_HELP,
+                                today
+                        )
+                        .stream()
+                        .map(
+                                AiQuestion::getQuestionText
+                        )
+                        .toList();
+
         int questionOrder =
                 Math.toIntExact(
                         usedCount + 1
                 );
 
+        Optional<WritingHelpMemoryContext> memoryContext =
+                aiMemoryProfileService
+                        .findNextWritingHelpMemory(
+                                userId
+                        );
+
         WritingHelpPrompt prompt =
                 new WritingHelpPrompt(
                         user.getNickname(),
                         user.getJob(),
-                        user.getAiMemoryProfile(),
+                        memoryContext
+                                .map(
+                                        WritingHelpMemoryContext::memoryProfile
+                                )
+                                .orElse(
+                                        null
+                                ),
                         questionOrder,
-                        previousQuestions
+                        previousQuestions,
+                        earlierQuestions
                 );
 
         /*
@@ -139,6 +170,14 @@ public class AiWritingHelpService {
                                 QuestionGenerationSource.AI
                         )
                 );
+
+        memoryContext.ifPresent(context ->
+                aiMemoryProfileService
+                        .markWritingHelpMemoryUsed(
+                                userId,
+                                context.memoryId()
+                        )
+        );
 
         return WritingHelpQuestionResponse.from(
                 question,
@@ -171,4 +210,5 @@ public class AiWritingHelpService {
             );
         }
     }
+
 }

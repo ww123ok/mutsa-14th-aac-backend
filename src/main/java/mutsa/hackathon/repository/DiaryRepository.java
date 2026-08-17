@@ -24,6 +24,12 @@ public interface DiaryRepository
     );
 
     Optional<Diary>
+    findByIdAndUserIdAndDeletedTrue(
+            Long diaryId,
+            Long userId
+    );
+
+    Optional<Diary>
     findByUserIdAndRecordedDateAndDeletedFalse(
             Long userId,
             LocalDate recordedDate
@@ -60,6 +66,31 @@ public interface DiaryRepository
             Long userId,
             LocalDate startDate,
             LocalDate endDate
+    );
+
+    @Query("""
+            select diary
+            from Diary diary
+            where diary.user.id = :userId
+              and diary.deleted = false
+              and (diary.hidden = false or diary.hidden is null)
+              and diary.recordedDate between :startDate and :endDate
+            order by diary.recordedDate asc
+            """)
+    List<Diary> findVisibleByUserIdAndRecordedDateBetween(
+            @Param("userId") Long userId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    List<Diary>
+    findAllByUserIdAndDeletedFalseAndHiddenTrueOrderByHiddenAtDesc(
+            Long userId
+    );
+
+    List<Diary>
+    findAllByUserIdAndDeletedTrueOrderByDeletedAtDesc(
+            Long userId
     );
 
     @Query("""

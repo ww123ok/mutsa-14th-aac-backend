@@ -2,15 +2,11 @@ package mutsa.hackathon.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import mutsa.hackathon.util.WeeklyRewardPeriod;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.time.Clock;
-import java.time.LocalDate;
 
 @Component
 @RequiredArgsConstructor
@@ -22,62 +18,76 @@ import java.time.LocalDate;
 @Slf4j
 public class WeeklyRewardScheduler {
 
-    private final WeeklyRewardBatchService batchService;
-    private final Clock weeklyRewardClock;
+    private final WeeklyRewardUserScheduleService
+            userScheduleService;
 
     /**
-     * 월요일에 서버가 중단되어 cron 자체를 놓친 경우에도 다음 기동 시
-     * 직전 완료 주차를 한 번 복구합니다. 이미 완료된 보상은 DB UNIQUE와
-     * Claim 정책에 의해 다시 생성되지 않습니다.
+     * 서버가 사용자별 정확한 생성 시점을 놓친 경우에도
+     * 기동 시 이미 +5분 경계가 지난 사용자만 복구
      */
     @EventListener(ApplicationReadyEvent.class)
     public void catchUpAfterRestart() {
-        runPreviousWeek("startup");
+        runCatchUp("startup");
     }
 
     /**
-     * 일요일 기록까지 포함해야 하므로 일요일 시작 00:00이 아니라,
-     * 일요일이 끝난 뒤인 월요일 00:05 KST에 지난주 생성을 시작합니다.
+     * 매분 사용자별 DAYBIT 시작 시간을 확인.
+     * 실제 보상 생성은 각 사용자의 월요일 시작 시간 + delay(기본 5분)에만 수행.
+     * 예: 06:00 사용자 -> 월요일 06:05 생성
      */
     @Scheduled(
-            cron = "${app.weekly-reward.initial-cron:0 5 0 * * MON}",
+            cron = "${app.weekly-reward.boundary-cron:0 * * * * *}",
             zone = "Asia/Seoul"
     )
-    public void createPreviousWeek() {
-        runPreviousWeek("initial");
-    }
-
-    /**
-     * 서버 재시작, 일간 색 보상 지연, S3 일시 장애를 복구하기 위해
-     * 월요일에는 매시간 15분에 동일 주차를 재검사합니다.
-     * DB UNIQUE와 생성 Claim이 중복 생성을 차단합니다.
-     */
-    @Scheduled(
-            cron = "${app.weekly-reward.retry-cron:0 15 * * * MON}",
-            zone = "Asia/Seoul"
-    )
-    public void retryPreviousWeek() {
-        runPreviousWeek("retry");
-    }
-
-    private void runPreviousWeek(String trigger) {
+    public void createAtUserBoundary() {
         try {
-            LocalDate today = LocalDate.now(weeklyRewardClock);
-            WeeklyRewardPeriod period = WeeklyRewardPeriod.previousCompletedWeek(today);
-            WeeklyRewardBatchService.BatchResult result = batchService.generateWeek(
-                    period.startDate()
+            WeeklyRewardUserScheduleService.ScheduleResult result =
+                    userScheduleService
+                            .generateUsersAtCurrentBoundary();
+
+            if (result.candidateCount() > 0) {
+                log.info(
+                        "Weekly reward user boundary finished: candidates={}, eligible={}, failed={}",
+                        result.candidateCount(),
+                        result.eligibleCount(),
+                        result.failedCount()
+                );
+            }
+        } catch (RuntimeException exception) {
+            log.error(
+                    "Weekly reward user boundary failed safely: reason={}",
+                    exception.getClass().getSimpleName()
             );
+        }
+    }
+
+    /**
+     * 일간 색 보상 지연, S3 일시 장애, 서버 중단 등을 복구하기 위해
+     * 월·화요일 매시간 15분에 이미 생성 시각이 지난 사용자만 재검사
+     */
+    @Scheduled(
+            cron = "${app.weekly-reward.retry-cron:0 15 * * * MON,TUE}",
+            zone = "Asia/Seoul"
+    )
+    public void retryDueUsers() {
+        runCatchUp("retry");
+    }
+
+    private void runCatchUp(String trigger) {
+        try {
+            WeeklyRewardUserScheduleService.ScheduleResult result =
+                    userScheduleService.catchUpDueUsers();
+
             log.info(
-                    "Weekly reward batch finished: trigger={}, weekStart={}, eligible={}, prepared={}, dispatched={}",
+                    "Weekly reward user catch-up finished: trigger={}, candidates={}, eligible={}, failed={}",
                     trigger,
-                    result.weekStartDate(),
-                    result.eligibleUserCount(),
-                    result.preparedCount(),
-                    result.dispatchedCount()
+                    result.candidateCount(),
+                    result.eligibleCount(),
+                    result.failedCount()
             );
         } catch (RuntimeException exception) {
             log.error(
-                    "Weekly reward batch failed safely: trigger={}, reason={}",
+                    "Weekly reward user catch-up failed safely: trigger={}, reason={}",
                     trigger,
                     exception.getClass().getSimpleName()
             );

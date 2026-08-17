@@ -9,6 +9,7 @@ import mutsa.hackathon.domain.QuestionGenerationSource;
 import mutsa.hackathon.dto.DiaryCreateRequest;
 import mutsa.hackathon.dto.DiaryCreateResponse;
 import mutsa.hackathon.dto.DiaryDetailResponse;
+import mutsa.hackathon.dto.DiaryHiddenResponse;
 import mutsa.hackathon.dto.DiaryResponse;
 import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
@@ -20,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -29,9 +29,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class DiaryService {
-
-    private static final ZoneId SERVICE_ZONE =
-            ZoneId.of("Asia/Seoul");
 
     private static final String
             FALLBACK_REFLECTION_QUESTION =
@@ -55,6 +52,9 @@ public class DiaryService {
     private final DiaryCreatePersistenceService
             diaryCreatePersistenceService;
 
+    private final UserDayService
+            userDayService;
+
     /**
      * 이 메서드에는 의도적으로 @Transactional을 붙이지 않음.
      * 1. 짧은 read-only transaction으로 작성 가능 여부 확인
@@ -66,14 +66,45 @@ public class DiaryService {
             DiaryCreateRequest request
     ) {
         LocalDate today =
-                LocalDate.now(
-                        SERVICE_ZONE
+                userDayService.currentDay(
+                        userId
                 );
+
+        return createForRecordedDate(
+                userId,
+                request,
+                today
+        );
+    }
+
+    /**
+     * 개발용 날짜 지정 일기 API가 기존 생성 흐름을
+     * 그대로 재사용할 수 있도록 제공하는 메서드.
+     *
+     * 일반 사용자용 Controller는 이 메서드를 직접
+     * 노출하지 않으며 기존 create()를 계속 사용합니다.
+     */
+    public DiaryCreateResponse createForRecordedDate(
+            Long userId,
+            DiaryCreateRequest request,
+            LocalDate recordedDate
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "일기 작성 요청은 필수입니다."
+            );
+        }
+
+        if (recordedDate == null) {
+            throw new IllegalArgumentException(
+                    "일기 작성 날짜는 필수입니다."
+            );
+        }
 
         diaryCreatePersistenceService
                 .validateCanCreate(
                         userId,
-                        today
+                        recordedDate
                 );
 
         GeneratedReflectionQuestion
@@ -86,7 +117,7 @@ public class DiaryService {
                 .persist(
                         userId,
                         request,
-                        today,
+                        recordedDate,
                         generatedQuestion
                                 .questionText(),
                         generatedQuestion
@@ -117,7 +148,7 @@ public class DiaryService {
 
         List<Diary> diaries =
                 diaryRepository
-                        .findAllByUserIdAndRecordedDateBetweenAndDeletedFalseOrderByRecordedDateAsc(
+                        .findVisibleByUserIdAndRecordedDateBetween(
                                 userId,
                                 yearMonth.atDay(1),
                                 yearMonth.atEndOfMonth()
@@ -159,6 +190,83 @@ public class DiaryService {
                         )
                 )
                 .toList();
+    }
+
+    /**
+     * 숨김 일기 목록 조회.
+     * 숨김은 삭제와 별개의 상태이며 일반 월간 아카이브에서만
+     * 제외됩니다. 숨김 목록에서는 최근 숨긴 일기부터 반환합니다.
+     */
+    @Transactional(readOnly = true)
+    public List<DiaryHiddenResponse> getHiddenDiaries(
+            Long userId
+    ) {
+        List<Diary> diaries =
+                diaryRepository
+                        .findAllByUserIdAndDeletedFalseAndHiddenTrueOrderByHiddenAtDesc(
+                                userId
+                        );
+
+        if (diaries.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, DiaryReward> rewardsByDiaryId =
+                diaryRewardRepository
+                        .findAllByDiaryIdIn(
+                                diaries.stream()
+                                        .map(Diary::getId)
+                                        .toList()
+                        )
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        reward ->
+                                                reward
+                                                        .getDiary()
+                                                        .getId(),
+                                        Function.identity()
+                                )
+                        );
+
+        return diaries.stream()
+                .map(diary ->
+                        DiaryHiddenResponse.from(
+                                diary,
+                                rewardsByDiaryId.get(
+                                        diary.getId()
+                                )
+                        )
+                )
+                .toList();
+    }
+
+    @Transactional
+    public void hideDiary(
+            Long userId,
+            Long diaryId
+    ) {
+        Diary diary =
+                findActiveDiary(
+                        userId,
+                        diaryId
+                );
+
+        diary.hide();
+    }
+
+    @Transactional
+    public void unhideDiary(
+            Long userId,
+            Long diaryId
+    ) {
+        Diary diary =
+                findActiveDiary(
+                        userId,
+                        diaryId
+                );
+
+        diary.unhide();
     }
 
     /**

@@ -133,6 +133,25 @@ class DiaryRewardGenerationServiceTest {
     }
 
     @Test
+    void 영구삭제되어_이미_없는_보상의_비동기_이벤트는_무시한다() {
+        when(
+                diaryRewardRepository
+                        .findByIdWithDiary(200L)
+        ).thenReturn(
+                Optional.empty()
+        );
+
+        diaryRewardGenerationService.generate(
+                200L
+        );
+
+        verifyNoInteractions(
+                diaryColorRewardGenerator,
+                diaryRewardCompletionService
+        );
+    }
+
+    @Test
     void 이미_완료된_보상은_다시_생성하지_않는다() {
         DiaryReward reward =
                 createPendingReward();
@@ -143,7 +162,7 @@ class DiaryRewardGenerationServiceTest {
                         "해결",
                         "안도"
                 ),
-                "문제를 해결하셨군요. 데이빗님의 오늘의 색이에요."
+                "오류 해결 장면이 또렷하게 이어져 선명한 방향의 색을 골랐습니다."
         );
 
         when(

@@ -10,6 +10,7 @@ import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.AppUserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -26,7 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,17 +49,52 @@ class AiWritingHelpServiceTest {
     private WritingHelpQuestionGenerator
             writingHelpQuestionGenerator;
 
+    @Mock
+    private UserDayService
+            userDayService;
+
+    @Mock
+    private AiMemoryProfileService
+            aiMemoryProfileService;
+
     @InjectMocks
     private AiWritingHelpService
             aiWritingHelpService;
 
+    private static final LocalDate
+            USER_DAY = LocalDate.of(
+            2026,
+            8,
+            14
+    );
+
+    @BeforeEach
+    void setUpUserDay() {
+        lenient()
+                .when(
+                        userDayService
+                                .currentDay(
+                                        anyLong()
+                                )
+                )
+                .thenReturn(
+                        USER_DAY
+                );
+
+        lenient()
+                .when(
+                        aiMemoryProfileService
+                                .findNextWritingHelpMemory(
+                                        anyLong()
+                                )
+                )
+                .thenReturn(
+                        Optional.empty()
+                );
+    }
+
     @Test
     void 오늘_한번_사용했다면_남은_횟수는_두번이다() {
-        when(
-                appUserRepository
-                        .existsById(1L)
-        ).thenReturn(true);
-
         when(
                 aiQuestionRepository
                         .countByUserIdAndQuestionTypeAndAskedDate(
@@ -65,7 +103,7 @@ class AiWritingHelpServiceTest {
                                         AiQuestionType
                                                 .WRITING_HELP
                                 ),
-                                any(LocalDate.class)
+                                eq(USER_DAY)
                         )
         ).thenReturn(1L);
 
@@ -101,11 +139,6 @@ class AiWritingHelpServiceTest {
 
     @Test
     void 오늘_세번_사용했다면_더_이상_질문을_생성할_수_없다() {
-        when(
-                appUserRepository
-                        .existsById(1L)
-        ).thenReturn(true);
-
         when(
                 aiQuestionRepository
                         .countByUserIdAndQuestionTypeAndAskedDate(
@@ -151,11 +184,6 @@ class AiWritingHelpServiceTest {
     @Test
     void 상태조회는_질문사용횟수를_소모하지_않는다() {
         when(
-                appUserRepository
-                        .existsById(1L)
-        ).thenReturn(true);
-
-        when(
                 aiQuestionRepository
                         .countByUserIdAndQuestionTypeAndAskedDate(
                                 eq(1L),
@@ -185,9 +213,13 @@ class AiWritingHelpServiceTest {
     @Test
     void 존재하지_않는_사용자의_상태를_조회할_수_없다() {
         when(
-                appUserRepository
-                        .existsById(999L)
-        ).thenReturn(false);
+                userDayService
+                        .currentDay(999L)
+        ).thenThrow(
+                new ProjectException(
+                        ErrorCode.USER_NOT_FOUND
+                )
+        );
 
         ProjectException exception =
                 assertThrows(
@@ -230,7 +262,7 @@ class AiWritingHelpServiceTest {
                                         AiQuestionType
                                                 .WRITING_HELP
                                 ),
-                                any(LocalDate.class)
+                                eq(USER_DAY)
                         )
         ).thenReturn(0L);
 
@@ -238,6 +270,19 @@ class AiWritingHelpServiceTest {
                 appUserRepository.findById(1L)
         ).thenReturn(
                 Optional.of(user)
+        );
+
+        WritingHelpMemoryContext memoryContext =
+                new WritingHelpMemoryContext(
+                        10L,
+                        "{\"ongoingTopics\":[{\"text\":\"diet concern\"}]}"
+                );
+
+        when(
+                aiMemoryProfileService
+                        .findNextWritingHelpMemory(1L)
+        ).thenReturn(
+                Optional.of(memoryContext)
         );
 
         when(
@@ -248,7 +293,7 @@ class AiWritingHelpServiceTest {
                                         AiQuestionType
                                                 .WRITING_HELP
                                 ),
-                                any(LocalDate.class)
+                                eq(USER_DAY)
                         )
         ).thenReturn(
                 List.of()
@@ -293,6 +338,25 @@ class AiWritingHelpServiceTest {
                 response.generationSource()
         );
 
+        ArgumentCaptor<AiQuestion>
+                questionCaptor =
+                ArgumentCaptor.forClass(
+                        AiQuestion.class
+                );
+
+        verify(
+                aiQuestionRepository
+        ).save(
+                questionCaptor.capture()
+        );
+
+        assertEquals(
+                USER_DAY,
+                questionCaptor
+                        .getValue()
+                        .getAskedDate()
+        );
+
         ArgumentCaptor<WritingHelpPrompt> captor =
                 ArgumentCaptor.forClass(
                         WritingHelpPrompt.class
@@ -320,6 +384,23 @@ class AiWritingHelpServiceTest {
         assertTrue(
                 prompt.previousQuestions()
                         .isEmpty()
+        );
+
+        assertTrue(
+                prompt.earlierQuestions()
+                        .isEmpty()
+        );
+
+        assertEquals(
+                memoryContext.memoryProfile(),
+                prompt.memoryProfile()
+        );
+
+        verify(
+                aiMemoryProfileService
+        ).markWritingHelpMemoryUsed(
+                1L,
+                10L
         );
     }
 
@@ -476,4 +557,5 @@ class AiWritingHelpServiceTest {
                 never()
         ).findById(any());
     }
+
 }

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -20,7 +21,6 @@ import java.util.*;
 @Slf4j
 public class ExperienceFragmentService {
     private static final int RECEIVE_COST = 1;
-    private static final int SHARE_REWARD_INTERVAL = 3;
 
     private final DiaryRepository diaryRepository;
     private final DiaryShareRepository diaryShareRepository;
@@ -31,11 +31,15 @@ public class ExperienceFragmentService {
     private final ExperienceFragmentProcessor experienceFragmentProcessor;
     private final ExperienceEmbeddingGenerator experienceEmbeddingGenerator;
     private final ExperienceFragmentDraftPersistenceService draftPersistenceService;
+    private final ExperienceFragmentApprovalPersistenceService approvalPersistenceService;
     private final ApplicationEventPublisher eventPublisher;
     private final JsonMapper jsonMapper;
 
     @Value("${app.experience-sharing.minimum-similarity:0.78}")
     private double minimumSimilarity;
+
+    @Value("${app.experience-sharing.auto-approval-days:5}")
+    private int autoApprovalDays;
 
     @Transactional
     public ExperienceFragmentResponse request(Long userId, Long diaryId) {
@@ -66,22 +70,7 @@ public class ExperienceFragmentService {
     /** Embedding is generated only after the sender confirms the anonymized draft. */
     public ExperienceFragmentResponse approve(Long userId, Long shareId) {
         DiaryShare share = ownedShare(userId, shareId);
-        if (share.getShareStatus() != DiaryShareStatus.REVIEW_REQUIRED) throw new IllegalStateException("This fragment cannot be approved.");
-        ExperienceEmbedding embedding = experienceEmbeddingGenerator.generate(share.getMatchingText());
-        return persistApproval(userId, shareId, embedding);
-    }
-
-    @Transactional
-    public ExperienceFragmentResponse persistApproval(Long userId, Long shareId, ExperienceEmbedding embedding) {
-        DiaryShare share = ownedShare(userId, shareId);
-        if (share.getShareStatus() != DiaryShareStatus.REVIEW_REQUIRED) throw new IllegalStateException("This fragment cannot be approved.");
-        try {
-            share.approve(jsonMapper.writeValueAsString(embedding.values()), embedding.model());
-        } catch (Exception exception) {
-            throw new IllegalStateException("Embedding could not be stored.", exception);
-        }
-        rewardEveryThirdShare(share);
-        return ExperienceFragmentResponse.from(share);
+        return approveReviewRequiredShare(share, userId);
     }
 
     @Transactional
@@ -97,13 +86,52 @@ public class ExperienceFragmentService {
                 .map(ExperienceFragmentResponse::from).toList();
     }
 
+    @Transactional(readOnly = true)
+    public ExperienceFragmentReviewResponse review(Long userId, Long shareId) {
+        return ExperienceFragmentReviewResponse.from(ownedShare(userId, shareId));
+    }
+
+    /**
+     * Approves only drafts that have remained reviewable for the configured period.
+     * The embedding request deliberately stays outside a transaction.
+     */
+    public void autoApproveExpiredReviews() {
+        LocalDateTime cutoff = LocalDateTime.now().minusDays(autoApprovalDays);
+        diaryShareRepository.findIdsReadyForAutoApproval(DiaryShareStatus.REVIEW_REQUIRED, cutoff)
+                .forEach(this::autoApprove);
+    }
+
+    @Transactional
+    public ExperienceFragmentFeedbackResponse submitFeedback(
+            Long receiverId,
+            Long deliveryId,
+            ExperienceFragmentFeedbackRequest request
+    ) {
+        SharedDiaryLog delivery = sharedDiaryLogRepository.findByIdAndReceiverId(deliveryId, receiverId)
+                .orElseThrow(() -> new ProjectException(ErrorCode.SHARED_DIARY_NOT_AVAILABLE));
+        delivery.recordFeedbackSummary(request.content());
+        return ExperienceFragmentFeedbackResponse.from(delivery);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExperienceFragmentFeedbackResponse> firstThreeFeedbacks(Long senderId, Long shareId) {
+        ownedShare(senderId, shareId);
+        return sharedDiaryLogRepository
+                .findTop3ByDiaryShareIdAndFeedbackSummaryIsNotNullOrderByFeedbackSubmittedAtAscIdAsc(shareId)
+                .stream()
+                .map(ExperienceFragmentFeedbackResponse::from)
+                .toList();
+    }
+
     /** Hybrid matching: exact approved-keyword overlap narrows candidates, cosine similarity ranks them. */
+    @Transactional(readOnly = true)
     public Optional<ExperienceMatchResponse> findBestMatch(Long receiverId, Long diaryId) {
         Diary queryDiary = diaryRepository.findByIdAndUserIdAndDeletedFalse(diaryId, receiverId)
                 .orElseThrow(() -> new ProjectException(ErrorCode.DIARY_NOT_FOUND));
         ExperienceEmbedding queryEmbedding = experienceEmbeddingGenerator.generate(queryDiary.getContent());
         String queryText = queryDiary.getContent().toLowerCase(Locale.ROOT);
         return diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED).stream()
+                .filter(share -> !share.getDiary().isDeleted())
                 .filter(share -> !share.getDiary().getUser().getId().equals(receiverId))
                 .filter(share -> share.getKeywords().stream().anyMatch(keyword -> queryText.contains(keyword.toLowerCase(Locale.ROOT))))
                 .filter(share -> !sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiverId, share.getId()))
@@ -162,6 +190,7 @@ public class ExperienceFragmentService {
         AppUser receiver = appUserRepository.findById(receiverId).orElseThrow(() -> new ProjectException(ErrorCode.USER_NOT_FOUND));
         DiaryShare share = diaryShareRepository.findByIdWithDiaryAndUser(shareId)
                 .filter(candidate -> candidate.getShareStatus() == DiaryShareStatus.APPROVED)
+                .filter(candidate -> !candidate.getDiary().isDeleted())
                 .orElseThrow(() -> new ProjectException(ErrorCode.SHARE_NOT_FOUND));
         if (sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiverId, shareId)) {
             throw new ProjectException(ErrorCode.SHARED_DIARY_ALREADY_RECEIVED);
@@ -210,6 +239,34 @@ public class ExperienceFragmentService {
         } catch (Exception exception) { return null; }
     }
 
+    private ExperienceFragmentResponse approveReviewRequiredShare(DiaryShare share, Long userId) {
+        if (share.getShareStatus() != DiaryShareStatus.REVIEW_REQUIRED) {
+            throw new IllegalStateException("This fragment cannot be approved.");
+        }
+        ExperienceEmbedding embedding = experienceEmbeddingGenerator.generate(share.getMatchingText());
+        return approvalPersistenceService.approve(userId, share.getId(), embedding);
+    }
+
+    private void autoApprove(Long shareId) {
+        DiaryShare share = diaryShareRepository.findByIdWithDiaryAndUser(shareId).orElse(null);
+        if (share == null || share.getShareStatus() != DiaryShareStatus.REVIEW_REQUIRED) {
+            return;
+        }
+        LocalDateTime reviewAvailableAt = Optional.ofNullable(share.getReviewAvailableAt())
+                .orElse(share.getCreatedAt());
+        if (reviewAvailableAt.isAfter(LocalDateTime.now().minusDays(autoApprovalDays))) {
+            return;
+        }
+
+        try {
+            approveReviewRequiredShare(share, share.getDiary().getUser().getId());
+            log.info("Experience fragment auto-approved: shareId={}", shareId);
+        } catch (RuntimeException exception) {
+            log.warn("Experience fragment auto-approval failed: shareId={}, reason={}", shareId,
+                    exception.getClass().getSimpleName());
+        }
+    }
+
     private double cosine(List<Double> left, List<Double> right) {
         double dot = 0, leftNorm = 0, rightNorm = 0;
         for (int i = 0; i < left.size(); i++) { dot += left.get(i) * right.get(i); leftNorm += left.get(i) * left.get(i); rightNorm += right.get(i) * right.get(i); }
@@ -222,13 +279,4 @@ public class ExperienceFragmentService {
                 .orElseThrow(() -> new ProjectException(ErrorCode.SHARE_NOT_FOUND));
     }
 
-    private void rewardEveryThirdShare(DiaryShare share) {
-        long approved = diaryShareRepository.findAllByDiaryUserIdOrderByCreatedAtDesc(share.getDiary().getUser().getId()).stream()
-                .filter(item -> item.getShareStatus() == DiaryShareStatus.APPROVED).count();
-        if (approved % SHARE_REWARD_INTERVAL != 0) return;
-        AppUser sender = share.getDiary().getUser();
-        sender.addCredit(1); share.markRewarded(1);
-        creditTransactionRepository.save(CreditTransaction.create(sender, CreditTransactionType.SHARE_REWARD, 1, sender.getCredit(),
-                CreditReferenceType.DIARY_SHARE, share.getId(), "Three experience fragments shared"));
-    }
 }
