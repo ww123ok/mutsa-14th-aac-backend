@@ -15,6 +15,7 @@ import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import mutsa.hackathon.repository.DiaryShareRepository;
+import mutsa.hackathon.repository.ExperienceFragmentArrivalRepository;
 import mutsa.hackathon.repository.SharedDiaryLogRepository;
 import mutsa.hackathon.repository.UserMemoryItemRepository;
 import mutsa.hackathon.repository.WeeklyRewardEntryRepository;
@@ -38,6 +39,7 @@ public class DiaryTrashService {
     private final AiQuestionRepository aiQuestionRepository;
     private final UserMemoryItemRepository userMemoryItemRepository;
     private final DiaryShareRepository diaryShareRepository;
+    private final ExperienceFragmentArrivalRepository experienceFragmentArrivalRepository;
     private final SharedDiaryLogRepository sharedDiaryLogRepository;
     private final WeeklyRewardEntryRepository weeklyRewardEntryRepository;
     private final WeeklyRewardRepository weeklyRewardRepository;
@@ -132,6 +134,7 @@ public class DiaryTrashService {
                 diaryId
         );
 
+        deleteArrivalsUsingQueryDiary(diaryId);
         deleteExperienceFragment(diaryId);
         invalidateUnfinishedWeeklyRewards(diaryId);
 
@@ -158,12 +161,31 @@ public class DiaryTrashService {
         );
     }
 
+    /**
+     * 이 일기를 매칭 기준(query diary)으로 생성된 수신함 도착 정보는
+     * 원본 일기보다 먼저 제거한다. 이미 수신이 끝난 전달 기록은
+     * queryDiary FK를 사용하지 않으므로 그대로 보존됨.
+     */
+    private void deleteArrivalsUsingQueryDiary(
+            Long diaryId
+    ) {
+        experienceFragmentArrivalRepository
+                .deleteAllByQueryDiaryId(diaryId);
+        experienceFragmentArrivalRepository.flush();
+    }
+
     private void deleteExperienceFragment(
             Long diaryId
     ) {
         diaryShareRepository
                 .findByDiaryId(diaryId)
                 .ifPresent(share -> {
+                    experienceFragmentArrivalRepository
+                            .deleteAllByDiaryShareId(
+                                    share.getId()
+                            );
+                    experienceFragmentArrivalRepository.flush();
+
                     sharedDiaryLogRepository
                             .deleteAllByDiaryShareId(
                                     share.getId()

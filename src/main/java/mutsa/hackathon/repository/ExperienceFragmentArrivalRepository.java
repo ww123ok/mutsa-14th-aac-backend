@@ -13,6 +13,10 @@ public interface ExperienceFragmentArrivalRepository extends JpaRepository<Exper
 
     boolean existsByReceiverIdAndDiaryShareId(Long receiverId, Long diaryShareId);
 
+    long deleteAllByQueryDiaryId(Long queryDiaryId);
+
+    long deleteAllByDiaryShareId(Long diaryShareId);
+
     @Query("""
             select arrival from ExperienceFragmentArrival arrival
             join fetch arrival.diaryShare share
