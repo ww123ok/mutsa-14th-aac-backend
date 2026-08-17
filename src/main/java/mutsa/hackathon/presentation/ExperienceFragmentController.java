@@ -39,6 +39,7 @@ public class  ExperienceFragmentController {
     @GetMapping("/inbox")
     public ApiResponse<List<ExperienceFragmentInboxResponse>> inbox(@AuthenticationPrincipal CustomOAuth2User user) {
         return ApiResponse.onSuccess(experienceFragmentService.inbox(user.getKakaoUserProfile().id()));
+    }
     @GetMapping("/{shareId}/review")
     public ApiResponse<ExperienceFragmentReviewResponse> review(
             @AuthenticationPrincipal CustomOAuth2User user,
@@ -78,6 +79,7 @@ public class  ExperienceFragmentController {
     ) {
         return ApiResponse.onSuccess(experienceFragmentService.receiveFromInbox(user.getKakaoUserProfile().id(), arrivalId));
     @PostMapping("/deliveries/{deliveryId}/feedback")
+        }
     public ApiResponse<ExperienceFragmentFeedbackResponse> submitFeedback(
             @AuthenticationPrincipal CustomOAuth2User user,
             @PathVariable Long deliveryId,
