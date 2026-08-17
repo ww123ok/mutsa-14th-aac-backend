@@ -66,10 +66,35 @@ public class Diary extends BaseEntity {
     @Column(name = "hidden_at")
     private LocalDateTime hiddenAt;
 
+    /**
+     * 이 일기의 본문을 이후 개인화 질문 문맥으로 재사용해도 되는지에 대한
+     * 일기 작성 당시의 사용자 선택.
+     *
+     * 기존 운영 row는 컬럼 추가 직후 null일 수 있으므로 nullable로 두고,
+     * canUseDiaryContentForPersonalization()에서 legacy memoryAppliedAt을
+     * 보수적인 호환 신호로 사용.
+     */
+    @Column(name = "personalization_uses_diary_content")
+    private Boolean personalizationUsesDiaryContent;
+
     @Column(name = "memory_applied_at")
     private LocalDateTime memoryAppliedAt;
 
     public static Diary create(AppUser user, String content, LocalDate recordedDate) {
+        return create(
+                user,
+                content,
+                recordedDate,
+                true
+        );
+    }
+
+    public static Diary create(
+            AppUser user,
+            String content,
+            LocalDate recordedDate,
+            boolean personalizationUsesDiaryContent
+    ) {
         if (user == null) {
             throw new IllegalArgumentException("일기 작성자는 필수입니다.");
         }
@@ -87,7 +112,26 @@ public class Diary extends BaseEntity {
                 .recordedDate(recordedDate)
                 .deleted(false)
                 .hidden(false)
+                .personalizationUsesDiaryContent(
+                        personalizationUsesDiaryContent
+                )
                 .build();
+    }
+
+    /**
+     * 작성 도움의 최근 맥락에서 원문을 직접 사용할 수 있는지 판단.
+     * 신규 일기: 작성 시 저장한 명시적 선택을 그대로 따름.
+     * 기존 일기: 명시적 선택 컬럼이 null이면, 과거 개인화 파이프라인이
+     * 정상 완료되어 memoryAppliedAt이 남아 있는 일기만 opt-in으로 간주.
+     */
+    public boolean canUseDiaryContentForPersonalization() {
+        if (personalizationUsesDiaryContent != null) {
+            return Boolean.TRUE.equals(
+                    personalizationUsesDiaryContent
+            );
+        }
+
+        return memoryAppliedAt != null;
     }
 
     public boolean isHidden() {

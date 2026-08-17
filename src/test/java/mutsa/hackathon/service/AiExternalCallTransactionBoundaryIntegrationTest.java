@@ -2,6 +2,7 @@ package mutsa.hackathon.service;
 
 import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.dto.DiaryCreateRequest;
+import mutsa.hackathon.dto.WritingHelpQuestionRequest;
 import mutsa.hackathon.repository.AppUserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -90,9 +91,21 @@ class AiExternalCallTransactionBoundaryIntegrationTest {
                         .reflectionTransactionActive()
         );
 
+        /*
+         * 작성 도움 로직 개편 후 Request Body가 없는 1회차는
+         * 최근맥락이 없으면 PREDEFINED 범용 질문으로 fallback하며
+         * OpenAI를 호출하지 않는 것이 정상이다.
+         *
+         * 이 테스트의 목적은 "OpenAI 외부 호출이 DB transaction 밖에서
+         * 실행되는지"를 검증하는 것이므로, CURRENT_DRAFT 경로를 명시적으로
+         * 선택해 실제 WritingHelpQuestionGenerator 호출을 발생시킨다.
+         */
         aiWritingHelpService
                 .generateQuestion(
-                        savedUser.getId()
+                        savedUser.getId(),
+                        new WritingHelpQuestionRequest(
+                                "친구와 카페에 갔다."
+                        )
                 );
 
         assertTrue(

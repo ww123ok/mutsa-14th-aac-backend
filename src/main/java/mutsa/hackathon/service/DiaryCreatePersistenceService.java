@@ -108,7 +108,9 @@ public class DiaryCreatePersistenceService {
                 saveDiary(
                         user,
                         request.content(),
-                        recordedDate
+                        recordedDate,
+                        request
+                                .shouldUseDiaryContentForPersonalization()
                 );
 
         DiaryReward reward =
@@ -185,7 +187,8 @@ public class DiaryCreatePersistenceService {
     private Diary saveDiary(
             AppUser user,
             String content,
-            LocalDate recordedDate
+            LocalDate recordedDate,
+            boolean personalizationUsesDiaryContent
     ) {
         try {
             return diaryRepository
@@ -193,7 +196,8 @@ public class DiaryCreatePersistenceService {
                             Diary.create(
                                     user,
                                     content,
-                                    recordedDate
+                                    recordedDate,
+                                    personalizationUsesDiaryContent
                             )
                     );
 
