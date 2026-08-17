@@ -89,6 +89,22 @@ class OpenAiWeeklyVisualPlanGeneratorTest {
         assertTrue(instructions.contains(
                 "Do not create a title, summary, keyword list"
         ));
+        assertTrue(instructions.contains(
+                "visualMotif is the content source for the image generator"
+        ));
+        assertTrue(instructions.contains(
+                "The image generator applies the full, category-specific style rules separately"
+        ));
+        String normalizedInstructions = instructions.replaceAll(
+                "\\s+",
+                " "
+        );
+        assertTrue(normalizedInstructions.contains(
+                "do not erase them merely because the final rendering will be graphic"
+        ));
+        assertFalse(instructions.contains(
+                "Do not name or describe literal locations, buildings, concerts"
+        ));
     }
 
     private WeeklyRewardGenerationContext context() {

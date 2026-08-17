@@ -14,75 +14,74 @@ final class WeeklyVisualCategorySelectionPolicy {
     );
 
     static final String EXACT_SELECTION_RULES = """
-            Weekly Image Category Selection Criteria
+            ## Weekly Image Category Selection Criteria
 
-            First, determine what is central to this week's records.
+            First, determine what the central characteristic of this week's records is.
 
-            ### 1. Pattern-centered
+            ### 1. Pattern-Centered
 
-            This applies when behaviors, objects, or lifestyle patterns repeat across multiple dates,
-            or when structures, relationships, or changes between dates form the defining feature of the week.
+            Use this group when repeated actions, objects, lifestyle patterns, or structures, relationships, and changes across different days form the main characteristic of the week.
 
-            #### Character image
+            #### Character Image
 
-            - Select this when the defining feature of the week remains intact even if only one behavior, object, or lifestyle pattern is extracted.
-            - This is appropriate when the same element repeats and **the repetition itself can explain the week**.
-            - This includes cases where one central behavior or subject continues even when the place or situation changes.
+            - Select this category when the week's distinctive character remains even if only one action, object, or lifestyle pattern is extracted.
+            - It is suitable when the same element repeats and **that repetition itself is enough to explain the week**.
+            - This includes cases where the location or situation changes, but one central action or subject continues to recur.
 
-            Examples: continuously working on assignments, exercising frequently, drinking coffee every day, or repeatedly encountering a particular object.
+            Examples: repeatedly working on assignments, exercising often, drinking coffee every day, or a specific object appearing repeatedly.
 
-            #### Graphic design poster image
+            #### Graphic Design Poster Image
 
-            - Select this when the defining feature of the week disappears if only one behavior or object is extracted.
-            - Even when a repeated element exists, this is appropriate when **the sequence, comparison, increase or decrease, transition, or relationship with other elements must also be shown for the defining feature of the week to remain intact**.
-            - Select this when the structure among multiple elements is more important than any one element itself.
+            - Select this category when the week's distinctive character disappears if only one action or object is extracted.
+            - Even when elements repeat, this category is suitable when **the week's identity can only be preserved by also showing sequence, comparison, increase or decrease, transition, or relationships with other elements**.
+            - Select this when the structure among multiple elements matters more than any single element itself.
 
-            Examples: schedules gradually accumulating, two states of daily life alternating, moving through several places in a consistent order, or the amount or manner of the same behavior changing from date to date.
-
-            ---
-
-            ### 2. Mood-centered
-
-            This applies when the recurring mood and emotional impression across the whole week are more central than specific behaviors, objects, or spaces.
-
-            #### Oil-painting-style image
-
-            - Among mood-centered records, select this when **this week's colors are generally medium-saturation or low-saturation**.
-            - It represents a week in which multiple emotions or scenes softly overlap.
-
-            #### Album cover image
-
-            - Among mood-centered records, select this when **this week's colors are generally medium-saturation or high-saturation**.
-            - It compresses the mood of the week into one strong main visual.
+            Examples: schedules gradually piling up, two different lifestyle states alternating, moving through several places in a consistent sequence, or the amount or manner of the same action changing across different days.
 
             ---
 
-            ### 3. Space-centered
+            ### 2. Atmosphere-Centered
 
-            This applies when experiences in a particular place or space form the defining feature of the week.
+            Use this group when the overall atmosphere and emotional impression repeated throughout the week are more central than specific actions, objects, or spaces.
 
-            #### Pixel-art / game-scene image
+            #### Oil Painting Image
 
-            - Select this when **the experience of using a space** is central.
-            - This is appropriate when not only the place itself, but also what the user did there, which objects the user used, and what kind of life or routine took place there are important.
+            - Among atmosphere-centered records, select this category when **the week's colors are generally medium- or low-saturation**.
+            - Use it to express a week in which multiple emotions or scenes overlap softly.
 
-            Examples: working and resting in a room, repeatedly studying at a cafe, or moving through school spaces while performing various activities.
+            #### Album Cover Image
 
-            #### Photorealistic landscape / space image
+            - Among atmosphere-centered records, select this category when **the week's colors are generally medium- or high-saturation**.
+            - Compress the overall atmosphere of the week into one strong central visual.
 
-            - Select this when **the experience of viewing a space** is central.
-            - This is appropriate when the space itself—such as the appearance of the place, scenery, light, weather, buildings, streets, or natural environment—is more central to the records than the user's actions.
+            ---
 
-            Examples: a rainy street, a city at dawn, a landscape at sunset, the sea, or the appearance of a particular place.
+            ### 3. Space-Centered
+
+            Use this group when experiences related to specific places or spaces form the main characteristic of the week.
+
+            #### Pixel Art / Game Scene Image
+
+            - Select this category when **the experience of using a space** is central.
+            - It is suitable when not only the place itself, but also what the user did there, which objects they used, and what kind of routines or everyday activities took place within that space are important.
+
+            Examples: working and resting in a room, repeatedly studying at a cafe, or moving through school spaces while carrying out different activities.
+
+            #### Photographic Landscape / Space Image
+
+            - Select this category when **the experience of seeing a space** is central.
+            - It is suitable when the appearance of the place itself—such as scenery, light, weather, buildings, streets, or natural surroundings—is more important than the user's actions.
+
+            Examples: a rainy street, a city at dawn, a sunset landscape, the ocean, or the appearance of a particular place.
 
             ---
 
             ## Decision Principles
 
-            - First select one central group from `pattern / mood / space` for this week's records, and then select a detailed category within that group.
-            - Do not select a category simply because a particular element appears.
-            - When multiple conditions appear at the same time, base the decision on **the axis whose removal would cause the greatest loss of the week's defining character**.
-            - Prioritize the actual structure of the user's records and this week's colors over the beauty or stylistic appeal of an image category.
+            - First select one central group among `Pattern / Atmosphere / Space`, then choose the detailed category within that group.
+            - Do not select a category simply because a certain element appears in the records.
+            - When multiple conditions apply at the same time, prioritize **the axis whose removal would cause the greatest loss of the week's distinctive character**.
+            - Prioritize the structure of the user's actual records and the week's colors over the attractiveness or stylistic preference of the image category.
             """;
 
     private WeeklyVisualCategorySelectionPolicy() {
