@@ -171,6 +171,12 @@ public enum ErrorCode
             "이미 전달받은 공유 일기입니다."
     ),
 
+    SHARED_DIARY_FEEDBACK_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT,
+            "SHARE409_4",
+            "이미 반응을 보낸 경험조각입니다."
+    ),
+
     INSUFFICIENT_CREDIT(
             HttpStatus.CONFLICT,
             "CREDIT409_1",
