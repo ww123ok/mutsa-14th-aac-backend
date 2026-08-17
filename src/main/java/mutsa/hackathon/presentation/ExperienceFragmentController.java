@@ -79,7 +79,6 @@ public class  ExperienceFragmentController {
     ) {
         return ApiResponse.onSuccess(experienceFragmentService.receiveFromInbox(user.getKakaoUserProfile().id(), arrivalId));
     @PostMapping("/deliveries/{deliveryId}/feedback")
-        }
     public ApiResponse<ExperienceFragmentFeedbackResponse> submitFeedback(
             @AuthenticationPrincipal CustomOAuth2User user,
             @PathVariable Long deliveryId,
