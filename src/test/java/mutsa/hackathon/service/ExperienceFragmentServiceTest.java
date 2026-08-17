@@ -142,6 +142,35 @@ class ExperienceFragmentServiceTest {
     }
 
     @Test
+    void rejectsDuplicateExperienceFragmentRequestWithProjectException() {
+        Diary diary = diary(user(1L), 10L, "shared diary");
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(diary));
+        when(diaryShareRepository.existsByDiaryId(10L)).thenReturn(true);
+
+        ProjectException exception = assertThrows(
+                ProjectException.class,
+                () -> service.request(1L, 10L)
+        );
+
+        assertEquals(ErrorCode.SHARE_ALREADY_REQUESTED, exception.getErrorCode());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void rejectsUnavailableReviewStatusWithProjectException() {
+        DiaryShare requested = DiaryShare.request(diary(user(1L), 10L, "shared diary"));
+        when(diaryShareRepository.findByIdWithDiaryAndUser(20L)).thenReturn(Optional.of(requested));
+
+        ProjectException exception = assertThrows(
+                ProjectException.class,
+                () -> service.approve(1L, 20L)
+        );
+
+        assertEquals(ErrorCode.SHARE_REVIEW_NOT_AVAILABLE, exception.getErrorCode());
+        verifyNoInteractions(experienceEmbeddingGenerator, approvalPersistenceService);
+    }
+
+    @Test
     void storesOnlyAnInboxArrivalWhenAutomaticMatchingFindsAnEligibleFragment() {
         ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
         ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
@@ -195,6 +224,47 @@ class ExperienceFragmentServiceTest {
         assertEquals(0, receiver.getCredit());
         assertEquals(ExperienceFragmentArrivalStatus.RECEIVED, arrival.getStatus());
         verify(creditTransactionRepository).save(any(CreditTransaction.class));
+    }
+
+    @Test
+    void removesStaleArrivalFromInboxWhenSourceShareIsWithdrawn() {
+        AppUser receiver = user(1L);
+        DiaryShare share = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("topic"), "[1.0,0.0]");
+        share.withdraw();
+        ExperienceFragmentArrival arrival = ExperienceFragmentArrival.pending(
+                receiver, diary(receiver, 10L, "query"), share
+        );
+        when(experienceFragmentArrivalRepository.findAllByReceiverIdAndStatusWithShare(
+                1L, ExperienceFragmentArrivalStatus.PENDING
+        )).thenReturn(List.of(arrival));
+
+        assertTrue(service.inbox(1L).isEmpty());
+
+        verify(experienceFragmentArrivalRepository).deleteAll(List.of(arrival));
+    }
+
+    @Test
+    void removesStaleArrivalBeforeCreditIsCharged() {
+        AppUser receiver = user(1L);
+        receiver.addCredit(1);
+        DiaryShare share = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("topic"), "[1.0,0.0]");
+        share.withdraw();
+        ExperienceFragmentArrival arrival = ExperienceFragmentArrival.pending(
+                receiver, diary(receiver, 10L, "query"), share
+        );
+        when(experienceFragmentArrivalRepository.findByIdWithReceiverAndShare(30L))
+                .thenReturn(Optional.of(arrival));
+
+        ProjectException exception = assertThrows(
+                ProjectException.class,
+                () -> service.receiveFromInbox(1L, 30L)
+        );
+
+        assertEquals(ErrorCode.SHARED_DIARY_NOT_AVAILABLE, exception.getErrorCode());
+        assertEquals(1, receiver.getCredit());
+        verify(experienceFragmentArrivalRepository).delete(arrival);
+        verify(sharedDiaryLogRepository, never()).save(any());
+        verify(creditTransactionRepository, never()).save(any());
     }
 
     private AppUser user(Long id) {
