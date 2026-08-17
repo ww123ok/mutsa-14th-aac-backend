@@ -22,13 +22,18 @@ class WeeklyImagePromptFactoryTest {
                 "#D6A45C, #6A8FB3, #C9878A"
         );
 
-        assertTrue(prompt.contains("SELECTED CATEGORY: PHOTO_LANDSCAPE"));
+        assertTrue(prompt.contains("# DAYBIT FINAL WEEKLY IMAGE GENERATION PROMPT"));
+        assertTrue(prompt.contains("# PHOTO LANDSCAPE"));
+        assertTrue(prompt.contains(
+                "Use the visual motif as the content source for the image, "
+                        + "and use the selected category rules as the style source."
+        ));
         assertFalse(prompt.contains("이번 주에는 학교 주변 이동과 산책이 반복됐습니다."));
         assertFalse(prompt.contains("WEEKLY CONTEXT KEYWORDS"));
         assertTrue(prompt.contains("#D6A45C, #6A8FB3, #C9878A"));
-        assertTrue(prompt.contains("APPROVED ART-DIRECTION BRIEF"));
-        assertTrue(prompt.contains("real photograph captured"));
-        assertTrue(prompt.contains("whole week, not one day"));
+        assertTrue(prompt.contains("Approved Visual Motif"));
+        assertTrue(prompt.contains("captured with a real physical camera"));
+        assertTrue(prompt.contains("one plausible real-world place and one moment"));
         assertFalse(prompt.contains("Studio Ghibli imitation"));
 
         assertEquals(
@@ -73,6 +78,26 @@ class WeeklyImagePromptFactoryTest {
                         "1536x1024"
                 )
         );
+
+        assertEquals(
+                "1024x1024",
+                WeeklyImagePromptFactory.resolveImageSize(
+                        WeeklyVisualCategory.OIL_ACRYLIC,
+                        "1024x1024",
+                        "1024x1536",
+                        "1536x1024"
+                )
+        );
+
+        assertEquals(
+                "1536x1024",
+                WeeklyImagePromptFactory.resolveImageSize(
+                        WeeklyVisualCategory.ALBUM_COVER,
+                        "1024x1024",
+                        "1024x1536",
+                        "1536x1024"
+                )
+        );
     }
 
     @Test
@@ -88,13 +113,48 @@ class WeeklyImagePromptFactoryTest {
                 "#7D2B22, #9463B7, #7B5948, #8A20E8"
         );
 
-        assertTrue(prompt.contains("DAYBIT WEEKLY IMAGE PROMPT VERSION: V3"));
+        assertTrue(prompt.contains("# DAYBIT FINAL WEEKLY IMAGE GENERATION PROMPT"));
         assertTrue(prompt.contains("portrait-oriented contemporary 2D graphic design poster"));
-        assertTrue(prompt.contains("Never show several recognizable places"));
-        assertTrue(prompt.contains("One unmistakable dominant silhouette"));
-        assertTrue(prompt.contains("pure #FFFFFF"));
-        assertTrue(prompt.contains("no Korean, DAYBIT, clean headline"));
+        assertTrue(prompt.contains("Establish one dominant silhouette, form, or typographic mass"));
+        assertTrue(prompt.contains("approximately 2–4 secondary forms"));
+        assertTrue(prompt.contains("clean pure-white `#FFFFFF` background"));
+        assertTrue(prompt.contains("no DAYBIT"));
+        assertTrue(prompt.contains("no Korean"));
         assertTrue(prompt.length() < 30_000);
+    }
+
+    @Test
+    void 모든_신규_카테고리에_최신_스타일_원문을_포함한다() {
+        assertCategoryPromptContains(
+                WeeklyVisualCategory.NON_HUMAN_CHARACTER,
+                "Exactly one animal must be the visual focus of the image.",
+                "clean single-color studio background"
+        );
+        assertCategoryPromptContains(
+                WeeklyVisualCategory.OIL_ACRYLIC,
+                "one contemporary oil painting",
+                "clearly visible physical paint materiality"
+        );
+        assertCategoryPromptContains(
+                WeeklyVisualCategory.ALBUM_COVER,
+                "one landscape-oriented premium vinyl record mockup image",
+                "one LP record visible by more than half behind the sleeve"
+        );
+        assertCategoryPromptContains(
+                WeeklyVisualCategory.PIXEL_ART,
+                "pixel-art game environment from a high three-quarter top-down viewpoint",
+                "one carefully designed pixel-art world"
+        );
+        assertCategoryPromptContains(
+                WeeklyVisualCategory.PHOTO_LANDSCAPE,
+                "captured with a real physical camera",
+                "documentary photography, street photography, or observational photography"
+        );
+        assertCategoryPromptContains(
+                WeeklyVisualCategory.GRAPHIC_POSTER,
+                "intentionally designed poster",
+                "strong hierarchy, a memorable silhouette, graphic tension, rhythm, and editorial density"
+        );
     }
 
     @Test
@@ -144,5 +204,19 @@ class WeeklyImagePromptFactoryTest {
                 category,
                 expandedMotif
         );
+    }
+
+    private void assertCategoryPromptContains(
+            WeeklyVisualCategory category,
+            String firstRule,
+            String secondRule
+    ) {
+        String prompt = WeeklyImagePromptFactory.buildPrompt(
+                visualPlan(category, "Build one diary-grounded visual direction."),
+                "#667788, #AABBCC, #DDEEFF"
+        );
+
+        assertTrue(prompt.contains(firstRule));
+        assertTrue(prompt.contains(secondRule));
     }
 }

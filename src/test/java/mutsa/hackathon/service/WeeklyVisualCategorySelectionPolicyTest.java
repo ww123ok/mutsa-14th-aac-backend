@@ -34,20 +34,22 @@ class WeeklyVisualCategorySelectionPolicyTest {
     void preserves_the_top_level_groups_and_removal_test() {
         String rules = WeeklyVisualCategorySelectionPolicy.EXACT_SELECTION_RULES;
 
-        assertTrue(rules.contains("First, determine what is central to this week's records."));
-        assertTrue(rules.contains("### 1. Pattern-centered"));
-        assertTrue(rules.contains("### 2. Mood-centered"));
-        assertTrue(rules.contains("### 3. Space-centered"));
         assertTrue(rules.contains(
-                "First select one central group from `pattern / mood / space` for this week's records, "
-                        + "and then select a detailed category within that group."
+                "First, determine what the central characteristic of this week's records is."
+        ));
+        assertTrue(rules.contains("### 1. Pattern-Centered"));
+        assertTrue(rules.contains("### 2. Atmosphere-Centered"));
+        assertTrue(rules.contains("### 3. Space-Centered"));
+        assertTrue(rules.contains(
+                "First select one central group among `Pattern / Atmosphere / Space`, "
+                        + "then choose the detailed category within that group."
         ));
         assertTrue(rules.contains(
-                "the axis whose removal would cause the greatest loss of the week's defining character"
+                "the axis whose removal would cause the greatest loss of the week's distinctive character"
         ));
         assertTrue(rules.contains(
-                "Prioritize the actual structure of the user's records and this week's colors "
-                        + "over the beauty or stylistic appeal of an image category."
+                "Prioritize the structure of the user's actual records and the week's colors "
+                        + "over the attractiveness or stylistic preference of the image category."
         ));
     }
 
@@ -56,19 +58,19 @@ class WeeklyVisualCategorySelectionPolicyTest {
         String rules = WeeklyVisualCategorySelectionPolicy.EXACT_SELECTION_RULES;
 
         assertTrue(rules.contains(
-                "the repetition itself can explain the week"
+                "that repetition itself is enough to explain the week"
         ));
         assertTrue(rules.contains(
-                "the sequence, comparison, increase or decrease, transition, or relationship with other elements "
-                        + "must also be shown for the defining feature of the week to remain intact"
+                "the week's identity can only be preserved by also showing sequence, comparison, "
+                        + "increase or decrease, transition, or relationships with other elements"
         ));
         assertTrue(rules.contains(
-                "this week's colors are generally medium-saturation or low-saturation"
+                "the week's colors are generally medium- or low-saturation"
         ));
         assertTrue(rules.contains(
-                "this week's colors are generally medium-saturation or high-saturation"
+                "the week's colors are generally medium- or high-saturation"
         ));
         assertTrue(rules.contains("the experience of using a space"));
-        assertTrue(rules.contains("the experience of viewing a space"));
+        assertTrue(rules.contains("the experience of seeing a space"));
     }
 }

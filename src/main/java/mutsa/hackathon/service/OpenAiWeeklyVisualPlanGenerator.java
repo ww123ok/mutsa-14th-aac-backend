@@ -59,54 +59,51 @@ public class OpenAiWeeklyVisualPlanGenerator
 
             %s
 
-            VISUALMOTIF CONSTRUCTION AFTER CATEGORY SELECTION:
+            VISUAL MOTIF PURPOSE AFTER CATEGORY SELECTION:
+            - visualMotif is the content source for the image generator. It is not the style source.
+            - The image generator applies the full, category-specific style rules separately.
+            - Do not summarize, rewrite, replace, weaken, or contradict those style rules.
+            - Do not use visualMotif to select a different category.
 
-            NON_HUMAN_CHARACTER:
-            Write a brief for exactly one original non-human animal character. Identify one
-            supported repeated action or object pattern, one action, one or two strong design
-            features, at most four meaningful props or material cues, a clean palette background,
-            and primary/supporting/accent color roles.
-
-            GRAPHIC_POSTER:
-            Use graphic-construction language only. Specify one dominant silhouette or mass,
-            two to four supporting forms, cropping, negative space, print texture, and color roles.
-            Translate the selected weekly structure or relationship into non-photographic form
-            language. Do not name or describe literal locations, buildings, concerts, desks,
-            papers, buses, rooms, people, or multiple objects.
-
-            OIL_ACRYLIC:
-            Identify one ordinary supported scene or crop, one plausible light source,
-            the large color relationship, and the brushwork and paint-material plan.
-            Keep the selected weekly atmosphere central without inventing symbolic events.
-
-            ALBUM_COVER:
-            Identify exactly one non-face central cover motif, restrained editorial layers,
-            patterned floor or background, and primary/supporting/accent color roles.
-            Compress the selected weekly atmosphere into one strong main visual.
-
-            PIXEL_ART:
-            Identify one coherent tile-map environment, elevated layout, focal zone, density,
-            time or light, activities and object traces supported by the records,
-            and an optional tiny HUD or player that remains secondary.
-
-            PHOTO_LANDSCAPE:
-            Identify one believable place, one supported time and light condition, one lens feeling,
-            one vanishing-point strategy, and spatial traces supported by several days.
-            Preserve the selected experience of seeing the space and never list several places.
-
-            UNIVERSAL visualMotif RULES:
+            VISUAL MOTIF CONTENT REQUIREMENTS:
             - Write entirely in English and keep the brief between 80 and 220 words.
-            - Create one integrated direction, never a daily collage.
-            - The category-selection policy determines the category. The visualMotif rules
-              describe the chosen category and must not reselect or override it.
-            - Compress several days into space, form, motif, light, object traces, density,
-              texture, and color distribution as appropriate to the selected category.
-            - Use only supported places, actions, objects, situations, and time periods.
-            - Specify one focal hierarchy and primary/supporting/accent color roles.
-            - Avoid faces, private identifiers, unsupported symbolism, dramatic plot,
-              happy ending, emotional invention, logos, brands, named artists/studios,
-              existing posters/covers, copyrighted characters, and franchise imitation.
-            - Do not quote a diary and do not include Korean user-facing copy.
+            - Preserve the central characteristic of the entire week, not one visually strong day.
+            - Combine supported information from several dates into one integrated direction.
+            - Never list daily scenes and never request a collage, calendar, or storyboard.
+            - Include the diary-supported places, actions, objects, situations, time periods,
+              light, weather, and traces of everyday life that are necessary to represent the week.
+            - Describe the structural relationship that caused the selected category to win:
+              repetition; sequence; comparison; increase or decrease; transition; overlapping
+              atmosphere; use of a space; or seeing a space.
+            - State which supplied weekly colors should act as primary, supporting, and accent
+              colors when that distinction is useful. Do not invent additional hex colors.
+            - Establish one clear focal hierarchy, but leave rendering technique and category
+              styling to the category-specific prompt that will be applied later.
+            - Use only content directly supported by the records. Do not invent emotions,
+              relationships, events, symbolic meanings, dramatic plots, or positive resolutions.
+            - Avoid visible faces, private identifiers, logos, brands, named artists or studios,
+              existing posters or covers, copyrighted characters, and franchise imitation.
+            - Do not quote diary sentences and do not include user-facing Korean copy.
+
+            CATEGORY-SPECIFIC CONTENT TO PRESERVE IN visualMotif:
+            - NON_HUMAN_CHARACTER: identify the one repeated action, object, or lifestyle pattern
+              that explains the week; the animal species or creature type; its one clear action
+              or state; and only diary-supported props, materials, or environmental traces.
+            - GRAPHIC_POSTER: identify the sequence, comparison, increase or decrease, transition,
+              alternation, or relationship among elements that explains the week. Preserve the
+              diary-supported factual cues needed to understand that structure; do not erase them
+              merely because the final rendering will be graphic rather than photographic.
+            - OIL_ACRYLIC: identify the overlapping weekly atmosphere and one ordinary,
+              diary-supported scene, object arrangement, or situation through which it can be shown,
+              including supported light, space, objects, and palette roles.
+            - ALBUM_COVER: identify the repeated weekly atmosphere and one strong, diary-supported
+              central motif capable of carrying that atmosphere without inventing symbolism.
+            - PIXEL_ART: identify the one space that was used, the activities and routines performed
+              there, the objects that were used, meaningful zones or routes, and supported time or
+              lighting conditions.
+            - PHOTO_LANDSCAPE: identify the one space that was seen, its scenery, light, weather,
+              buildings, streets, natural surroundings, depth, and everyday traces supported across
+              the records. The user's actions must remain secondary to the appearance of the space.
             """.formatted(
             WeeklyVisualCategorySelectionPolicy.EXACT_SELECTION_RULES
     );

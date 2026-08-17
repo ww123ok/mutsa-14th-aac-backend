@@ -89,7 +89,7 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
 
         for (int attempt = 1; attempt <= attempts; attempt++) {
             log.info(
-                    "Weekly image request: promptVersion=V3, category={}, "
+                    "Weekly image request: promptVersion=FINAL_USER_RULES, category={}, "
                             + "size={}, attempt={}, promptLength={}",
                     visualPlan.visualCategory(),
                     requestSize,
@@ -106,7 +106,8 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
             WeeklyImageQualityReview review = qualityValidator.review(
                     image,
                     visualPlan.visualCategory(),
-                    requestSize
+                    requestSize,
+                    currentPrompt
             );
 
             if (!review.reviewed() || review.approved()) {

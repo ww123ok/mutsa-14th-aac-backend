@@ -75,12 +75,18 @@ public class OpenAiWeeklyImageQualityValidator {
     public WeeklyImageQualityReview review(
             GeneratedWeeklyImage image,
             WeeklyVisualCategory category,
-            String expectedSize
+            String expectedSize,
+            String generationPrompt
     ) {
         if (!validationEnabled) {
             return WeeklyImageQualityReview.skipped();
         }
-        if (image == null || category == null) {
+        if (
+                image == null
+                        || category == null
+                        || generationPrompt == null
+                        || generationPrompt.isBlank()
+        ) {
             throw new IllegalArgumentException(
                     "주간 이미지 검수 정보는 필수입니다."
             );
@@ -108,7 +114,7 @@ public class OpenAiWeeklyImageQualityValidator {
                 category.name(),
                 expectedSize,
                 category.imageAspect().name(),
-                WeeklyImagePromptFactory.validationChecklist(category)
+                generationPrompt
         );
 
         List<Map<String, Object>> content = List.of(
