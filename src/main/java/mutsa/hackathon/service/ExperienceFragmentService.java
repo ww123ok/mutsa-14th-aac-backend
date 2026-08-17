@@ -111,8 +111,19 @@ public class ExperienceFragmentService {
     ) {
         SharedDiaryLog delivery = sharedDiaryLogRepository.findByIdAndReceiverId(deliveryId, receiverId)
                 .orElseThrow(() -> new ProjectException(ErrorCode.SHARED_DIARY_NOT_AVAILABLE));
+        if (delivery.hasFeedbackSubmitted()) {
+            throw new ProjectException(ErrorCode.SHARED_DIARY_FEEDBACK_ALREADY_SUBMITTED);
+        }
         delivery.recordFeedbackSummary(request.content());
         return ExperienceFragmentFeedbackResponse.from(delivery);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReceivedExperienceFragmentListResponse> received(Long receiverId) {
+        return sharedDiaryLogRepository.findAllReceivedByReceiverId(receiverId)
+                .stream()
+                .map(ReceivedExperienceFragmentListResponse::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)

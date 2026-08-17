@@ -10,6 +10,7 @@ import mutsa.hackathon.dto.ExperienceMatchRequest;
 import mutsa.hackathon.dto.ExperienceMatchResponse;
 import mutsa.hackathon.dto.ExperienceFragmentInboxResponse;
 import mutsa.hackathon.dto.ReceivedExperienceFragmentResponse;
+import mutsa.hackathon.dto.ReceivedExperienceFragmentListResponse;
 import mutsa.hackathon.global.ApiResponse;
 import mutsa.hackathon.security.CustomOAuth2User;
 import mutsa.hackathon.service.ExperienceFragmentService;
@@ -39,6 +40,15 @@ public class  ExperienceFragmentController {
     @GetMapping("/inbox")
     public ApiResponse<List<ExperienceFragmentInboxResponse>> inbox(@AuthenticationPrincipal CustomOAuth2User user) {
         return ApiResponse.onSuccess(experienceFragmentService.inbox(user.getKakaoUserProfile().id()));
+    }
+
+    @GetMapping("/received")
+    public ApiResponse<List<ReceivedExperienceFragmentListResponse>> received(
+            @AuthenticationPrincipal CustomOAuth2User user
+    ) {
+        return ApiResponse.onSuccess(
+                experienceFragmentService.received(user.getKakaoUserProfile().id())
+        );
     }
     @GetMapping("/{shareId}/review")
     public ApiResponse<ExperienceFragmentReviewResponse> review(

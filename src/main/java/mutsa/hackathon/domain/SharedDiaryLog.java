@@ -96,4 +96,8 @@ public class SharedDiaryLog extends BaseEntity {
         this.feedbackSummary = feedbackSummary.trim();
         this.feedbackSubmittedAt = LocalDateTime.now();
     }
+
+    public boolean hasFeedbackSubmitted() {
+        return feedbackSubmittedAt != null;
+    }
 }

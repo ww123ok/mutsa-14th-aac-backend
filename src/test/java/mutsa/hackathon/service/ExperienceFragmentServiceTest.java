@@ -15,6 +15,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -224,6 +225,44 @@ class ExperienceFragmentServiceTest {
         assertEquals(0, receiver.getCredit());
         assertEquals(ExperienceFragmentArrivalStatus.RECEIVED, arrival.getStatus());
         verify(creditTransactionRepository).save(any(CreditTransaction.class));
+    }
+
+    @Test
+    void returnsPersistedReceivedFragmentsWithFeedbackState() {
+        AppUser receiver = user(1L);
+        DiaryShare share = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("topic"), "[1.0,0.0]");
+        SharedDiaryLog delivery = SharedDiaryLog.create(receiver, share, 1);
+        ReflectionTestUtils.setField(delivery, "id", 30L);
+        LocalDateTime receivedAt = LocalDateTime.of(2026, 8, 18, 12, 30);
+        ReflectionTestUtils.setField(delivery, "createdAt", receivedAt);
+        delivery.recordFeedbackSummary("도움이 되었습니다.");
+        when(sharedDiaryLogRepository.findAllReceivedByReceiverId(1L)).thenReturn(List.of(delivery));
+
+        List<ReceivedExperienceFragmentListResponse> result = service.received(1L);
+
+        assertEquals(1, result.size());
+        ReceivedExperienceFragmentListResponse received = result.get(0);
+        assertEquals(30L, received.deliveryId());
+        assertEquals(20L, received.shareId());
+        assertEquals(receivedAt, received.receivedAt());
+        assertTrue(received.feedbackSubmitted());
+        assertNotNull(received.feedbackSubmittedAt());
+    }
+
+    @Test
+    void rejectsDuplicateFeedbackWithProjectException() {
+        AppUser receiver = user(1L);
+        DiaryShare share = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("topic"), "[1.0,0.0]");
+        SharedDiaryLog delivery = SharedDiaryLog.create(receiver, share, 1);
+        delivery.recordFeedbackSummary("이미 보낸 반응");
+        when(sharedDiaryLogRepository.findByIdAndReceiverId(30L, 1L)).thenReturn(Optional.of(delivery));
+
+        ProjectException exception = assertThrows(
+                ProjectException.class,
+                () -> service.submitFeedback(1L, 30L, new ExperienceFragmentFeedbackRequest("새 반응"))
+        );
+
+        assertEquals(ErrorCode.SHARED_DIARY_FEEDBACK_ALREADY_SUBMITTED, exception.getErrorCode());
     }
 
     @Test
