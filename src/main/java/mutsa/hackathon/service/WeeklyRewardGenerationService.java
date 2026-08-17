@@ -18,10 +18,12 @@ public class WeeklyRewardGenerationService {
     private static final String FAILURE_REASON = "WEEKLY_REWARD_GENERATION_FAILED";
 
     private final WeeklyRewardClaimService claimService;
-    private final OpenAiWeeklyRewardInsightGenerator insightGenerator;
-    private final FallbackWeeklyRewardInsightFactory fallbackInsightFactory;
+    private final OpenAiWeeklyVisualPlanGenerator visualPlanGenerator;
+    private final FallbackWeeklyVisualPlanFactory fallbackVisualPlanFactory;
     private final OpenAiWeeklyImageGenerator imageGenerator;
     private final FallbackWeeklyPosterGenerator fallbackPosterGenerator;
+    private final OpenAiWeeklyRewardResultTextGenerator resultTextGenerator;
+    private final FallbackWeeklyRewardResultTextFactory fallbackResultTextFactory;
     private final WeeklyImageStorage imageStorage;
     private final WeeklyRewardCompletionService completionService;
 
@@ -35,13 +37,18 @@ public class WeeklyRewardGenerationService {
         StoredWeeklyImage storedImage = null;
 
         try {
-            WeeklyRewardInsight insight = createInsight(context);
-            GeneratedWeeklyImage image = createImage(context, insight);
+            WeeklyVisualPlan visualPlan = createVisualPlan(context);
+            GeneratedWeeklyImage image = createImage(context, visualPlan);
+            WeeklyRewardResultText resultText = createResultText(
+                    context,
+                    visualPlan,
+                    image
+            );
             storedImage = imageStorage.store(context, image);
 
             completionService.complete(
                     weeklyRewardId,
-                    insight,
+                    resultText,
                     image,
                     storedImage
             );
@@ -58,34 +65,58 @@ public class WeeklyRewardGenerationService {
         }
     }
 
-    private WeeklyRewardInsight createInsight(
+    private WeeklyVisualPlan createVisualPlan(
             WeeklyRewardGenerationContext context
     ) {
         try {
-            return insightGenerator.generate(context);
+            return visualPlanGenerator.generate(context);
         } catch (RuntimeException exception) {
             log.warn(
-                    "Weekly insight fallback used: weeklyRewardId={}, reason={}",
+                    "Weekly visual plan fallback used: weeklyRewardId={}, reason={}",
                     context.weeklyRewardId(),
                     exception.getClass().getSimpleName()
             );
-            return fallbackInsightFactory.create(context);
+            return fallbackVisualPlanFactory.create(context);
         }
     }
 
     private GeneratedWeeklyImage createImage(
             WeeklyRewardGenerationContext context,
-            WeeklyRewardInsight insight
+            WeeklyVisualPlan visualPlan
     ) {
         try {
-            return imageGenerator.generate(context, insight);
+            return imageGenerator.generate(context, visualPlan);
         } catch (RuntimeException exception) {
             log.warn(
                     "Weekly poster fallback used: weeklyRewardId={}, reason={}",
                     context.weeklyRewardId(),
                     exception.getClass().getSimpleName()
             );
-            return fallbackPosterGenerator.generate(context, insight);
+            return fallbackPosterGenerator.generate(context, visualPlan);
+        }
+    }
+
+    private WeeklyRewardResultText createResultText(
+            WeeklyRewardGenerationContext context,
+            WeeklyVisualPlan visualPlan,
+            GeneratedWeeklyImage image
+    ) {
+        try {
+            return resultTextGenerator.generate(
+                    context,
+                    visualPlan,
+                    image
+            );
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Weekly result text fallback used: weeklyRewardId={}, reason={}",
+                    context.weeklyRewardId(),
+                    exception.getClass().getSimpleName()
+            );
+            return fallbackResultTextFactory.create(
+                    context,
+                    visualPlan
+            );
         }
     }
 

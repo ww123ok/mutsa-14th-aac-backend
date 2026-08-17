@@ -62,9 +62,9 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
     @Override
     public GeneratedWeeklyImage generate(
             WeeklyRewardGenerationContext context,
-            WeeklyRewardInsight insight
+            WeeklyVisualPlan visualPlan
     ) {
-        if (context == null || insight == null) {
+        if (context == null || visualPlan == null) {
             throw new IllegalArgumentException(
                     "주간 이미지 생성 정보는 필수입니다."
             );
@@ -77,13 +77,13 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
         }
 
         String requestSize = WeeklyImagePromptFactory.resolveImageSize(
-                insight.visualCategory(),
+                visualPlan.visualCategory(),
                 squareSize,
                 portraitSize,
                 landscapeSize
         );
 
-        String basePrompt = buildPrompt(context, insight);
+        String basePrompt = buildPrompt(context, visualPlan);
         String currentPrompt = basePrompt;
         int attempts = normalizeAttempts(maxGenerationAttempts);
 
@@ -91,7 +91,7 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
             log.info(
                     "Weekly image request: promptVersion=V3, category={}, "
                             + "size={}, attempt={}, promptLength={}",
-                    insight.visualCategory(),
+                    visualPlan.visualCategory(),
                     requestSize,
                     attempt,
                     currentPrompt.length()
@@ -105,7 +105,7 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
 
             WeeklyImageQualityReview review = qualityValidator.review(
                     image,
-                    insight.visualCategory(),
+                    visualPlan.visualCategory(),
                     requestSize
             );
 
@@ -116,7 +116,7 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
             log.warn(
                     "Weekly image rejected by quality gate: category={}, "
                             + "attempt={}, violations={}",
-                    insight.visualCategory(),
+                    visualPlan.visualCategory(),
                     attempt,
                     review.violations()
             );
@@ -131,14 +131,14 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
                 log.warn(
                         "Weekly image quality retries exhausted; returning the last "
                                 + "generated image because strict validation is disabled: category={}",
-                        insight.visualCategory()
+                        visualPlan.visualCategory()
                 );
                 return image;
             }
 
             currentPrompt = WeeklyImagePromptFactory.buildRetryPrompt(
                     basePrompt,
-                    insight.visualCategory(),
+                    visualPlan.visualCategory(),
                     review
             );
         }
@@ -219,7 +219,7 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
 
     private String buildPrompt(
             WeeklyRewardGenerationContext context,
-            WeeklyRewardInsight insight
+            WeeklyVisualPlan visualPlan
     ) {
         String palette = context.days()
                 .stream()
@@ -235,7 +235,7 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
                 .orElse("#D6A45C");
 
         return WeeklyImagePromptFactory.buildPrompt(
-                insight,
+                visualPlan,
                 palette
         );
     }

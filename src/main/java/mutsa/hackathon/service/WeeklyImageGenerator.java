@@ -4,6 +4,6 @@ package mutsa.hackathon.service;
 public interface WeeklyImageGenerator {
     GeneratedWeeklyImage generate(
             WeeklyRewardGenerationContext context,
-            WeeklyRewardInsight insight
+            WeeklyVisualPlan visualPlan
     );
 }

@@ -26,7 +26,7 @@ public class FallbackWeeklyPosterGenerator implements WeeklyImageGenerator {
     @Override
     public GeneratedWeeklyImage generate(
             WeeklyRewardGenerationContext context,
-            WeeklyRewardInsight insight
+            WeeklyVisualPlan visualPlan
     ) {
         List<Color> palette = context.days().stream()
                 .map(WeeklyRewardGenerationContext.DayRecord::colorHex)

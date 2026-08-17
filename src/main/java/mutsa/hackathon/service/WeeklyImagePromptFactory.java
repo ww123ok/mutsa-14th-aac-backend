@@ -466,10 +466,10 @@ public final class WeeklyImagePromptFactory {
     }
 
     public static String buildPrompt(
-            WeeklyRewardInsight insight,
+            WeeklyVisualPlan visualPlan,
             String palette
     ) {
-        if (insight == null) {
+        if (visualPlan == null) {
             throw new IllegalArgumentException("주간 이미지 분석 결과는 필수입니다.");
         }
         if (palette == null || palette.isBlank()) {
@@ -499,9 +499,9 @@ public final class WeeklyImagePromptFactory {
                 """.formatted(
                 GLOBAL_RULES,
                 palette.trim(),
-                insight.visualMotif(),
-                categoryPrompt(insight.visualCategory()),
-                validationChecklist(insight.visualCategory())
+                visualPlan.visualMotif(),
+                categoryPrompt(visualPlan.visualCategory()),
+                validationChecklist(visualPlan.visualCategory())
         );
 
         if (prompt.length() > MAX_PROMPT_LENGTH) {

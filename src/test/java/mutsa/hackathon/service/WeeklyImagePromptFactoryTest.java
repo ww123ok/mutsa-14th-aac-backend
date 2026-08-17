@@ -12,13 +12,13 @@ class WeeklyImagePromptFactoryTest {
 
     @Test
     void 실사풍경은_일기요약을_제외하고_브리프와_팔레트로_가로프롬프트를_만든다() {
-        WeeklyRewardInsight insight = insight(
+        WeeklyVisualPlan visualPlan = visualPlan(
                 WeeklyVisualCategory.PHOTO_LANDSCAPE,
                 "Create one university-area street that connects repeated classes, errands, and walks."
         );
 
         String prompt = WeeklyImagePromptFactory.buildPrompt(
-                insight,
+                visualPlan,
                 "#D6A45C, #6A8FB3, #C9878A"
         );
 
@@ -34,7 +34,7 @@ class WeeklyImagePromptFactoryTest {
         assertEquals(
                 "1536x1024",
                 WeeklyImagePromptFactory.resolveImageSize(
-                        insight.visualCategory(),
+                        visualPlan.visualCategory(),
                         "1024x1024",
                         "1024x1536",
                         "1536x1024"
@@ -77,14 +77,14 @@ class WeeklyImagePromptFactoryTest {
 
     @Test
     void 그래픽포스터는_콜라주와_현실장면을_금지하는_하드규칙을_포함한다() {
-        WeeklyRewardInsight insight = insight(
+        WeeklyVisualPlan visualPlan = visualPlan(
                 WeeklyVisualCategory.GRAPHIC_POSTER,
                 "Build one dominant diagonal silhouette, three supporting planes, "
                         + "broad white negative space, halftone texture, and small color accents."
         );
 
         String prompt = WeeklyImagePromptFactory.buildPrompt(
-                insight,
+                visualPlan,
                 "#7D2B22, #9463B7, #7B5948, #8A20E8"
         );
 
@@ -99,12 +99,12 @@ class WeeklyImagePromptFactoryTest {
 
     @Test
     void 검수실패_재생성프롬프트는_위반사항과_카테고리를_고정한다() {
-        WeeklyRewardInsight insight = insight(
+        WeeklyVisualPlan visualPlan = visualPlan(
                 WeeklyVisualCategory.GRAPHIC_POSTER,
                 "Build one dominant flat silhouette with three supporting forms."
         );
         String basePrompt = WeeklyImagePromptFactory.buildPrompt(
-                insight,
+                visualPlan,
                 "#7D2B22, #9463B7"
         );
 
@@ -125,16 +125,24 @@ class WeeklyImagePromptFactoryTest {
         assertTrue(retryPrompt.length() < 32_000);
     }
 
-    private WeeklyRewardInsight insight(
+    private WeeklyVisualPlan visualPlan(
             WeeklyVisualCategory category,
             String motif
     ) {
-        return new WeeklyRewardInsight(
-                "학교 주변에서 이어진 한 주",
-                "이번 주에는 학교 주변 이동과 산책이 반복됐습니다.",
-                List.of("이동", "산책", "저녁"),
+        String expandedMotif = motif + " " + """
+                Maintain one integrated composition with a clear focal hierarchy and deliberate
+                negative space. Translate only supported weekly context into form, light, texture,
+                object traces, and color distribution. Use the first palette color as the primary
+                field, the second as support, and remaining colors only as restrained accents.
+                Avoid faces, private identifiers, brands, logos, copyrighted characters, daily
+                panels, unsupported symbols, dramatic events, emotional invention, and explanatory
+                text. Keep every element grounded in the approved category and finish the image as
+                one contemporary, cohesive, shareable mobile archive reward.
+                """;
+
+        return new WeeklyVisualPlan(
                 category,
-                motif
+                expandedMotif
         );
     }
 }
