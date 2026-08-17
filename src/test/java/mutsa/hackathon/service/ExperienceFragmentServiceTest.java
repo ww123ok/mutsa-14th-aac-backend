@@ -25,6 +25,7 @@ import static org.mockito.Mockito.*;
 class ExperienceFragmentServiceTest {
     @Mock private DiaryRepository diaryRepository;
     @Mock private DiaryShareRepository diaryShareRepository;
+    @Mock private ExperienceFragmentArrivalRepository experienceFragmentArrivalRepository;
     @Mock private SharedDiaryLogRepository sharedDiaryLogRepository;
     @Mock private AppUserRepository appUserRepository;
     @Mock private CreditTransactionRepository creditTransactionRepository;
@@ -113,6 +114,62 @@ class ExperienceFragmentServiceTest {
 
         verify(draftPersistenceService).saveDraft(1L, draft);
         verify(draftPersistenceService, never()).block(anyLong());
+    }
+
+    @Test
+    void storesOnlyAnInboxArrivalWhenAutomaticMatchingFindsAnEligibleFragment() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "공원에서 곤충을 관찰했다.");
+        DiaryShare matching = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("곤충"), "[1.0,0.0]");
+
+        when(diaryShareRepository.existsByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(true);
+        when(diaryRepository.findByIdWithUser(10L)).thenReturn(Optional.of(queryDiary));
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
+        when(experienceEmbeddingGenerator.generate(queryDiary.getContent()))
+                .thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
+        when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(List.of(matching));
+        when(diaryShareRepository.findByIdWithDiaryAndUser(20L)).thenReturn(Optional.of(matching));
+        when(experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(1L, 20L)).thenReturn(false);
+
+        service.createInboxArrival(10L);
+
+        verify(experienceFragmentArrivalRepository).save(argThat(arrival ->
+                arrival.getReceiver().getId().equals(1L)
+                        && arrival.getQueryDiary().getId().equals(10L)
+                        && arrival.getDiaryShare().getId().equals(20L)
+                        && arrival.getStatus() == ExperienceFragmentArrivalStatus.PENDING
+        ));
+        verify(appUserRepository, never()).findById(anyLong());
+        verify(creditTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    void chargesCreditAndExposesContentOnlyWhenInboxArrivalIsReceived() {
+        AppUser receiver = user(1L);
+        receiver.addCredit(1);
+        DiaryShare share = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("곤충"), "[1.0,0.0]");
+        ExperienceFragmentArrival arrival = ExperienceFragmentArrival.pending(
+                receiver, diary(receiver, 10L, "곤충을 관찰했다."), share
+        );
+
+        when(experienceFragmentArrivalRepository.findByIdWithReceiverAndShare(30L))
+                .thenReturn(Optional.of(arrival));
+        when(sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(1L, 20L)).thenReturn(false);
+        when(sharedDiaryLogRepository.save(any(SharedDiaryLog.class)))
+                .thenAnswer(invocation -> {
+                    SharedDiaryLog delivery = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(delivery, "id", 40L);
+                    return delivery;
+                });
+
+        service.receiveFromInbox(1L, 30L);
+
+        assertEquals(0, receiver.getCredit());
+        assertEquals(ExperienceFragmentArrivalStatus.RECEIVED, arrival.getStatus());
+        verify(creditTransactionRepository).save(any(CreditTransaction.class));
     }
 
     private AppUser user(Long id) {

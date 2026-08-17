@@ -24,6 +24,7 @@ public class ExperienceFragmentService {
 
     private final DiaryRepository diaryRepository;
     private final DiaryShareRepository diaryShareRepository;
+    private final ExperienceFragmentArrivalRepository experienceFragmentArrivalRepository;
     private final SharedDiaryLogRepository sharedDiaryLogRepository;
     private final AppUserRepository appUserRepository;
     private final CreditTransactionRepository creditTransactionRepository;
@@ -140,6 +141,50 @@ public class ExperienceFragmentService {
                 .max(Comparator.comparingDouble(ExperienceMatchResponse::similarity));
     }
 
+    /**
+     * Stores only a private arrival notice. No credit is charged and no anonymized
+     * diary content is exposed until receiveFromInbox is called.
+     */
+    @Transactional
+    public void createInboxArrival(Long diaryId) {
+        if (!diaryShareRepository.existsByShareStatus(DiaryShareStatus.APPROVED)) {
+            return;
+        }
+
+        Diary queryDiary = diaryRepository.findByIdWithUser(diaryId)
+                .filter(diary -> !diary.isDeleted())
+                .orElse(null);
+        if (queryDiary == null) {
+            return;
+        }
+
+        Long receiverId = queryDiary.getUser().getId();
+        Optional<ExperienceMatchResponse> match = findBestMatch(receiverId, diaryId);
+        if (match.isEmpty()
+                || experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(receiverId, match.get().shareId())) {
+            return;
+        }
+
+        DiaryShare share = diaryShareRepository.findByIdWithDiaryAndUser(match.get().shareId())
+                .orElse(null);
+        if (share == null || share.getShareStatus() != DiaryShareStatus.APPROVED) {
+            return;
+        }
+
+        experienceFragmentArrivalRepository.save(
+                ExperienceFragmentArrival.pending(queryDiary.getUser(), queryDiary, share)
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public List<ExperienceFragmentInboxResponse> inbox(Long receiverId) {
+        return experienceFragmentArrivalRepository
+                .findAllByReceiverIdAndStatusWithShare(receiverId, ExperienceFragmentArrivalStatus.PENDING)
+                .stream()
+                .map(ExperienceFragmentInboxResponse::from)
+                .toList();
+    }
+
     @Transactional
     public ReceivedExperienceFragmentResponse receive(Long receiverId, Long shareId) {
         AppUser receiver = appUserRepository.findById(receiverId).orElseThrow(() -> new ProjectException(ErrorCode.USER_NOT_FOUND));
@@ -150,8 +195,34 @@ public class ExperienceFragmentService {
         if (sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiverId, shareId)) {
             throw new ProjectException(ErrorCode.SHARED_DIARY_ALREADY_RECEIVED);
         }
-        try { receiver.useCredit(RECEIVE_COST); }
-        catch (IllegalStateException exception) { throw new ProjectException(ErrorCode.INSUFFICIENT_CREDIT); }
+        return deliver(receiver, share);
+    }
+
+    @Transactional
+    public ReceivedExperienceFragmentResponse receiveFromInbox(Long receiverId, Long arrivalId) {
+        ExperienceFragmentArrival arrival = experienceFragmentArrivalRepository
+                .findByIdWithReceiverAndShare(arrivalId)
+                .filter(candidate -> candidate.getReceiver().getId().equals(receiverId))
+                .filter(candidate -> candidate.getStatus() == ExperienceFragmentArrivalStatus.PENDING)
+                .orElseThrow(() -> new ProjectException(ErrorCode.SHARED_DIARY_NOT_AVAILABLE));
+
+        ReceivedExperienceFragmentResponse response = deliver(
+                arrival.getReceiver(),
+                arrival.getDiaryShare()
+        );
+        arrival.markReceived();
+        return response;
+    }
+
+    private ReceivedExperienceFragmentResponse deliver(AppUser receiver, DiaryShare share) {
+        if (sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiver.getId(), share.getId())) {
+            throw new ProjectException(ErrorCode.SHARED_DIARY_ALREADY_RECEIVED);
+        }
+        try {
+            receiver.useCredit(RECEIVE_COST);
+        } catch (IllegalStateException exception) {
+            throw new ProjectException(ErrorCode.INSUFFICIENT_CREDIT);
+        }
         SharedDiaryLog delivery = sharedDiaryLogRepository.save(SharedDiaryLog.create(receiver, share, RECEIVE_COST));
         creditTransactionRepository.save(CreditTransaction.create(receiver, CreditTransactionType.SHARE_RECEIVE, -RECEIVE_COST,
                 receiver.getCredit(), CreditReferenceType.SHARED_DIARY_LOG, delivery.getId(), "Experience fragment received"));
