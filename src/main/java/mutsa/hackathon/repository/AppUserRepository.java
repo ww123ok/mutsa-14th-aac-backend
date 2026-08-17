@@ -34,6 +34,14 @@ public interface AppUserRepository
     );
 
     /**
+     * 매분 실행되는 일기 작성 알림 스케줄러가
+     * 현재 알림 시각에 해당하는 사용자만 조회.
+     */
+    List<AppUser> findAllByDiaryReminderTime(
+            LocalTime diaryReminderTime
+    );
+
+    /**
      * day_start_time 컬럼 추가 이전 기존 사용자는 null일 수 있음.
      * 애플리케이션에서는 이 값을 00:00으로 해석하므로
      * 자정 경계 스케줄에서도 함께 포함.

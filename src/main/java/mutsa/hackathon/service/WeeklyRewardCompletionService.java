@@ -3,6 +3,7 @@ package mutsa.hackathon.service;
 import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.domain.WeeklyReward;
 import mutsa.hackathon.repository.WeeklyRewardRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class WeeklyRewardCompletionService {
 
     private final WeeklyRewardRepository weeklyRewardRepository;
     private final Clock weeklyRewardClock;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public void complete(
@@ -42,6 +44,13 @@ public class WeeklyRewardCompletionService {
                 storedImage.contentType(),
                 image.source(),
                 LocalDateTime.now(weeklyRewardClock)
+        );
+
+        eventPublisher.publishEvent(
+                InAppNotificationRequested.weeklyRewardCompleted(
+                        reward.getUser().getId(),
+                        reward.getId()
+                )
         );
     }
 

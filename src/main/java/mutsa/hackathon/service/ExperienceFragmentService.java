@@ -115,6 +115,15 @@ public class ExperienceFragmentService {
             throw new ProjectException(ErrorCode.SHARED_DIARY_FEEDBACK_ALREADY_SUBMITTED);
         }
         delivery.recordFeedbackSummary(request.content());
+
+        eventPublisher.publishEvent(
+                InAppNotificationRequested.experienceFragmentFeedback(
+                        delivery.getDiaryShare().getDiary().getUser().getId(),
+                        delivery.getId(),
+                        delivery.getDiaryShare().getId()
+                )
+        );
+
         return ExperienceFragmentFeedbackResponse.from(delivery);
     }
 
@@ -188,8 +197,19 @@ public class ExperienceFragmentService {
             return;
         }
 
-        experienceFragmentArrivalRepository.save(
-                ExperienceFragmentArrival.pending(queryDiary.getUser(), queryDiary, share)
+        ExperienceFragmentArrival arrival =
+                ExperienceFragmentArrival.pending(
+                        queryDiary.getUser(),
+                        queryDiary,
+                        share
+                );
+        experienceFragmentArrivalRepository.save(arrival);
+
+        eventPublisher.publishEvent(
+                InAppNotificationRequested.experienceFragmentArrived(
+                        receiverId,
+                        arrival.getId()
+                )
         );
     }
 
