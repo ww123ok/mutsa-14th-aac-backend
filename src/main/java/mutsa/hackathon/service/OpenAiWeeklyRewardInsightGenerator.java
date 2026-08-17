@@ -55,86 +55,72 @@ public class OpenAiWeeklyRewardInsightGenerator
               accounts, or identifying combinations. Generalize private details.
             - Do not mention AI.
 
-            CATEGORY SELECTION PROCESS:
-            1. Examine every day before selecting a category.
-            2. Extract supported places, actions, objects, time, light, weather, movement,
-               spatial qualities, routines, palette contrast, and palette harmony.
-            3. Find a shared or higher-level visual structure that represents the most days.
-            4. Choose exactly one category by diary fit first and palette fit second.
-            5. Never choose an attractive category unrelated to the records.
-            6. Do not use or assume recent-category history.
-            7. The image API receives visualMotif and the palette only. It intentionally does
-               not receive the diary, Korean summary, title, or keywords. Preserve necessary
-               visual evidence without writing a list of daily events.
+            CATEGORY ENUM MAPPING:
+            - Character image = NON_HUMAN_CHARACTER
+            - Graphic design poster image = GRAPHIC_POSTER
+            - Oil-painting-style image = OIL_ACRYLIC
+            - Album cover image = ALBUM_COVER
+            - Pixel-art / game-scene image = PIXEL_ART
+            - Photorealistic landscape / space image = PHOTO_LANDSCAPE
 
-            CATEGORY RULES AND REQUIRED visualMotif CONTENT:
+            Only the six enum values above may be selected for a newly generated weekly insight.
+            FIRST_PERSON_ANIME remains supported only for backward compatibility and must not be selected.
 
-            GRAPHIC_POSTER:
-            Choose when colors have useful contrast, several different colors can operate as
-            shapes/planes/type fragments, weekly content is varied, and graphic compression
-            is more natural than one literal scene. Exclude when a real place, user's viewpoint,
-            or one concrete repeated routine is central. visualMotif must use graphic-construction
-            language only: one dominant silhouette/mass, two to four supporting forms, cropping,
-            negative space, print texture, and color roles. Do not name or describe literal
-            locations, buildings, concerts, desks, papers, buses, rooms, people, or multiple objects.
-            Translate factual cues into non-photographic form language first.
+            The following category-selection policy is authoritative.
+            Apply it exactly. Do not summarize, weaken, replace, or add another selection standard.
 
-            PHOTO_LANDSCAPE:
-            Choose when one real background, route, weather condition, movement, or environmental
-            light can represent the week; space matters more than a person; and palette colors can
-            naturally appear in sky, light, buildings, roads, vegetation, shadows, reflections,
-            or objects. Prefer one higher-level real environment that explains several days.
-            If the user's exact viewpoint matters more, choose FIRST_PERSON_ANIME. visualMotif must
-            identify one believable place, one supported time/light condition, one lens feeling,
-            one vanishing-point strategy, and traces from several days. Never list several places.
+            %s
+
+            VISUALMOTIF CONSTRUCTION AFTER CATEGORY SELECTION:
 
             NON_HUMAN_CHARACTER:
-            Choose when repeated actions, objects, routines, or situations remain meaningful as
-            exactly one original animal and the palette can be distributed across animal, clothes,
-            props, and background. Exclude when actual place or viewpoint matters more.
-            visualMotif must identify one non-stereotypical animal, one action, one or two strong
-            features, at most four meaningful props/material cues, and one clean palette background.
+            Write a brief for exactly one original non-human animal character. Identify one
+            supported repeated action or object pattern, one action, one or two strong design
+            features, at most four meaningful props or material cues, a clean palette background,
+            and primary/supporting/accent color roles.
+
+            GRAPHIC_POSTER:
+            Use graphic-construction language only. Specify one dominant silhouette or mass,
+            two to four supporting forms, cropping, negative space, print texture, and color roles.
+            Translate the selected weekly structure or relationship into non-photographic form
+            language. Do not name or describe literal locations, buildings, concerts, desks,
+            papers, buses, rooms, people, or multiple objects.
 
             OIL_ACRYLIC:
-            Choose when accumulated space, objects, food, weather, or atmosphere matter more than
-            one event; loose reconstruction and tactile brushwork are natural; and colors can form
-            a painted relationship. Strong colors are allowed; low saturation is not required.
-            Exclude when photography, first-person view, or strong flat graphics fit better.
-            visualMotif must identify one ordinary supported scene/crop, one plausible light source,
-            the large color relationship, and the brushwork/material plan.
+            Identify one ordinary supported scene or crop, one plausible light source,
+            the large color relationship, and the brushwork and paint-material plan.
+            Keep the selected weekly atmosphere central without inventing symbolic events.
 
             ALBUM_COVER:
-            Choose when overall mood, rhythm, tension, and palette are stronger than a concrete
-            scene; one central motif can compress the week; and atmosphere matters more than
-            explanation. Exclude when a place, routine, or object arrangement should stay directly
-            recognizable. visualMotif must identify exactly one non-face central cover motif,
-            restrained editorial layers, patterned floor/background, and color roles.
+            Identify exactly one non-face central cover motif, restrained editorial layers,
+            patterned floor or background, and primary/supporting/accent color roles.
+            Compress the selected weekly atmosphere into one strong main visual.
 
             PIXEL_ART:
-            Choose when repeated living spaces, routes, objects, and routines can become one
-            readable game-map scene; clear color planes and a high three-quarter top-down view add
-            value; and a small character can remain secondary. Exclude when real photographic space
-            or literal viewpoint is essential. visualMotif must identify one coherent tile-map
-            environment, elevated layout, focal zone, density, time/light, and optional tiny HUD/player.
+            Identify one coherent tile-map environment, elevated layout, focal zone, density,
+            time or light, activities and object traces supported by the records,
+            and an optional tiny HUD or player that remains secondary.
 
-            FIRST_PERSON_ANIME:
-            Choose when a repeated place/action/situation is clearest from the user's viewpoint,
-            'what I was looking at' is essential, and colors can appear naturally in light, screens,
-            walls, objects, sky, or interiors. visualMotif must identify one supported first-person
-            moment, foreground/middle/background, a limited body fragment only if useful,
-            actual objects/light, and color roles. Never invent appearance or show a face.
+            PHOTO_LANDSCAPE:
+            Identify one believable place, one supported time and light condition, one lens feeling,
+            one vanishing-point strategy, and spatial traces supported by several days.
+            Preserve the selected experience of seeing the space and never list several places.
 
             UNIVERSAL visualMotif RULES:
             - Write entirely in English and use one integrated direction, never a daily collage.
+            - The exact Korean selection policy determines the category. These visualMotif rules
+              describe the chosen category and must not reselect or override it.
             - Compress several days into space, form, motif, light, object traces, density,
-              viewpoint, texture, and color distribution as appropriate to the category.
+              texture, and color distribution as appropriate to the selected category.
             - Use only supported places, actions, objects, situations, and time periods.
             - Specify one focal hierarchy and primary/supporting/accent color roles.
             - Avoid faces, private identifiers, unsupported symbolism, dramatic plot,
               happy ending, emotional invention, logos, brands, named artists/studios,
               existing posters/covers, copyrighted characters, and franchise imitation.
             - Do not quote a diary and do not include the Korean title, summary, or keywords.
-            """;
+            """.formatted(
+            WeeklyVisualCategorySelectionPolicy.EXACT_SELECTION_RULES
+    );
 
     private final RestClient.Builder restClientBuilder;
     private final JsonMapper jsonMapper;
@@ -235,7 +221,9 @@ public class OpenAiWeeklyRewardInsightGenerator
                         ),
                         "visualCategory", Map.of(
                                 "type", "string",
-                                "enum", java.util.Arrays.stream(WeeklyVisualCategory.values())
+                                "enum", WeeklyVisualCategorySelectionPolicy
+                                        .SELECTABLE_CATEGORIES
+                                        .stream()
                                         .map(Enum::name)
                                         .toList()
                         ),
