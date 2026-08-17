@@ -25,6 +25,11 @@ public record MeResponse(
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
         LocalDateTime onboardingCompletedAt,
 
+        boolean tutorialCompleted,
+
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+        LocalDateTime tutorialCompletedAt,
+
         int credit
 ) {
 
@@ -40,6 +45,8 @@ public record MeResponse(
                 user.isAiMemoryConsent(),
                 user.isOnboardingCompleted(),
                 user.getOnboardingCompletedAt(),
+                user.isTutorialCompleted(),
+                user.getTutorialCompletedAt(),
                 user.getCredit()
         );
     }

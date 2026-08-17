@@ -102,6 +102,25 @@ public class WeeklyRewardQueryService {
         return toResponse(reward);
     }
 
+    @Transactional
+    public WeeklyRewardResponse markViewed(
+            Long userId,
+            Long weeklyRewardId
+    ) {
+        WeeklyReward reward = weeklyRewardRepository
+                .findByIdAndUserId(weeklyRewardId, userId)
+                .orElseThrow(() -> new ProjectException(ErrorCode.WEEKLY_REWARD_NOT_FOUND));
+
+        if (reward.getGenerationStatus() != WeeklyRewardStatus.COMPLETED
+                || reward.getImageKey() == null
+                || reward.getImageKey().isBlank()) {
+            throw new ProjectException(ErrorCode.WEEKLY_REWARD_NOT_VIEWABLE);
+        }
+
+        reward.markViewed();
+        return toResponse(reward);
+    }
+
     private WeeklyRewardResponse toResponse(
             WeeklyReward reward
     ) {

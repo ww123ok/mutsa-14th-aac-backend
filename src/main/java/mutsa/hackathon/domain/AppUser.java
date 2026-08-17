@@ -138,6 +138,9 @@ public class AppUser extends BaseEntity {
     @Column(name = "onboarding_completed_at")
     private LocalDateTime onboardingCompletedAt;
 
+    @Column(name = "tutorial_completed_at")
+    private LocalDateTime tutorialCompletedAt;
+
     @Column(nullable = false)
     private int credit;
 
@@ -437,6 +440,16 @@ public class AppUser extends BaseEntity {
 
     public boolean isOnboardingCompleted() {
         return onboardingCompletedAt != null;
+    }
+
+    public void completeTutorial() {
+        if (tutorialCompletedAt == null) {
+            tutorialCompletedAt = LocalDateTime.now();
+        }
+    }
+
+    public boolean isTutorialCompleted() {
+        return tutorialCompletedAt != null;
     }
 
     private void updateAiMemoryConsent(

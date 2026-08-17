@@ -129,6 +129,13 @@ public class AppUserService {
         );
     }
 
+    @Transactional
+    public MeResponse completeTutorial(Long userId) {
+        AppUser user = findUser(userId);
+        user.completeTutorial();
+        return MeResponse.from(user);
+    }
+
     /**
      * 이메일/비밀번호 로그인 성공 시
      * 마지막 로그인 시각만 짧은 transaction에서 갱신
