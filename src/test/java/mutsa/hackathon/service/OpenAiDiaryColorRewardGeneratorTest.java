@@ -579,6 +579,141 @@ class OpenAiDiaryColorRewardGeneratorTest {
     }
 
     @Test
+    void 편집기_타임스탬프는_AI입력에서_제거한다()
+            throws Exception {
+
+        generator.generate(
+                "AM 2:53\n\n카페에 갔다."
+        );
+
+        assertEquals(
+                1,
+                requestCount.get()
+        );
+
+        JsonNode request =
+                jsonMapper.readTree(
+                        capturedRequestBody.get()
+                );
+
+        String input =
+                request.get("input")
+                        .asText();
+
+        assertFalse(
+                input.contains(
+                        "AM 2:53"
+                )
+        );
+
+        assertTrue(
+                input.contains(
+                        "카페에 갔다."
+                )
+        );
+
+        String instructions =
+                request.get("instructions")
+                        .asText();
+
+        String normalizedInstructions =
+                instructions.replaceAll(
+                        "\\s+",
+                        " "
+                );
+
+        assertTrue(
+                normalizedInstructions.contains(
+                        "EDITOR TIMESTAMP METADATA RULE"
+                )
+        );
+
+        assertTrue(
+                normalizedInstructions.contains(
+                        "They do NOT indicate when the described event actually happened"
+                )
+        );
+
+        assertTrue(
+                normalizedInstructions.contains(
+                        "Never describe a scene as 아침, 낮, 저녁, 늦은 밤, or 새벽 solely because of an editor timestamp"
+                )
+        );
+    }
+
+    @Test
+    void 사용자_본문의_시간표현은_유지하고_독립된_타임스탬프만_제거한다()
+            throws Exception {
+
+        generator.generate(
+                "AM 2:53\n"
+                        + "오늘 점심에 카페에 갔다.\n\n"
+                        + "오후 10:05\n"
+                        + "오전 11시에 친구를 만났다.\n"
+                        + "PM 10:03에 알람이 울렸다."
+        );
+
+        JsonNode request =
+                jsonMapper.readTree(
+                        capturedRequestBody.get()
+                );
+
+        String input =
+                request.get("input")
+                        .asText();
+
+        assertFalse(
+                input.contains(
+                        "AM 2:53"
+                )
+        );
+
+        assertFalse(
+                input.contains(
+                        "오후 10:05\n"
+                )
+        );
+
+        assertTrue(
+                input.contains(
+                        "오늘 점심에 카페에 갔다."
+                )
+        );
+
+        assertTrue(
+                input.contains(
+                        "오전 11시에 친구를 만났다."
+                )
+        );
+
+        assertTrue(
+                input.contains(
+                        "PM 10:03에 알람이 울렸다."
+                )
+        );
+    }
+
+    @Test
+    void 타임스탬프만_있는_내용은_OpenAI에_보내지_않는다() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                        generator.generate(
+                                "AM 2:53\n\n오후 10:05"
+                        )
+        );
+
+        assertEquals(
+                0,
+                requestCount.get()
+        );
+
+        assertNull(
+                capturedRequestBody.get()
+        );
+    }
+
+    @Test
     void 빈_일기내용이면_외부요청을_시도하지_않는다() {
         assertThrows(
                 IllegalArgumentException.class,

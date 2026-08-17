@@ -16,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * OpenAI Responses API의 구조화 출력을 이용하여
@@ -37,6 +38,33 @@ public class OpenAiDiaryColorRewardGenerator
 
     private static final int
             MAX_DIARY_CONTENT_LENGTH = 8_000;
+
+    /**
+     * 프론트 일기 편집기가 자동으로 붙이는 작성 시각 메타데이터입니다.
+     * 독립된 한 줄 전체가 타임스탬프인 경우에만 제거하여,
+     * 사용자가 직접 본문에 쓴 시간 표현은 보존합니다.
+     */
+    private static final Pattern
+            EDITOR_TIMESTAMP_LINE =
+            Pattern.compile(
+                    "(?im)^[\\t\\p{Zs}]*"
+                            + "(?:AM|PM|오전|오후)"
+                            + "[\\t\\p{Zs}]+"
+                            + "(?:0?[1-9]|1[0-2]):[0-5]\\d"
+                            + "[\\t\\p{Zs}]*$"
+            );
+
+    private static final Pattern
+            WHITESPACE_ONLY_LINE =
+            Pattern.compile(
+                    "(?m)^[\\t\\p{Zs}]+$"
+            );
+
+    private static final Pattern
+            EXCESSIVE_BLANK_LINES =
+            Pattern.compile(
+                    "\\n{3,}"
+            );
 
     /**
      * AI가 UI 예약 색상, 키워드, 코멘트 형식 정책을
@@ -80,6 +108,22 @@ public class OpenAiDiaryColorRewardGenerator
             were translated into one color, what visual direction would express them most distinctly?"
 
             Determine Hue, Lightness, and Chroma independently, then combine them into one color.
+
+            EDITOR TIMESTAMP METADATA RULE:
+            DAYBIT may place editor-generated timestamp lines such as "AM 2:53", "PM 10:05",
+            "오전 2:53", or "오후 10:05" next to diary entries. These timestamps indicate only
+            when the user typed or resumed writing. They do NOT indicate when the described event
+            actually happened.
+
+            - Never use an editor timestamp as evidence for event time, scene lighting, brightness,
+              darkness, day/night state, chronology, duration, location, or atmosphere.
+            - Never describe a scene as 아침, 낮, 저녁, 늦은 밤, or 새벽 solely because of an
+              editor timestamp.
+            - Time-of-day is valid evidence only when the user explicitly writes it in the diary prose,
+              for example "점심에 카페에 갔다", "저녁에 산책했다", "밤늦게 작업했다",
+              or "오전 11시에 친구를 만났다".
+            - If the diary prose does not explicitly establish when an event happened, do not infer
+              an event time from the writing time.
 
             1. EXTRACT VISUAL CUES FROM THE DIARY:
             Before deciding the color, identify only cues that are actually present and meaningful.
@@ -486,6 +530,8 @@ public class OpenAiDiaryColorRewardGenerator
                 exact clock times, and language implying manual AI manipulation?
             18) Does commentSummary contain two or three short Korean sentences,
                 with every sentence and the final character ending in a period "."?
+            19) Did I avoid using editor-generated writing timestamps as evidence for when the
+                diary event happened, its lighting, or its day/night atmosphere?
 
             MOST IMPORTANT PRINCIPLES:
             Do not make the color aesthetically safe.
@@ -516,8 +562,13 @@ public class OpenAiDiaryColorRewardGenerator
     public DiaryColorReward generate(
             String diaryContent
     ) {
+        String aiDiaryContent =
+                sanitizeDiaryContentForAi(
+                        diaryContent
+                );
+
         validateDiaryContent(
-                diaryContent
+                aiDiaryContent
         );
 
         if (
@@ -544,7 +595,7 @@ public class OpenAiDiaryColorRewardGenerator
         ) {
             try {
                 return requestReward(
-                        diaryContent,
+                        aiDiaryContent,
                         attempt > 1
                 );
 
@@ -876,6 +927,56 @@ public class OpenAiDiaryColorRewardGenerator
         }
 
         return outputText.trim();
+    }
+
+    /**
+     * 색 보상용 AI 입력에서만 편집기 작성 시각을 제거합니다.
+     * 원본 일기/DB 데이터는 변경하지 않습니다.
+     *
+     * <p>한 줄 전체가 AM/PM 또는 오전/오후 + 시:분 형식인 경우만 제거하므로
+     * "점심에 카페에 갔다", "오전 11시에 친구를 만났다",
+     * "PM 10:03에 알람이 울렸다" 같은 사용자 본문은 그대로 유지됩니다.</p>
+     */
+    private String sanitizeDiaryContentForAi(
+            String diaryContent
+    ) {
+        if (diaryContent == null) {
+            return "";
+        }
+
+        String normalizedLineBreaks =
+                diaryContent
+                        .replace(
+                                "\r\n",
+                                "\n"
+                        )
+                        .replace(
+                                '\r',
+                                '\n'
+                        );
+
+        String withoutEditorTimestamps =
+                EDITOR_TIMESTAMP_LINE
+                        .matcher(
+                                normalizedLineBreaks
+                        )
+                        .replaceAll("");
+
+        String withoutWhitespaceOnlyLines =
+                WHITESPACE_ONLY_LINE
+                        .matcher(
+                                withoutEditorTimestamps
+                        )
+                        .replaceAll("");
+
+        return EXCESSIVE_BLANK_LINES
+                .matcher(
+                        withoutWhitespaceOnlyLines
+                )
+                .replaceAll(
+                        "\n\n"
+                )
+                .trim();
     }
 
     private String truncateDiaryContent(
