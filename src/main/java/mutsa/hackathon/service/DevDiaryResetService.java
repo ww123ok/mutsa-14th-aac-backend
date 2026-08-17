@@ -10,6 +10,7 @@ import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.DiaryRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import mutsa.hackathon.repository.DiaryShareRepository;
+import mutsa.hackathon.repository.ExperienceFragmentArrivalRepository;
 import mutsa.hackathon.repository.SharedDiaryLogRepository;
 import mutsa.hackathon.repository.UserMemoryItemRepository;
 import org.springframework.boot.autoconfigure.condition
@@ -43,6 +44,9 @@ public class DevDiaryResetService {
 
     private final DiaryShareRepository
             diaryShareRepository;
+
+    private final ExperienceFragmentArrivalRepository
+            experienceFragmentArrivalRepository;
 
     private final SharedDiaryLogRepository
             sharedDiaryLogRepository;
@@ -96,6 +100,10 @@ public class DevDiaryResetService {
          * 가지므로 이미 전달되었거나 공유 보상 크레딧이
          * 지급된 경험조각은 개발용 초기화로 삭제하지 않는다.
          */
+        deleteArrivalsUsingQueryDiary(
+                diaryId
+        );
+
         deleteUnreceivedDiaryShare(
                 diaryId
         );
@@ -147,6 +155,19 @@ public class DevDiaryResetService {
     }
 
     /**
+     * 초기화 대상 일기를 매칭 기준으로 생성된 개인 수신함 도착 정보는
+     * 해당 일기와 함께 제거한다. 실제 수신 완료 후 생성된 전달 로그와
+     * 크레딧 거래 이력은 이 FK에 의존하지 않으므로 건드리지 않음.
+     */
+    private void deleteArrivalsUsingQueryDiary(
+            Long diaryId
+    ) {
+        experienceFragmentArrivalRepository
+                .deleteAllByQueryDiaryId(diaryId);
+        experienceFragmentArrivalRepository.flush();
+    }
+
+    /**
      * 개발용 초기화에서는 아직 다른 사용자에게 전달되지 않은
      * 경험조각만 함께 제거한다.
      *
@@ -179,6 +200,12 @@ public class DevDiaryResetService {
                                         .DEV_DIARY_RESET_SHARED_DIARY_BLOCKED
                         );
                     }
+
+                    experienceFragmentArrivalRepository
+                            .deleteAllByDiaryShareId(
+                                    share.getId()
+                            );
+                    experienceFragmentArrivalRepository.flush();
 
                     diaryShareRepository.delete(
                             share
