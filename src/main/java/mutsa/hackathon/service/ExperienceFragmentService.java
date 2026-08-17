@@ -21,6 +21,7 @@ import java.util.*;
 @Slf4j
 public class ExperienceFragmentService {
     private static final int RECEIVE_COST = 1;
+    private static final double KEYWORD_OVERLAP_BONUS = 0.02d;
 
     private final DiaryRepository diaryRepository;
     private final DiaryShareRepository diaryShareRepository;
@@ -123,7 +124,11 @@ public class ExperienceFragmentService {
                 .toList();
     }
 
-    /** Hybrid matching: exact approved-keyword overlap narrows candidates, cosine similarity ranks them. */
+    /**
+     * Hybrid matching: semantic similarity decides eligibility and keyword overlap
+     * only improves ranking. Keywords generated for identical diaries can differ,
+     * so they must not exclude an otherwise highly similar experience.
+     */
     @Transactional(readOnly = true)
     public Optional<ExperienceMatchResponse> findBestMatch(Long receiverId, Long diaryId) {
         Diary queryDiary = diaryRepository.findByIdAndUserIdAndDeletedFalse(diaryId, receiverId)
@@ -133,12 +138,12 @@ public class ExperienceFragmentService {
         return diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED).stream()
                 .filter(share -> !share.getDiary().isDeleted())
                 .filter(share -> !share.getDiary().getUser().getId().equals(receiverId))
-                .filter(share -> share.getKeywords().stream().anyMatch(keyword -> queryText.contains(keyword.toLowerCase(Locale.ROOT))))
                 .filter(share -> !sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiverId, share.getId()))
-                .map(share -> scored(share, queryEmbedding.values()))
+                .map(share -> ranked(share, queryEmbedding.values(), queryText))
                 .filter(Objects::nonNull)
-                .filter(match -> match.similarity() >= minimumSimilarity)
-                .max(Comparator.comparingDouble(ExperienceMatchResponse::similarity));
+                .filter(match -> match.response().similarity() >= minimumSimilarity)
+                .max(Comparator.comparingDouble(RankedExperienceMatch::rankingScore))
+                .map(RankedExperienceMatch::response);
     }
 
     /**
@@ -237,6 +242,33 @@ public class ExperienceFragmentService {
             if (candidate.size() != query.size()) return null;
             return new ExperienceMatchResponse(share.getId(), share.getGeneralTopic(), List.copyOf(share.getKeywords()), cosine(query, candidate));
         } catch (Exception exception) { return null; }
+    }
+
+    private RankedExperienceMatch ranked(
+            DiaryShare share,
+            List<Double> query,
+            String queryText
+    ) {
+        ExperienceMatchResponse response = scored(share, query);
+        if (response == null) {
+            return null;
+        }
+
+        boolean hasKeywordOverlap = share.getKeywords().stream()
+                .filter(Objects::nonNull)
+                .map(keyword -> keyword.toLowerCase(Locale.ROOT))
+                .anyMatch(queryText::contains);
+
+        double rankingScore = response.similarity()
+                + (hasKeywordOverlap ? KEYWORD_OVERLAP_BONUS : 0d);
+
+        return new RankedExperienceMatch(response, rankingScore);
+    }
+
+    private record RankedExperienceMatch(
+            ExperienceMatchResponse response,
+            double rankingScore
+    ) {
     }
 
     private ExperienceFragmentResponse approveReviewRequiredShare(DiaryShare share, Long userId) {

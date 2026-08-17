@@ -38,7 +38,7 @@ class ExperienceFragmentServiceTest {
     @InjectMocks private ExperienceFragmentService service;
 
     @Test
-    void matchesOnlyKeywordOverlappingApprovedFragmentAboveThreshold() {
+    void prioritizesKeywordOverlapAfterSemanticSimilarityPassesThreshold() {
         ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
         ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
 
@@ -56,7 +56,32 @@ class ExperienceFragmentServiceTest {
         assertTrue(result.isPresent());
         assertEquals(20L, result.get().shareId());
         verify(sharedDiaryLogRepository).existsByReceiverIdAndDiaryShareId(1L, 20L);
-        verify(sharedDiaryLogRepository, never()).existsByReceiverIdAndDiaryShareId(1L, 30L);
+        verify(sharedDiaryLogRepository).existsByReceiverIdAndDiaryShareId(1L, 30L);
+    }
+
+    @Test
+    void matchesSemanticallySimilarFragmentEvenWhenGeneratedKeywordsDoNotAppearInDiaryText() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "오늘 카페 알바에서 처음으로 혼자 마감을 했다.");
+        DiaryShare matching = approvedShare(
+                20L,
+                diary(user(2L), 21L, "source"),
+                List.of("마감업무", "불안", "서비스업무"),
+                "[1.0,0.0]"
+        );
+
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
+        when(experienceEmbeddingGenerator.generate(queryDiary.getContent()))
+                .thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
+        when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(List.of(matching));
+
+        Optional<ExperienceMatchResponse> result = service.findBestMatch(1L, 10L);
+
+        assertTrue(result.isPresent());
+        assertEquals(20L, result.get().shareId());
     }
 
     @Test
