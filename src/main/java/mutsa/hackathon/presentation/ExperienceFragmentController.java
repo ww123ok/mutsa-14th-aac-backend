@@ -78,22 +78,31 @@ public class  ExperienceFragmentController {
             @PathVariable Long arrivalId
     ) {
         return ApiResponse.onSuccess(experienceFragmentService.receiveFromInbox(user.getKakaoUserProfile().id(), arrivalId));
-    @PostMapping("/deliveries/{deliveryId}/feedback")
-    public ApiResponse<ExperienceFragmentFeedbackResponse> submitFeedback(
-            @AuthenticationPrincipal CustomOAuth2User user,
-            @PathVariable Long deliveryId,
-            @Valid @RequestBody ExperienceFragmentFeedbackRequest request
-    ) {
-        return ApiResponse.onSuccess(experienceFragmentService.submitFeedback(
-                user.getKakaoUserProfile().id(), deliveryId, request));
     }
+    @PostMapping("/deliveries/{deliveryId}/feedback")
+public ApiResponse<ExperienceFragmentFeedbackResponse> submitFeedback(
+        @AuthenticationPrincipal CustomOAuth2User user,
+        @PathVariable Long deliveryId,
+        @Valid @RequestBody ExperienceFragmentFeedbackRequest request
+) {
+    return ApiResponse.onSuccess(
+            experienceFragmentService.submitFeedback(
+                    user.getKakaoUserProfile().id(),
+                    deliveryId,
+                    request)
+    );
+}
 
     @GetMapping("/{shareId}/feedbacks")
-    public ApiResponse<List<ExperienceFragmentFeedbackResponse>> feedbacks(
-            @AuthenticationPrincipal CustomOAuth2User user,
-            @PathVariable Long shareId
-    ) {
-        return ApiResponse.onSuccess(experienceFragmentService.firstThreeFeedbacks(
-                user.getKakaoUserProfile().id(), shareId));
-    }
+public ApiResponse<List<ExperienceFragmentFeedbackResponse>> feedbacks(
+        @AuthenticationPrincipal CustomOAuth2User user,
+        @PathVariable Long shareId
+) {
+    return ApiResponse.onSuccess(
+            experienceFragmentService.firstThreeFeedbacks(
+                    user.getKakaoUserProfile().id(),
+                    shareId
+            )
+    );
+}
 }
