@@ -187,6 +187,12 @@ public enum ErrorCode
             HttpStatus.CONFLICT,
             "WEEKLY_REWARD409",
             "아직 확인할 수 없는 주간 보상입니다."
+    ),
+
+    NOTIFICATION_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "NOTIFICATION404",
+            "존재하지 않는 알림입니다."
     );
 
     private final HttpStatus status;
