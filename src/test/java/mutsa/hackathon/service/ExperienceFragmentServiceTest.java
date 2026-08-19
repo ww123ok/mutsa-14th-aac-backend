@@ -8,6 +8,7 @@ import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -33,12 +34,22 @@ class ExperienceFragmentServiceTest {
     @Mock private AppUserRepository appUserRepository;
     @Mock private CreditTransactionRepository creditTransactionRepository;
     @Mock private ExperienceFragmentProcessor experienceFragmentProcessor;
+    @Mock private ExperienceStructureExtractor experienceStructureExtractor;
     @Mock private ExperienceEmbeddingGenerator experienceEmbeddingGenerator;
     @Mock private ExperienceFragmentDraftPersistenceService draftPersistenceService;
     @Mock private ExperienceFragmentApprovalPersistenceService approvalPersistenceService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private ExperienceFragmentService service;
+
+    @BeforeEach
+    void setUpExperienceStructureExtractor() {
+        when(experienceStructureExtractor.extract(anyString()))
+                .thenAnswer(invocation -> new ExperienceStructure(
+                        invocation.getArgument(0),
+                        List.of()
+                ));
+    }
 
     @Test
     void prioritizesKeywordOverlapAfterSemanticSimilarityPassesThreshold() {
@@ -85,6 +96,62 @@ class ExperienceFragmentServiceTest {
 
         assertTrue(result.isPresent());
         assertEquals(20L, result.get().shareId());
+    }
+
+    @Test
+    void comparesTheReceiverStructureInsteadOfTheRawDiaryText() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "면접 결과가 언제 나올지 몰라 메일을 계속 확인했다.");
+        ExperienceStructure structure = new ExperienceStructure(
+                "상황: 중요한 결과를 기다리는 중 | 핵심 어려움: 불확실성 | 반응: 반복 확인 | 영향 또는 변화: 집중이 흐트러짐",
+                List.of("결과 기다림", "반복 확인")
+        );
+        DiaryShare matching = approvedShare(
+                20L,
+                diary(user(2L), 21L, "source"),
+                List.of("결과 기다림", "반복 확인"),
+                "[1.0,0.0]"
+        );
+
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
+        when(experienceStructureExtractor.extract(queryDiary.getContent())).thenReturn(structure);
+        when(experienceEmbeddingGenerator.generate(structure.matchingText()))
+                .thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
+        when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(List.of(matching));
+
+        Optional<ExperienceMatchResponse> result = service.findBestMatch(1L, 10L);
+
+        assertTrue(result.isPresent());
+        verify(experienceEmbeddingGenerator).generate(structure.matchingText());
+    }
+
+    @Test
+    void skipsPendingInboxCandidateAndSelectsTheNextEligibleMatch() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "중요한 결과를 기다리며 계속 확인했다.");
+        DiaryShare pendingFirst = approvedShare(20L, diary(user(2L), 21L, "source"),
+                List.of("결과 기다림"), "[1.0,0.0]");
+        DiaryShare nextBest = approvedShare(30L, diary(user(3L), 31L, "source"),
+                List.of("결과 기다림"), "[0.9,0.1]");
+
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
+        when(experienceEmbeddingGenerator.generate(anyString()))
+                .thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
+        when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED))
+                .thenReturn(List.of(pendingFirst, nextBest));
+        when(experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(1L, 20L)).thenReturn(true);
+        when(experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(1L, 30L)).thenReturn(false);
+
+        Optional<ExperienceMatchResponse> result = service.findBestMatch(1L, 10L);
+
+        assertTrue(result.isPresent());
+        assertEquals(30L, result.get().shareId());
     }
 
     @Test

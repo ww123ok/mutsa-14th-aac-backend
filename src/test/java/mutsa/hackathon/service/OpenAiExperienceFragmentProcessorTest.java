@@ -43,5 +43,7 @@ class OpenAiExperienceFragmentProcessorTest {
         assertTrue(instructions.contains("phone numbers, social media accounts"));
         assertTrue(instructions.contains("A generic word such as \"school\" must remain \"school\""));
         assertTrue(instructions.contains("I did a team project with A from the same department"));
+        assertTrue(instructions.contains("matchingText rules"));
+        assertTrue(instructions.contains("Prioritize this structure over surface topics"));
     }
 }

@@ -30,6 +30,7 @@ public class ExperienceFragmentService {
     private final AppUserRepository appUserRepository;
     private final CreditTransactionRepository creditTransactionRepository;
     private final ExperienceFragmentProcessor experienceFragmentProcessor;
+    private final ExperienceStructureExtractor experienceStructureExtractor;
     private final ExperienceEmbeddingGenerator experienceEmbeddingGenerator;
     private final ExperienceFragmentDraftPersistenceService draftPersistenceService;
     private final ExperienceFragmentApprovalPersistenceService approvalPersistenceService;
@@ -157,13 +158,15 @@ public class ExperienceFragmentService {
     public Optional<ExperienceMatchResponse> findBestMatch(Long receiverId, Long diaryId) {
         Diary queryDiary = diaryRepository.findByIdAndUserIdAndDeletedFalse(diaryId, receiverId)
                 .orElseThrow(() -> new ProjectException(ErrorCode.DIARY_NOT_FOUND));
-        ExperienceEmbedding queryEmbedding = experienceEmbeddingGenerator.generate(queryDiary.getContent());
-        String queryText = queryDiary.getContent().toLowerCase(Locale.ROOT);
+        ExperienceStructure queryStructure = experienceStructureExtractor.extract(queryDiary.getContent());
+        ExperienceEmbedding queryEmbedding = experienceEmbeddingGenerator.generate(queryStructure.matchingText());
         return diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED).stream()
                 .filter(share -> !share.getDiary().isDeleted())
                 .filter(share -> !share.getDiary().getUser().getId().equals(receiverId))
                 .filter(share -> !sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiverId, share.getId()))
-                .map(share -> ranked(share, queryEmbedding.values(), queryText))
+                .filter(share -> !experienceFragmentArrivalRepository
+                        .existsByReceiverIdAndDiaryShareId(receiverId, share.getId()))
+                .map(share -> ranked(share, queryEmbedding.values(), queryStructure.keywords()))
                 .filter(Objects::nonNull)
                 .filter(match -> match.response().similarity() >= minimumSimilarity)
                 .max(Comparator.comparingDouble(RankedExperienceMatch::rankingScore))
@@ -301,17 +304,14 @@ public class ExperienceFragmentService {
     private RankedExperienceMatch ranked(
             DiaryShare share,
             List<Double> query,
-            String queryText
+            List<String> queryKeywords
     ) {
         ExperienceMatchResponse response = scored(share, query);
         if (response == null) {
             return null;
         }
 
-        boolean hasKeywordOverlap = share.getKeywords().stream()
-                .filter(Objects::nonNull)
-                .map(keyword -> keyword.toLowerCase(Locale.ROOT))
-                .anyMatch(queryText::contains);
+        boolean hasKeywordOverlap = hasKeywordOverlap(share.getKeywords(), queryKeywords);
 
         double rankingScore = response.similarity()
                 + (hasKeywordOverlap ? KEYWORD_OVERLAP_BONUS : 0d);
@@ -323,6 +323,22 @@ public class ExperienceFragmentService {
             ExperienceMatchResponse response,
             double rankingScore
     ) {
+    }
+
+    private boolean hasKeywordOverlap(List<String> sourceKeywords, List<String> queryKeywords) {
+        if (sourceKeywords == null || queryKeywords == null) {
+            return false;
+        }
+
+        return sourceKeywords.stream()
+                .filter(Objects::nonNull)
+                .map(keyword -> keyword.toLowerCase(Locale.ROOT).trim())
+                .anyMatch(sourceKeyword -> queryKeywords.stream()
+                        .filter(Objects::nonNull)
+                        .map(keyword -> keyword.toLowerCase(Locale.ROOT).trim())
+                        .anyMatch(queryKeyword -> sourceKeyword.equals(queryKeyword)
+                                || sourceKeyword.contains(queryKeyword)
+                                || queryKeyword.contains(sourceKeyword)));
     }
 
     private ExperienceFragmentResponse approveReviewRequiredShare(DiaryShare share, Long userId) {
