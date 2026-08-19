@@ -17,6 +17,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Optional;
@@ -150,6 +151,30 @@ class DiaryAutoCompletionServiceTest {
         );
         assertTrue(
                 result.processed()
+        );
+    }
+
+    @Test
+    void 하루경계를_넘겼어도_편집_heartbeat가_살아있으면_자동완료하지_않는다() {
+        DiaryDraft draft = draft(
+                LocalDate.of(2026, 8, 18)
+        );
+        draft.markEditingActiveUntil(
+                LocalDateTime.of(2026, 8, 19, 6, 2)
+        );
+
+        when(
+                diaryDraftRepository.findByIdWithUser(10L)
+        ).thenReturn(Optional.of(draft));
+
+        DiaryAutoCompletionService.AutoCompletionResult result =
+                autoCompletionService.autoCompleteIfDue(10L);
+
+        assertFalse(result.processed());
+        verify(diaryService, never()).autoCompleteForRecordedDate(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
         );
     }
 

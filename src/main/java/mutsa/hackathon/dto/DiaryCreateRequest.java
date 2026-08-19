@@ -22,7 +22,13 @@ public record DiaryCreateRequest(
         @NotNull(
                 message = "오늘 일기 내용을 앞으로의 질문에 반영할지 선택해야 합니다."
         )
-        Boolean personalizationUsesDiaryContent
+        Boolean personalizationUsesDiaryContent,
+
+        /**
+         * 임시저장 기반 완료 시 선택적으로 전달.
+         * 하루 경계를 넘긴 뒤에도 최초 작성 날짜를 보존하는 기준점으로 사용한다.
+         */
+        Long draftId
 
 ) {
 
@@ -34,7 +40,19 @@ public record DiaryCreateRequest(
         ) {
                 this(
                         content,
-                        true
+                        true,
+                        null
+                );
+        }
+
+        public DiaryCreateRequest(
+                String content,
+                Boolean personalizationUsesDiaryContent
+        ) {
+                this(
+                        content,
+                        personalizationUsesDiaryContent,
+                        null
                 );
         }
 

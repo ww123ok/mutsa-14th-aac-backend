@@ -18,6 +18,23 @@ public interface DiaryDraftRepository
             LocalDate recordedDate
     );
 
+    Optional<DiaryDraft>
+    findByIdAndUserId(
+            Long draftId,
+            Long userId
+    );
+
+    Optional<DiaryDraft>
+    findTopByUserIdOrderByRecordedDateDescIdDesc(
+            Long userId
+    );
+
+    boolean existsByUserIdAndRecordedDateBetween(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate
+    );
+
     long deleteByUserIdAndRecordedDate(
             Long userId,
             LocalDate recordedDate

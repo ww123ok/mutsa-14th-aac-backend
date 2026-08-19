@@ -55,6 +55,9 @@ public class DiaryService {
     private final UserDayService
             userDayService;
 
+    private final DiaryDraftService
+            diaryDraftService;
+
     /**
      * 이 메서드에는 의도적으로 @Transactional을 붙이지 않음.
      * 1. 짧은 read-only transaction으로 작성 가능 여부 확인
@@ -65,16 +68,33 @@ public class DiaryService {
             Long userId,
             DiaryCreateRequest request
     ) {
-        LocalDate today =
-                userDayService.currentDay(
-                        userId
+        LocalDate recordedDate =
+                resolveRecordedDateForCreate(
+                        userId,
+                        request
                 );
 
         return createForRecordedDate(
                 userId,
                 request,
-                today
+                recordedDate
         );
+    }
+
+
+    private LocalDate resolveRecordedDateForCreate(
+            Long userId,
+            DiaryCreateRequest request
+    ) {
+        if (request != null && request.draftId() != null) {
+            return diaryDraftService
+                    .prepareForCompletion(
+                            userId,
+                            request.draftId()
+                    );
+        }
+
+        return userDayService.currentDay(userId);
     }
 
     /**

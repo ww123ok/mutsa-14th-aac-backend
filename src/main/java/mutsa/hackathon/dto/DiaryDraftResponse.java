@@ -15,6 +15,11 @@ public record DiaryDraftResponse(
         @JsonFormat(
                 pattern = "yyyy-MM-dd'T'HH:mm:ss"
         )
+        LocalDateTime editingActiveUntil,
+
+        @JsonFormat(
+                pattern = "yyyy-MM-dd'T'HH:mm:ss"
+        )
         LocalDateTime updatedAt
 ) {
     public static DiaryDraftResponse from(
@@ -25,6 +30,7 @@ public record DiaryDraftResponse(
                 draft.getRecordedDate(),
                 draft.getContent(),
                 draft.shouldUseDiaryContentForPersonalization(),
+                draft.getEditingActiveUntil(),
                 draft.getUpdatedAt()
         );
     }

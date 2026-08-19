@@ -18,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -68,6 +69,13 @@ public class DiaryDraft extends BaseEntity {
     )
     private boolean personalizationUsesDiaryContent;
 
+    /**
+     * 프론트 편집기가 살아 있음을 나타내는 짧은 lease.
+     * 기존 row 호환을 위해 nullable로 두며 null/만료 값은 비활성으로 해석한다.
+     */
+    @Column(name = "editing_active_until")
+    private LocalDateTime editingActiveUntil;
+
     public static DiaryDraft create(
             AppUser user,
             LocalDate recordedDate,
@@ -106,6 +114,29 @@ public class DiaryDraft extends BaseEntity {
 
     public boolean shouldUseDiaryContentForPersonalization() {
         return personalizationUsesDiaryContent;
+    }
+
+    public void markEditingActiveUntil(
+            LocalDateTime activeUntil
+    ) {
+        if (activeUntil == null) {
+            throw new IllegalArgumentException(
+                    "작성 활성 만료 시각은 필수입니다."
+            );
+        }
+        this.editingActiveUntil = activeUntil;
+    }
+
+    public void stopEditing() {
+        this.editingActiveUntil = null;
+    }
+
+    public boolean isEditingActiveAt(
+            LocalDateTime now
+    ) {
+        return now != null
+                && editingActiveUntil != null
+                && editingActiveUntil.isAfter(now);
     }
 
     private static String normalizeContent(
