@@ -6,6 +6,7 @@ import mutsa.hackathon.domain.AiQuestionType;
 import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.domain.Diary;
 import mutsa.hackathon.domain.QuestionGenerationSource;
+import mutsa.hackathon.dto.WritingHelpQuestionHistoryResponse;
 import mutsa.hackathon.dto.WritingHelpQuestionRequest;
 import mutsa.hackathon.dto.WritingHelpQuestionResponse;
 import mutsa.hackathon.dto.WritingHelpStatusResponse;
@@ -71,6 +72,34 @@ public class AiWritingHelpService {
                 DAILY_LIMIT,
                 usedCount
         );
+    }
+
+    /**
+     * 현재 사용자가 오늘 이미 받은 작성 도움 질문을
+     * 생성 순서대로 조회한다.
+     *
+     * userId + WRITING_HELP + 현재 DAYBIT 날짜 조건으로 조회하므로
+     * 계정 전환 시 다른 사용자의 질문이 반환되지 않는다.
+     */
+    @Transactional(readOnly = true)
+    public List<WritingHelpQuestionHistoryResponse>
+    getTodayQuestionHistory(
+            Long userId
+    ) {
+        LocalDate today =
+                userDayService.currentDay(
+                        userId
+                );
+
+        return aiQuestionRepository
+                .findAllByUserIdAndQuestionTypeAndAskedDateOrderByQuestionOrderAsc(
+                        userId,
+                        AiQuestionType.WRITING_HELP,
+                        today
+                )
+                .stream()
+                .map(WritingHelpQuestionHistoryResponse::from)
+                .toList();
     }
 
     /**
