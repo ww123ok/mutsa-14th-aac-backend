@@ -11,7 +11,6 @@ public record MeResponse(
         String nickname,
         String email,
         String profileImage,
-        String job,
 
         @JsonFormat(pattern = "HH:mm")
         LocalTime reminderTime,
@@ -39,7 +38,6 @@ public record MeResponse(
                 user.getNickname(),
                 user.getEmail(),
                 user.getProfileImage(),
-                user.getJob(),
                 user.getDiaryReminderTime(),
                 user.getDayStartTime(),
                 user.isAiMemoryConsent(),

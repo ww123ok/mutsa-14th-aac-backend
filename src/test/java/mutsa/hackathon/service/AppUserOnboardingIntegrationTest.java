@@ -66,7 +66,6 @@ class AppUserOnboardingIntegrationTest {
                         user.getId(),
                         new MeUpdateRequest(
                                 "  데이빗  ",
-                                "  대학생  ",
                                 LocalTime.of(21, 0),
                                 LocalTime.of(6, 0),
                                 true
@@ -76,11 +75,6 @@ class AppUserOnboardingIntegrationTest {
         assertEquals(
                 "데이빗",
                 response.nickname()
-        );
-
-        assertEquals(
-                "대학생",
-                response.job()
         );
 
         assertEquals(
@@ -119,11 +113,11 @@ class AppUserOnboardingIntegrationTest {
                                         user.getId(),
                                         new MeUpdateRequest(
                                                 "데이빗",
-                                                "대학생",
                                                 LocalTime.of(
                                                         20,
                                                         0
                                                 ),
+                                                LocalTime.of(6, 0),
                                                 false
                                         )
                                 )
@@ -144,8 +138,8 @@ class AppUserOnboardingIntegrationTest {
                 user.getId(),
                 new MeUpdateRequest(
                         "데이빗",
-                        "직장인",
                         LocalTime.of(22, 0),
+                        LocalTime.of(6, 0),
                         true
                 )
         );
@@ -191,8 +185,8 @@ class AppUserOnboardingIntegrationTest {
                 user.getId(),
                 new MeUpdateRequest(
                         "데이빗",
-                        "프리랜서",
                         LocalTime.of(23, 0),
+                        LocalTime.of(6, 0),
                         true
                 )
         );
@@ -211,8 +205,8 @@ class AppUserOnboardingIntegrationTest {
                         user.getId(),
                         new MeUpdateRequest(
                                 "데이빗",
-                                "프리랜서",
                                 LocalTime.of(23, 0),
+                                LocalTime.of(6, 0),
                                 false
                         )
                 );
@@ -231,35 +225,18 @@ class AppUserOnboardingIntegrationTest {
     }
 
     @Test
-    void 오늘_시작_시간을_생략하면_기존_설정을_유지한다() {
-        AppUser user = saveUser();
-
-        appUserService.updateMe(
-                user.getId(),
-                new MeUpdateRequest(
-                        "데이빗",
-                        "대학생",
-                        LocalTime.of(21, 0),
-                        LocalTime.of(6, 0),
-                        true
-                )
-        );
-
-        MeResponse response =
-                appUserService.updateMe(
-                        user.getId(),
+    void 하루_전환_시간은_필수다() {
+        Set<ConstraintViolation<MeUpdateRequest>> violations =
+                validator.validate(
                         new MeUpdateRequest(
                                 "데이빗",
-                                "대학생",
                                 LocalTime.of(22, 0),
+                                null,
                                 true
                         )
                 );
 
-        assertEquals(
-                LocalTime.of(6, 0),
-                response.dayStartTime()
-        );
+        assertFalse(violations.isEmpty());
     }
 
     @Test
@@ -269,8 +246,8 @@ class AppUserOnboardingIntegrationTest {
                 validator.validate(
                         new MeUpdateRequest(
                                 "한",
-                                "대학생",
                                 LocalTime.of(20, 0),
+                                LocalTime.of(6, 0),
                                 true
                         )
                 );
@@ -280,8 +257,8 @@ class AppUserOnboardingIntegrationTest {
                 validator.validate(
                         new MeUpdateRequest(
                                 "아주긴닉네임입니다",
-                                "대학생",
                                 LocalTime.of(20, 0),
+                                LocalTime.of(6, 0),
                                 true
                         )
                 );

@@ -508,14 +508,6 @@ class FormAuthHttpIntegrationTest {
                 )
                 .andExpect(
                         jsonPath(
-                                "$.result.job"
-                        )
-                                .value(
-                                        "대학생"
-                                )
-                )
-                .andExpect(
-                        jsonPath(
                                 "$.result.reminderTime"
                         )
                                 .value(
@@ -550,10 +542,6 @@ class FormAuthHttpIntegrationTest {
                 afterValidPatch.getNickname()
         );
 
-        assertEquals(
-                "대학생",
-                afterValidPatch.getJob()
-        );
     }
 
     @Test
@@ -1571,8 +1559,8 @@ class FormAuthHttpIntegrationTest {
         return """
                 {
                   "nickname": "데이빛",
-                  "job": "대학생",
                   "reminderTime": "21:30",
+                  "dayStartTime": "06:00",
                   "aiMemoryConsent": true
                 }
                 """;

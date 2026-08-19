@@ -104,11 +104,8 @@ public class AppUserService {
 
         user.updatePersonalSettings(
                 request.nickname(),
-                request.job(),
                 request.reminderTime(),
-                request.dayStartTime() == null
-                        ? user.getDayStartTime()
-                        : request.dayStartTime(),
+                request.dayStartTime(),
                 requestedConsent
         );
 

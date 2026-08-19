@@ -313,6 +313,36 @@ public class AppUser extends BaseEntity {
                         job
                 );
 
+        updateSettingsWithoutJob(
+                diaryReminderTime,
+                dayStartTime,
+                aiMemoryConsent
+        );
+    }
+
+    public void updatePersonalSettings(
+            String nickname,
+            LocalTime diaryReminderTime,
+            LocalTime dayStartTime,
+            boolean aiMemoryConsent
+    ) {
+        this.nickname =
+                normalizeNickname(
+                        nickname
+                );
+
+        updateSettingsWithoutJob(
+                diaryReminderTime,
+                dayStartTime,
+                aiMemoryConsent
+        );
+    }
+
+    private void updateSettingsWithoutJob(
+            LocalTime diaryReminderTime,
+            LocalTime dayStartTime,
+            boolean aiMemoryConsent
+    ) {
         if (diaryReminderTime == null) {
             throw new IllegalArgumentException(
                     "일기 알림 시간은 필수입니다."
