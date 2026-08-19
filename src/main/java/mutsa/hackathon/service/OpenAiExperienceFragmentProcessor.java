@@ -44,6 +44,18 @@ public class OpenAiExperienceFragmentProcessor implements ExperienceFragmentProc
             - Keep the original meaning and sequence of events. Do not invent a different
               event, relationship, location type, emotion, or outcome.
 
+            Timeline rules:
+            - The input may contain trusted bracketed time-of-day labels such as '[저녁]' or '[밤]'.
+              They were calculated by the server from the diary editor's visit timestamps.
+            - Preserve every existing bracketed time-of-day label exactly and preserve its order.
+              Keep the content under each label in its own paragraph; do not repeat one label for
+              every sentence and do not merge content across different labels.
+            - Do not remove, rename, or infer a new bracketed time-of-day label. These labels are
+              not personal information and must remain visible in anonymizedContent.
+            - A time expression outside brackets is ordinary diary text, not a trusted timestamp.
+              Generalize it naturally from context when possible. If AM or PM cannot be inferred
+              safely, use a neutral expression such as '그 무렵' instead of inventing a time of day.
+
             Required privacy and safety review:
             - Detect and anonymize real names, nicknames, school/company/department/club names,
               exact addresses and named venues, phone numbers, social media accounts, and any

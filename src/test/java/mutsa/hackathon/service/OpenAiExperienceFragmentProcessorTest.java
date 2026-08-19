@@ -31,6 +31,8 @@ class OpenAiExperienceFragmentProcessorTest {
                         "named cafe becomes '근처 카페'"
                 )
         );
+        assertTrue(instructions.contains("Timeline rules"));
+        assertTrue(instructions.contains("'[저녁]' or '[밤]'"));
     }
 
     @Test
