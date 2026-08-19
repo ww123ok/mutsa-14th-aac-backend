@@ -8,6 +8,7 @@ import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.DiaryRepository;
+import mutsa.hackathon.repository.DiaryCommentRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import mutsa.hackathon.repository.DiaryShareRepository;
 import mutsa.hackathon.repository.ExperienceFragmentArrivalRepository;
@@ -32,6 +33,9 @@ public class DevDiaryResetService {
 
     private final DiaryRepository
             diaryRepository;
+
+    private final DiaryCommentRepository
+            diaryCommentRepository;
 
     private final DiaryRewardRepository
             diaryRewardRepository;
@@ -114,6 +118,11 @@ public class DevDiaryResetService {
                                 userId,
                                 diaryId
                         );
+
+        diaryCommentRepository
+                .deleteAllByDiaryId(
+                        diaryId
+                );
 
         long deletedReflectionQuestionCount =
                 aiQuestionRepository

@@ -89,6 +89,40 @@ public class DiaryService {
             DiaryCreateRequest request,
             LocalDate recordedDate
     ) {
+        return createForRecordedDate(
+                userId,
+                request,
+                recordedDate,
+                false
+        );
+    }
+
+    /**
+     * DAYBIT 하루 경계를 넘긴 임시 저장 일기를
+     * 기존 일기 생성 파이프라인으로 완료.
+     * 일반 생성과 동일하게 성찰 질문을 만든 뒤,
+     * DB 저장 transaction에서 자동 완료 안내까지 함께 남김.
+     */
+    public DiaryCreateResponse
+    autoCompleteForRecordedDate(
+            Long userId,
+            DiaryCreateRequest request,
+            LocalDate recordedDate
+    ) {
+        return createForRecordedDate(
+                userId,
+                request,
+                recordedDate,
+                true
+        );
+    }
+
+    private DiaryCreateResponse createForRecordedDate(
+            Long userId,
+            DiaryCreateRequest request,
+            LocalDate recordedDate,
+            boolean autoCompleted
+    ) {
         if (request == null) {
             throw new IllegalArgumentException(
                     "일기 작성 요청은 필수입니다."
@@ -112,6 +146,19 @@ public class DiaryService {
                 generateReflectionQuestion(
                         request.content()
                 );
+
+        if (autoCompleted) {
+            return diaryCreatePersistenceService
+                    .persistAutoCompleted(
+                            userId,
+                            request,
+                            recordedDate,
+                            generatedQuestion
+                                    .questionText(),
+                            generatedQuestion
+                                    .generationSource()
+                    );
+        }
 
         return diaryCreatePersistenceService
                 .persist(

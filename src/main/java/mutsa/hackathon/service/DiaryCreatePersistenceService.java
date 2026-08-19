@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import mutsa.hackathon.domain.AiQuestion;
 import mutsa.hackathon.domain.AppUser;
 import mutsa.hackathon.domain.Diary;
+import mutsa.hackathon.domain.DiaryAutoCompletionNotice;
 import mutsa.hackathon.domain.DiaryReward;
 import mutsa.hackathon.domain.QuestionGenerationSource;
 import mutsa.hackathon.dto.DiaryCreateRequest;
@@ -13,13 +14,17 @@ import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.AppUserRepository;
 import mutsa.hackathon.repository.DiaryRepository;
+import mutsa.hackathon.repository.DiaryAutoCompletionNoticeRepository;
+import mutsa.hackathon.repository.DiaryDraftRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 일기 작성 과정에서 DB 작업만 담당.
@@ -45,6 +50,14 @@ public class DiaryCreatePersistenceService {
 
     private final ApplicationEventPublisher
             eventPublisher;
+
+    private final DiaryDraftRepository
+            diaryDraftRepository;
+
+    private final DiaryAutoCompletionNoticeRepository
+            autoCompletionNoticeRepository;
+
+    private final Clock serviceClock;
 
     /**
      * OpenAI 호출 전에 불필요한 API 요청을 피하기 위해
@@ -85,6 +98,44 @@ public class DiaryCreatePersistenceService {
             String reflectionQuestionText,
             QuestionGenerationSource
                     reflectionGenerationSource
+    ) {
+        return persistInternal(
+                userId,
+                request,
+                recordedDate,
+                reflectionQuestionText,
+                reflectionGenerationSource,
+                false
+        );
+    }
+
+    @Transactional
+    public DiaryCreateResponse persistAutoCompleted(
+            Long userId,
+            DiaryCreateRequest request,
+            LocalDate recordedDate,
+            String reflectionQuestionText,
+            QuestionGenerationSource
+                    reflectionGenerationSource
+    ) {
+        return persistInternal(
+                userId,
+                request,
+                recordedDate,
+                reflectionQuestionText,
+                reflectionGenerationSource,
+                true
+        );
+    }
+
+    private DiaryCreateResponse persistInternal(
+            Long userId,
+            DiaryCreateRequest request,
+            LocalDate recordedDate,
+            String reflectionQuestionText,
+            QuestionGenerationSource
+                    reflectionGenerationSource,
+            boolean autoCompleted
     ) {
         /*
          * OpenAI 호출 사이에 다른 요청이 먼저 일기를
@@ -130,6 +181,29 @@ public class DiaryCreatePersistenceService {
                                 reflectionGenerationSource
                         )
                 );
+
+        /*
+         * 최종 일기가 만들어졌다면 같은 DAYBIT 날짜의
+         * 임시 저장본은 수동/자동 완료 여부와 무관하게 제거.
+         */
+        diaryDraftRepository
+                .deleteByUserIdAndRecordedDate(
+                        userId,
+                        recordedDate
+                );
+
+        if (autoCompleted) {
+            autoCompletionNoticeRepository.save(
+                    DiaryAutoCompletionNotice.create(
+                            user,
+                            diary.getId(),
+                            recordedDate,
+                            LocalDateTime.now(
+                                    serviceClock
+                            )
+                    )
+            );
+        }
 
         /*
          * AFTER_COMMIT listener가 사용하는 이벤트이므로
