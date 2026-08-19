@@ -29,7 +29,11 @@ public class FallbackWeeklyRewardResultTextFactory {
                 .stream()
                 .flatMap(day -> day.keywords().stream())
                 .filter(value -> value != null && !value.isBlank())
-                .map(value -> value.replace("#", "").trim())
+                .map(value -> value.replace("#", "")
+                        .trim()
+                        .replaceAll("\\s+", " "))
+                .filter(value ->
+                        !WeeklyRewardResultText.isReservedCategoryKeyword(value))
                 .filter(value -> value.matches(".*[가-힣].*"))
                 .forEach(value -> {
                     if (keywords.size() < 5) {

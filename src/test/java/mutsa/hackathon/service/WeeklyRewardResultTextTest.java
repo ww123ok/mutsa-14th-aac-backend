@@ -80,6 +80,34 @@ class WeeklyRewardResultTextTest {
     }
 
     @Test
+    void 하단_키워드에는_이미지_카테고리를_허용하지_않는다() {
+        for (String categoryKeyword : List.of(
+                "그래픽 포스터",
+                "3D캐릭터",
+                "유화",
+                "LP커버",
+                "픽셀아트",
+                "실사 풍경",
+                "그래픽포스터",
+                "3d 캐릭터",
+                "lp 커버",
+                "픽셀 아트",
+                "실사풍경"
+        )) {
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> new WeeklyRewardResultText(
+                            "한 주의 기록",
+                            "이번 주에는 여러 기록이 담겼습니다. "
+                                    + "이미지에는 그 기록의 흐름이 반영되었습니다.",
+                            "유화",
+                            List.of(categoryKeyword, "학교 가는 길", "휴식")
+                    )
+            );
+        }
+    }
+
+    @Test
     void 픽셀아트와_실사풍경_상단카테고리를_허용한다() {
         WeeklyRewardResultText pixelArt = new WeeklyRewardResultText(
                 "공간을 사용한 한 주",
