@@ -297,4 +297,55 @@ class DiaryServiceReflectionPreferenceTest {
                         .shouldUseDiaryContentForPersonalization()
         );
     }
+    @Test
+    void 자동완료_일기는_자동완료_전용_저장경로를_사용한다() {
+        DiaryCreateRequest request =
+                new DiaryCreateRequest(
+                        "하루 전환 전에 남긴 임시 저장",
+                        true
+                );
+
+        when(
+                diaryReflectionQuestionGenerator
+                        .generate(
+                                any(
+                                        DiaryReflectionPrompt.class
+                                )
+                        )
+        ).thenReturn(
+                "기록에서 가장 기억에 남는 순간은 무엇인가요?"
+        );
+
+        diaryService.autoCompleteForRecordedDate(
+                1L,
+                request,
+                USER_DAY
+        );
+
+        verify(
+                diaryCreatePersistenceService
+        ).persistAutoCompleted(
+                eq(1L),
+                eq(request),
+                eq(USER_DAY),
+                eq(
+                        "기록에서 가장 기억에 남는 순간은 무엇인가요?"
+                ),
+                eq(
+                        QuestionGenerationSource.AI
+                )
+        );
+
+        verify(
+                diaryCreatePersistenceService,
+                never()
+        ).persist(
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+        );
+    }
+
 }
