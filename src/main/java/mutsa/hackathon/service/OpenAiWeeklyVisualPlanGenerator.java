@@ -48,12 +48,23 @@ public class OpenAiWeeklyVisualPlanGenerator
             - Graphic design poster image = GRAPHIC_POSTER
             - Oil-painting-style image = OIL_ACRYLIC
             - Album cover image = ALBUM_COVER
+            - Pixel-art / game-scene image = PIXEL_ART
+            - Photorealistic landscape / space image = PHOTO_LANDSCAPE
 
-            Only the four enum values above may be selected for a newly generated visual plan.
+            Only the six enum values above may be selected for a newly generated visual plan.
             FIRST_PERSON_ANIME remains supported only for backward compatibility and must not be selected.
+
+            PREVIOUS-WEEK CATEGORY RULE:
+            - If the input provides previousWeekCategory, that category is forbidden for the current week.
+            - Select one of the remaining allowed categories instead.
+            - Never repeat the immediately previous week's category when it is provided.
 
             The following category-selection policy is authoritative.
             Apply it exactly. Do not summarize, weaken, replace, or add another selection standard.
+
+            %s
+
+            The following compact category-selection prompt is also authoritative and is provided verbatim.
 
             %s
 
@@ -96,8 +107,15 @@ public class OpenAiWeeklyVisualPlanGenerator
               including supported light, space, objects, and palette roles.
             - ALBUM_COVER: identify the repeated weekly atmosphere and one strong, diary-supported
               central motif capable of carrying that atmosphere without inventing symbolism.
+            - PIXEL_ART: identify the one space that was used, the activities and routines performed
+              there, the objects that were used, meaningful zones or routes, and supported time or
+              lighting conditions.
+            - PHOTO_LANDSCAPE: identify the one space that was seen, its scenery, light, weather,
+              buildings, streets, natural surroundings, depth, and everyday traces supported across
+              the records. The user's actions must remain secondary to the appearance of the space.
             """.formatted(
-            WeeklyVisualCategorySelectionPolicy.EXACT_SELECTION_RULES
+            WeeklyVisualCategorySelectionPolicy.EXACT_SELECTION_RULES,
+            WeeklyVisualCategorySelectionPolicy.COMPACT_SELECTION_RULES
     );
 
     private final RestClient.Builder restClientBuilder;
@@ -116,6 +134,13 @@ public class OpenAiWeeklyVisualPlanGenerator
     public WeeklyVisualPlan generate(
             WeeklyRewardGenerationContext context
     ) {
+        return generate(context, null);
+    }
+
+    public WeeklyVisualPlan generate(
+            WeeklyRewardGenerationContext context,
+            WeeklyVisualCategory excludedCategory
+    ) {
         if (context == null) {
             throw new IllegalArgumentException(
                     "주간 보상 생성 정보는 필수입니다."
@@ -128,13 +153,17 @@ public class OpenAiWeeklyVisualPlanGenerator
             );
         }
 
+        List<WeeklyVisualCategory> selectableCategories =
+                WeeklyVisualCategorySelectionPolicy
+                        .selectableCategoriesExcluding(excludedCategory);
+
         OpenAiRequest request = new OpenAiRequest(
                 model,
                 false,
                 MAX_OUTPUT_TOKENS,
                 INSTRUCTIONS,
-                buildInput(context),
-                createTextConfiguration()
+                buildInput(context, excludedCategory),
+                createTextConfiguration(selectableCategories)
         );
 
         try {
@@ -152,7 +181,7 @@ public class OpenAiWeeklyVisualPlanGenerator
                     .retrieve()
                     .body(OpenAiResponse.class);
 
-            return parse(response);
+            return parse(response, selectableCategories);
         } catch (RestClientResponseException exception) {
             log.warn(
                     "OpenAI weekly visual plan failed: status={}, model={}",
@@ -177,7 +206,8 @@ public class OpenAiWeeklyVisualPlanGenerator
     }
 
     private String buildInput(
-            WeeklyRewardGenerationContext context
+            WeeklyRewardGenerationContext context,
+            WeeklyVisualCategory excludedCategory
     ) {
         StringBuilder builder = new StringBuilder();
         builder.append("Week: ")
@@ -185,6 +215,18 @@ public class OpenAiWeeklyVisualPlanGenerator
                 .append(" to ")
                 .append(context.weekEndDate())
                 .append('\n');
+
+        if (excludedCategory == null) {
+            builder.append("recentCategoryHistory: []\n");
+        } else {
+            builder.append("recentCategoryHistory: [")
+                    .append(excludedCategory.name())
+                    .append("]\n")
+                    .append("previousWeekCategory: ")
+                    .append(excludedCategory.name())
+                    .append('\n')
+                    .append("Do not select previousWeekCategory for this week.\n");
+        }
 
         for (WeeklyRewardGenerationContext.DayRecord day
                 : context.days()) {
@@ -207,15 +249,15 @@ public class OpenAiWeeklyVisualPlanGenerator
         return builder.toString();
     }
 
-    private OpenAiTextConfiguration createTextConfiguration() {
+    private OpenAiTextConfiguration createTextConfiguration(
+            List<WeeklyVisualCategory> selectableCategories
+    ) {
         Map<String, Object> schema = Map.of(
                 "type", "object",
                 "properties", Map.of(
                         "visualCategory", Map.of(
                                 "type", "string",
-                                "enum", WeeklyVisualCategorySelectionPolicy
-                                        .SELECTABLE_CATEGORIES
-                                        .stream()
+                                "enum", selectableCategories.stream()
                                         .map(Enum::name)
                                         .toList()
                         ),
@@ -241,7 +283,10 @@ public class OpenAiWeeklyVisualPlanGenerator
         );
     }
 
-    private WeeklyVisualPlan parse(OpenAiResponse response) {
+    private WeeklyVisualPlan parse(
+            OpenAiResponse response,
+            List<WeeklyVisualCategory> selectableCategories
+    ) {
         String outputText = extractOutputText(response);
 
         try {
@@ -254,6 +299,12 @@ public class OpenAiWeeklyVisualPlanGenerator
             if (payload == null) {
                 throw new IllegalStateException(
                         "OpenAI 주간 이미지 기획 결과가 비어 있습니다."
+                );
+            }
+
+            if (!selectableCategories.contains(payload.visualCategory())) {
+                throw new IllegalStateException(
+                        "OpenAI가 이번 주에 허용되지 않은 이미지 카테고리를 반환했습니다."
                 );
             }
 

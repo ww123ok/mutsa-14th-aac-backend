@@ -114,11 +114,18 @@ class WeeklyImagePromptFactoryTest {
         );
 
         assertTrue(prompt.contains("# DAYBIT FINAL WEEKLY IMAGE GENERATION PROMPT"));
-        assertTrue(prompt.contains("portrait-oriented contemporary 2D graphic design poster"));
-        assertTrue(prompt.contains("Establish one dominant silhouette, form, or typographic mass"));
-        assertTrue(prompt.contains("approximately 2–4 secondary forms"));
-        assertTrue(prompt.contains("clean pure-white `#FFFFFF` background"));
-        assertTrue(prompt.contains("no DAYBIT"));
+        assertTrue(prompt.contains(
+                "Create a polished vertical 2D graphic design poster based on `[VISUAL_MOTIF]`."
+        ));
+        assertTrue(prompt.contains("one dominant visual form or cluster"));
+        assertTrue(prompt.contains("2–4 supporting elements"));
+        assertTrue(prompt.contains(
+                "A poster made only from geometric primitives and `[WEEKLY_COLOR_PALETTE]` is not sufficient."
+        ));
+        assertTrue(prompt.contains(
+                "Pure white `#FFFFFF` may be actively used as a background or large negative-space area."
+        ));
+        assertTrue(prompt.contains("do not write DAYBIT"));
         assertTrue(prompt.contains("no Korean"));
         assertTrue(prompt.length() < 30_000);
     }
@@ -152,8 +159,8 @@ class WeeklyImagePromptFactoryTest {
         );
         assertCategoryPromptContains(
                 WeeklyVisualCategory.GRAPHIC_POSTER,
-                "intentionally designed poster",
-                "strong hierarchy, a memorable silhouette, graphic tension, rhythm, and editorial density"
+                "contemporary editorial or cultural poster",
+                "professionally art-directed contemporary graphic poster"
         );
     }
 

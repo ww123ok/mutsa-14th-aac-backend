@@ -146,6 +146,23 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
     }
 
     @Test
+    void 픽셀아트와_실사풍경_카테고리키워드를_지원한다() {
+        WeeklyRewardResultText pixelArt = generator.generate(
+                context(),
+                visualPlan(WeeklyVisualCategory.PIXEL_ART),
+                image()
+        );
+        WeeklyRewardResultText photoLandscape = generator.generate(
+                context(),
+                visualPlan(WeeklyVisualCategory.PHOTO_LANDSCAPE),
+                image()
+        );
+
+        assertEquals("픽셀아트", pixelArt.categoryKeyword());
+        assertEquals("실사 풍경", photoLandscape.categoryKeyword());
+    }
+
+    @Test
     void 요약이_한문장이면_재요청한뒤_두문장을_사용한다() {
         responses.clear();
         responses.add(successResponse(
@@ -200,13 +217,19 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
     }
 
     private WeeklyVisualPlan visualPlan() {
+        return visualPlan(WeeklyVisualCategory.GRAPHIC_POSTER);
+    }
+
+    private WeeklyVisualPlan visualPlan(
+            WeeklyVisualCategory category
+    ) {
         String motif = String.join(
                 " ",
                 java.util.Collections.nCopies(80, "visual")
         );
 
         return new WeeklyVisualPlan(
-                WeeklyVisualCategory.GRAPHIC_POSTER,
+                category,
                 motif
         );
     }

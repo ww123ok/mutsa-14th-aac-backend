@@ -1,6 +1,9 @@
 package mutsa.hackathon.service;
 
+import mutsa.hackathon.domain.WeeklyReward;
 import mutsa.hackathon.domain.WeeklyRewardImageSource;
+import mutsa.hackathon.domain.WeeklyRewardStatus;
+import mutsa.hackathon.repository.WeeklyRewardRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,8 +13,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,6 +26,8 @@ class WeeklyRewardGenerationServiceTest {
 
     @Mock
     private WeeklyRewardClaimService claimService;
+    @Mock
+    private WeeklyRewardRepository weeklyRewardRepository;
     @Mock
     private OpenAiWeeklyVisualPlanGenerator visualPlanGenerator;
     @Mock
@@ -44,6 +51,7 @@ class WeeklyRewardGenerationServiceTest {
     void setUp() {
         service = new WeeklyRewardGenerationService(
                 claimService,
+                weeklyRewardRepository,
                 visualPlanGenerator,
                 fallbackVisualPlanFactory,
                 imageGenerator,
@@ -69,7 +77,11 @@ class WeeklyRewardGenerationServiceTest {
         when(claimService.claim(10L)).thenReturn(
                 WeeklyRewardClaimService.ClaimResult.claimed(context)
         );
-        when(visualPlanGenerator.generate(context)).thenReturn(visualPlan);
+        when(weeklyRewardRepository.findByUserIdAndWeekStartDate(
+                20L,
+                LocalDate.of(2026, 7, 27)
+        )).thenReturn(Optional.empty());
+        when(visualPlanGenerator.generate(context, null)).thenReturn(visualPlan);
         when(imageGenerator.generate(context, visualPlan)).thenReturn(image);
         when(resultTextGenerator.generate(context, visualPlan, image))
                 .thenReturn(resultText);
@@ -87,7 +99,7 @@ class WeeklyRewardGenerationServiceTest {
         );
 
         order.verify(claimService).claim(10L);
-        order.verify(visualPlanGenerator).generate(context);
+        order.verify(visualPlanGenerator).generate(context, null);
         order.verify(imageGenerator).generate(context, visualPlan);
         order.verify(resultTextGenerator).generate(context, visualPlan, image);
         order.verify(imageStorage).store(context, image);
@@ -98,11 +110,40 @@ class WeeklyRewardGenerationServiceTest {
                 storedImage
         );
 
-        verify(fallbackVisualPlanFactory, never()).create(context);
+        verify(fallbackVisualPlanFactory, never()).create(context, null);
         verify(fallbackPosterGenerator, never()).generate(context, visualPlan);
         verify(fallbackResultTextFactory, never()).create(
                 context,
                 visualPlan
+        );
+    }
+
+    @Test
+    void 직전주_카테고리를_이번주_시각기획에서_제외한다() {
+        WeeklyRewardGenerationContext context = context();
+        WeeklyReward previousReward = mock(WeeklyReward.class);
+
+        when(claimService.claim(10L)).thenReturn(
+                WeeklyRewardClaimService.ClaimResult.claimed(context)
+        );
+        when(weeklyRewardRepository.findByUserIdAndWeekStartDate(
+                20L,
+                LocalDate.of(2026, 7, 27)
+        )).thenReturn(Optional.of(previousReward));
+        when(previousReward.getGenerationStatus()).thenReturn(
+                WeeklyRewardStatus.COMPLETED
+        );
+        when(previousReward.getCategoryKeyword()).thenReturn("픽셀아트");
+        when(visualPlanGenerator.generate(
+                context,
+                WeeklyVisualCategory.PIXEL_ART
+        )).thenReturn(visualPlan());
+
+        service.generate(10L);
+
+        verify(visualPlanGenerator).generate(
+                context,
+                WeeklyVisualCategory.PIXEL_ART
         );
     }
 

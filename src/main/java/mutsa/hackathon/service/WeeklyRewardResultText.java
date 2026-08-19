@@ -19,7 +19,9 @@ public record WeeklyRewardResultText(
             "그래픽 포스터",
             "3D캐릭터",
             "유화",
-            "LP커버"
+            "LP커버",
+            "픽셀아트",
+            "실사 풍경"
     );
     private static final Pattern HANGUL = Pattern.compile("[가-힣]");
     private static final Pattern SENTENCE_END =
@@ -64,7 +66,7 @@ public record WeeklyRewardResultText(
 
         if (!ALLOWED_CATEGORY_KEYWORDS.contains(normalized)) {
             throw new IllegalArgumentException(
-                    "주간 이미지 카테고리 키워드는 그래픽 포스터, 3D캐릭터, 유화, LP커버 중 하나여야 합니다."
+                    "주간 이미지 카테고리 키워드는 그래픽 포스터, 3D캐릭터, 유화, LP커버, 픽셀아트, 실사 풍경 중 하나여야 합니다."
             );
         }
 

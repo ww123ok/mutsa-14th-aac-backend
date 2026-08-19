@@ -28,6 +28,24 @@ class FallbackWeeklyRewardResultTextFactoryTest {
         assertFalse(result.keywords().stream().anyMatch(value -> value.contains("#")));
     }
 
+    @Test
+    void 픽셀아트와_실사풍경_카테고리키워드를_지원한다() {
+        FallbackWeeklyRewardResultTextFactory factory =
+                new FallbackWeeklyRewardResultTextFactory();
+
+        WeeklyRewardResultText pixelArt = factory.create(
+                context(),
+                visualPlan(WeeklyVisualCategory.PIXEL_ART)
+        );
+        WeeklyRewardResultText photoLandscape = factory.create(
+                context(),
+                visualPlan(WeeklyVisualCategory.PHOTO_LANDSCAPE)
+        );
+
+        assertEquals("픽셀아트", pixelArt.categoryKeyword());
+        assertEquals("실사 풍경", photoLandscape.categoryKeyword());
+    }
+
     private WeeklyRewardGenerationContext context() {
         return new WeeklyRewardGenerationContext(
                 10L,
@@ -56,8 +74,14 @@ class FallbackWeeklyRewardResultTextFactoryTest {
     }
 
     private WeeklyVisualPlan visualPlan() {
+        return visualPlan(WeeklyVisualCategory.GRAPHIC_POSTER);
+    }
+
+    private WeeklyVisualPlan visualPlan(
+            WeeklyVisualCategory category
+    ) {
         return new WeeklyVisualPlan(
-                WeeklyVisualCategory.GRAPHIC_POSTER,
+                category,
                 String.join(
                         " ",
                         java.util.Collections.nCopies(80, "visual")

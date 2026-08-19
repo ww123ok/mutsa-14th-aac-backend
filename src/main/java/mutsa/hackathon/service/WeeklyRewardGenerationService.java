@@ -2,6 +2,9 @@ package mutsa.hackathon.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import mutsa.hackathon.domain.WeeklyReward;
+import mutsa.hackathon.domain.WeeklyRewardStatus;
+import mutsa.hackathon.repository.WeeklyRewardRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +21,7 @@ public class WeeklyRewardGenerationService {
     private static final String FAILURE_REASON = "WEEKLY_REWARD_GENERATION_FAILED";
 
     private final WeeklyRewardClaimService claimService;
+    private final WeeklyRewardRepository weeklyRewardRepository;
     private final OpenAiWeeklyVisualPlanGenerator visualPlanGenerator;
     private final FallbackWeeklyVisualPlanFactory fallbackVisualPlanFactory;
     private final OpenAiWeeklyImageGenerator imageGenerator;
@@ -37,7 +41,12 @@ public class WeeklyRewardGenerationService {
         StoredWeeklyImage storedImage = null;
 
         try {
-            WeeklyVisualPlan visualPlan = createVisualPlan(context);
+            WeeklyVisualCategory previousWeekCategory =
+                    findPreviousWeekCategory(context);
+            WeeklyVisualPlan visualPlan = createVisualPlan(
+                    context,
+                    previousWeekCategory
+            );
             GeneratedWeeklyImage image = createImage(context, visualPlan);
             WeeklyRewardResultText resultText = createResultText(
                     context,
@@ -66,18 +75,60 @@ public class WeeklyRewardGenerationService {
     }
 
     private WeeklyVisualPlan createVisualPlan(
-            WeeklyRewardGenerationContext context
+            WeeklyRewardGenerationContext context,
+            WeeklyVisualCategory previousWeekCategory
     ) {
         try {
-            return visualPlanGenerator.generate(context);
+            return visualPlanGenerator.generate(
+                    context,
+                    previousWeekCategory
+            );
         } catch (RuntimeException exception) {
             log.warn(
                     "Weekly visual plan fallback used: weeklyRewardId={}, reason={}",
                     context.weeklyRewardId(),
                     exception.getClass().getSimpleName()
             );
-            return fallbackVisualPlanFactory.create(context);
+            return fallbackVisualPlanFactory.create(
+                    context,
+                    previousWeekCategory
+            );
         }
+    }
+
+    private WeeklyVisualCategory findPreviousWeekCategory(
+            WeeklyRewardGenerationContext context
+    ) {
+        return weeklyRewardRepository
+                .findByUserIdAndWeekStartDate(
+                        context.userId(),
+                        context.weekStartDate().minusWeeks(1)
+                )
+                .filter(reward ->
+                        reward.getGenerationStatus()
+                                == WeeklyRewardStatus.COMPLETED
+                )
+                .map(WeeklyReward::getCategoryKeyword)
+                .map(this::categoryFromKeyword)
+                .orElse(null);
+    }
+
+    private WeeklyVisualCategory categoryFromKeyword(
+            String categoryKeyword
+    ) {
+        if (categoryKeyword == null || categoryKeyword.isBlank()) {
+            return null;
+        }
+
+        return switch (categoryKeyword.trim()) {
+            case "그래픽 포스터" -> WeeklyVisualCategory.GRAPHIC_POSTER;
+            case "3D캐릭터" -> WeeklyVisualCategory.NON_HUMAN_CHARACTER;
+            case "유화" -> WeeklyVisualCategory.OIL_ACRYLIC;
+            case "LP커버" -> WeeklyVisualCategory.ALBUM_COVER;
+            case "픽셀아트" -> WeeklyVisualCategory.PIXEL_ART;
+            case "실사 풍경" -> WeeklyVisualCategory.PHOTO_LANDSCAPE;
+            default -> null;
+        };
     }
 
     private GeneratedWeeklyImage createImage(

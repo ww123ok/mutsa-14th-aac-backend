@@ -80,6 +80,27 @@ class WeeklyRewardResultTextTest {
     }
 
     @Test
+    void 픽셀아트와_실사풍경_상단카테고리를_허용한다() {
+        WeeklyRewardResultText pixelArt = new WeeklyRewardResultText(
+                "공간을 사용한 한 주",
+                "이번 주에는 익숙한 공간에서 여러 활동을 했습니다. "
+                        + "이미지에는 공간에서 이어진 활동의 흔적이 반영되었습니다.",
+                "픽셀아트",
+                List.of("공간", "활동", "일상")
+        );
+        WeeklyRewardResultText photoLandscape = new WeeklyRewardResultText(
+                "풍경을 바라본 한 주",
+                "이번 주에는 여러 장소의 풍경을 바라본 기록이 있었습니다. "
+                        + "이미지에는 빛과 거리의 모습이 주요 장면으로 반영되었습니다.",
+                "실사 풍경",
+                List.of("풍경", "빛", "거리")
+        );
+
+        assertEquals("픽셀아트", pixelArt.categoryKeyword());
+        assertEquals("실사 풍경", photoLandscape.categoryKeyword());
+    }
+
+    @Test
     void 허용되지_않은_상단_카테고리는_거부한다() {
         assertThrows(
                 IllegalArgumentException.class,
@@ -87,7 +108,7 @@ class WeeklyRewardResultTextTest {
                         "한 주의 기록",
                         "이번 주에는 여러 기록이 담겼습니다. "
                                 + "이미지에는 그 기록의 흐름이 반영되었습니다.",
-                        "픽셀아트",
+                        "1인칭 장면묘사",
                         List.of("조용한", "운동", "휴식")
                 )
         );

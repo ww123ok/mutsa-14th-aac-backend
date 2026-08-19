@@ -85,6 +85,8 @@ public class FallbackWeeklyRewardResultTextFactory {
             case NON_HUMAN_CHARACTER -> "3D캐릭터";
             case OIL_ACRYLIC -> "유화";
             case ALBUM_COVER -> "LP커버";
+            case PIXEL_ART -> "픽셀아트";
+            case PHOTO_LANDSCAPE -> "실사 풍경";
             default -> throw new IllegalArgumentException(
                     "지원하지 않는 주간 이미지 카테고리입니다."
             );

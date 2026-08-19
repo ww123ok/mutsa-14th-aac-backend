@@ -81,7 +81,7 @@ public class OpenAiWeeklyRewardResultTextGenerator {
             KEYWORD RULES:
             AUTHORITATIVE KEYWORD DISPLAY REQUIREMENTS (preserve exactly):
             1. 키워드는 상단 1개, 하단 3~5개로
-            2. 상단 키워드는 이미지의 카테고리 (그래픽 포스터, 3D캐릭터, 유화, LP커버 중 1개)
+            2. 상단 키워드는 이미지의 카테고리 (그래픽 포스터, 3D캐릭터, 유화, LP커버, 픽셀아트, 실사 풍경 중 1개)
             3. 하단 키워드는 이미지생성 이유의 메인 키워드
             4. 조용한, 신나는과 같은 관형사나 행복, 기쁨과 같은 추상적인 명사, 이미지에 주요한 역할을 한 일반적인 명사도 가능 (운동, 축구, 야근 등)
 
@@ -421,6 +421,8 @@ public class OpenAiWeeklyRewardResultTextGenerator {
             case NON_HUMAN_CHARACTER -> "3D캐릭터";
             case OIL_ACRYLIC -> "유화";
             case ALBUM_COVER -> "LP커버";
+            case PIXEL_ART -> "픽셀아트";
+            case PHOTO_LANDSCAPE -> "실사 풍경";
             default -> throw new IllegalArgumentException(
                     "지원하지 않는 주간 이미지 카테고리입니다."
             );
