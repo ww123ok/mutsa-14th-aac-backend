@@ -93,6 +93,12 @@ public record WeeklyRewardResultText(
             String value = keyword.trim()
                     .replaceAll("\\s+", " ");
 
+            if (isReservedCategoryKeyword(value)) {
+                throw new IllegalArgumentException(
+                        "주간 하단 키워드에는 이미지 카테고리를 사용할 수 없습니다."
+                );
+            }
+
             if (value.contains("#")) {
                 throw new IllegalArgumentException(
                         "주간 키워드에는 #을 사용할 수 없습니다."
@@ -162,6 +168,24 @@ public record WeeklyRewardResultText(
         }
 
         return normalized;
+    }
+
+    static boolean isReservedCategoryKeyword(
+            String value
+    ) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+
+        String comparisonKey = value.trim()
+                .replaceAll("\\s+", "")
+                .toUpperCase(java.util.Locale.ROOT);
+
+        return ALLOWED_CATEGORY_KEYWORDS.stream()
+                .map(candidate -> candidate
+                        .replaceAll("\\s+", "")
+                        .toUpperCase(java.util.Locale.ROOT))
+                .anyMatch(comparisonKey::equals);
     }
 
     private static boolean containsHangul(String value) {

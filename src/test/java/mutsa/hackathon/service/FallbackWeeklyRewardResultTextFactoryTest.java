@@ -46,6 +46,35 @@ class FallbackWeeklyRewardResultTextFactoryTest {
         assertEquals("실사 풍경", photoLandscape.categoryKeyword());
     }
 
+    @Test
+    void 대체문구의_하단키워드에서도_이미지카테고리를_제외한다() {
+        WeeklyRewardGenerationContext reservedCategoryContext =
+                new WeeklyRewardGenerationContext(
+                        10L,
+                        20L,
+                        LocalDate.of(2026, 8, 3),
+                        LocalDate.of(2026, 8, 9),
+                        List.of(
+                                day(LocalDate.of(2026, 8, 3), "#D6A45C", "실사 풍경"),
+                                day(LocalDate.of(2026, 8, 5), "#6A8FB3", "학교 가는 길"),
+                                day(LocalDate.of(2026, 8, 7), "#C9878A", "빗물")
+                        )
+                );
+
+        WeeklyRewardResultText result =
+                new FallbackWeeklyRewardResultTextFactory()
+                        .create(
+                                reservedCategoryContext,
+                                visualPlan(WeeklyVisualCategory.PHOTO_LANDSCAPE)
+                        );
+
+        assertFalse(result.keywords().contains("실사 풍경"));
+        assertEquals(
+                List.of("학교 가는 길", "빗물", "주간 기록"),
+                result.keywords()
+        );
+    }
+
     private WeeklyRewardGenerationContext context() {
         return new WeeklyRewardGenerationContext(
                 10L,

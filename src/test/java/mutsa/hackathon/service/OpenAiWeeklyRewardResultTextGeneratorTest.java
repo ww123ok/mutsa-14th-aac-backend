@@ -187,6 +187,37 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
         assertTrue(result.summary().contains("작업과 산책"));
     }
 
+    @Test
+    void 하단_키워드에_카테고리가_오면_재요청한다() {
+        responses.clear();
+        responses.add(successResponse(
+                "늦은 귀가가 이어진 한 주",
+                "이번 주에는 친구를 만나고 늦게 귀가한 기록이 담겼습니다. "
+                        + "이미지에는 밤거리와 이동의 흔적이 주요 장면으로 반영되었습니다.",
+                List.of("그래픽 포스터", "친구 만남", "밤거리", "늦은 귀가")
+        ));
+        responses.add(successResponse(
+                "늦은 귀가가 이어진 한 주",
+                "이번 주에는 친구를 만나고 늦게 귀가한 기록이 담겼습니다. "
+                        + "이미지에는 밤거리와 이동의 흔적이 주요 장면으로 반영되었습니다.",
+                List.of("친구 만남", "밤거리", "늦은 귀가", "동네 산책")
+        ));
+
+        WeeklyRewardResultText result = generator.generate(
+                context(),
+                visualPlan(WeeklyVisualCategory.NON_HUMAN_CHARACTER),
+                image()
+        );
+
+        assertEquals(2, requestCount.get());
+        assertEquals("3D캐릭터", result.categoryKeyword());
+        assertFalse(result.keywords().contains("그래픽 포스터"));
+        assertEquals(
+                List.of("친구 만남", "밤거리", "늦은 귀가", "동네 산책"),
+                result.keywords()
+        );
+    }
+
     private WeeklyRewardGenerationContext context() {
         return new WeeklyRewardGenerationContext(
                 10L,
