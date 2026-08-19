@@ -126,6 +126,54 @@ class OpenAiWritingHelpQuestionGeneratorTest {
     }
 
     @Test
+    void 작성중_본문의_편집기_타임스탬프는_OpenAI_입력에서_제거한다() {
+        WritingHelpPrompt prompt =
+                new WritingHelpPrompt(
+                        WritingHelpQuestionContextType.CURRENT_DRAFT,
+                        "AM 5:11\n친구와 카페에 갔다.\nPM 8:53\n창가에 앉았다.",
+                        List.of(),
+                        1,
+                        List.of()
+                );
+
+        String input = generator.buildInput(prompt);
+
+        assertFalse(input.contains("AM 5:11"));
+        assertFalse(input.contains("PM 8:53"));
+        assertTrue(
+                input.contains(
+                        "친구와 카페에 갔다.\n창가에 앉았다."
+                )
+        );
+    }
+
+    @Test
+    void 최근맥락의_편집기_타임스탬프도_OpenAI_입력에서_제거한다() {
+        WritingHelpPrompt prompt =
+                new WritingHelpPrompt(
+                        WritingHelpQuestionContextType.RECENT_CONTEXT,
+                        null,
+                        List.of(
+                                new WritingHelpRecentDiary(
+                                        LocalDate.of(2026, 8, 16),
+                                        "오후 8:53\n최근에 운동 루틴을 시작했다."
+                                )
+                        ),
+                        1,
+                        List.of()
+                );
+
+        String input = generator.buildInput(prompt);
+
+        assertFalse(input.contains("오후 8:53"));
+        assertTrue(
+                input.contains(
+                        "최근에 운동 루틴을 시작했다."
+                )
+        );
+    }
+
+    @Test
     void 최근맥락_모드는_과거날짜와_일기본문을_명시적으로_전달한다() {
         WritingHelpPrompt prompt =
                 new WritingHelpPrompt(
