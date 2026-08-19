@@ -26,6 +26,7 @@ public class ExperienceFragmentService {
     private final DiaryRepository diaryRepository;
     private final DiaryShareRepository diaryShareRepository;
     private final ExperienceFragmentArrivalRepository experienceFragmentArrivalRepository;
+    private final ExperienceMatchQueryRepository experienceMatchQueryRepository;
     private final SharedDiaryLogRepository sharedDiaryLogRepository;
     private final AppUserRepository appUserRepository;
     private final CreditTransactionRepository creditTransactionRepository;
@@ -42,6 +43,9 @@ public class ExperienceFragmentService {
 
     @Value("${app.experience-sharing.auto-approval-days:5}")
     private int autoApprovalDays;
+
+    @Value("${app.experience-sharing.pending-query-days:7}")
+    private int pendingQueryDays = 7;
 
     @Transactional
     public ExperienceFragmentResponse request(Long userId, Long diaryId) {
@@ -160,13 +164,21 @@ public class ExperienceFragmentService {
                 .orElseThrow(() -> new ProjectException(ErrorCode.DIARY_NOT_FOUND));
         ExperienceStructure queryStructure = experienceStructureExtractor.extract(queryDiary.getContent());
         ExperienceEmbedding queryEmbedding = experienceEmbeddingGenerator.generate(queryStructure.matchingText());
+        return findBestMatch(receiverId, queryEmbedding.values(), queryStructure.keywords());
+    }
+
+    private Optional<ExperienceMatchResponse> findBestMatch(
+            Long receiverId,
+            List<Double> queryEmbedding,
+            List<String> queryKeywords
+    ) {
         return diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED).stream()
                 .filter(share -> !share.getDiary().isDeleted())
                 .filter(share -> !share.getDiary().getUser().getId().equals(receiverId))
                 .filter(share -> !sharedDiaryLogRepository.existsByReceiverIdAndDiaryShareId(receiverId, share.getId()))
                 .filter(share -> !experienceFragmentArrivalRepository
                         .existsByReceiverIdAndDiaryShareId(receiverId, share.getId()))
-                .map(share -> ranked(share, queryEmbedding.values(), queryStructure.keywords()))
+                .map(share -> ranked(share, queryEmbedding, queryKeywords))
                 .filter(Objects::nonNull)
                 .filter(match -> match.response().similarity() >= minimumSimilarity)
                 .max(Comparator.comparingDouble(RankedExperienceMatch::rankingScore))
@@ -179,10 +191,6 @@ public class ExperienceFragmentService {
      */
     @Transactional
     public void createInboxArrival(Long diaryId) {
-        if (!diaryShareRepository.existsByShareStatus(DiaryShareStatus.APPROVED)) {
-            return;
-        }
-
         Diary queryDiary = diaryRepository.findByIdWithUser(diaryId)
                 .filter(diary -> !diary.isDeleted())
                 .orElse(null);
@@ -191,9 +199,17 @@ public class ExperienceFragmentService {
         }
 
         Long receiverId = queryDiary.getUser().getId();
-        Optional<ExperienceMatchResponse> match = findBestMatch(receiverId, diaryId);
-        if (match.isEmpty()
-                || experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(receiverId, match.get().shareId())) {
+        ExperienceMatchQuery query = createOrFindActiveMatchQuery(queryDiary);
+        if (!query.isActiveAt(LocalDateTime.now())) {
+            return;
+        }
+
+        Optional<ExperienceMatchResponse> match = findBestMatch(
+                receiverId,
+                embeddingValues(query.getEmbeddingJson()),
+                query.getKeywords()
+        );
+        if (match.isEmpty()) {
             return;
         }
 
@@ -202,21 +218,38 @@ public class ExperienceFragmentService {
         if (share == null || share.getShareStatus() != DiaryShareStatus.APPROVED) {
             return;
         }
+        createInboxArrival(query, share);
+    }
 
-        ExperienceFragmentArrival arrival =
-                ExperienceFragmentArrival.pending(
-                        queryDiary.getUser(),
-                        queryDiary,
-                        share
-                );
-        experienceFragmentArrivalRepository.save(arrival);
+    /**
+     * When a sender approves a fragment, match it against diaries that were
+     * written first and are still within their short matching window.
+     */
+    @Transactional
+    public void matchPendingQueriesForApprovedShare(Long shareId) {
+        DiaryShare share = diaryShareRepository.findByIdWithDiaryAndUser(shareId)
+                .filter(candidate -> candidate.getShareStatus() == DiaryShareStatus.APPROVED)
+                .orElse(null);
+        if (share == null || share.getDiary().isDeleted()) {
+            return;
+        }
 
-        eventPublisher.publishEvent(
-                InAppNotificationRequested.experienceFragmentArrived(
-                        receiverId,
-                        arrival.getId()
-                )
-        );
+        LocalDateTime now = LocalDateTime.now();
+        experienceMatchQueryRepository.findAllByMatchedAtIsNullAndExpiresAtAfter(now)
+                .stream()
+                .filter(query -> query.isActiveAt(now))
+                .filter(query -> !query.getReceiver().getId().equals(share.getDiary().getUser().getId()))
+                .filter(query -> !sharedDiaryLogRepository
+                        .existsByReceiverIdAndDiaryShareId(query.getReceiver().getId(), shareId))
+                .filter(query -> !experienceFragmentArrivalRepository
+                        .existsByReceiverIdAndDiaryShareId(query.getReceiver().getId(), shareId))
+                .filter(query -> isEligible(share, embeddingValues(query.getEmbeddingJson())))
+                .forEach(query -> createInboxArrival(query, share));
+    }
+
+    @Transactional
+    public void removeExpiredMatchQueries() {
+        experienceMatchQueryRepository.deleteAllByExpiresAtBefore(LocalDateTime.now());
     }
 
     @Transactional
@@ -294,11 +327,73 @@ public class ExperienceFragmentService {
 
     private ExperienceMatchResponse scored(DiaryShare share, List<Double> query) {
         try {
-            List<?> raw = jsonMapper.readValue(share.getEmbeddingJson(), List.class);
-            List<Double> candidate = raw.stream().filter(Number.class::isInstance).map(Number.class::cast).map(Number::doubleValue).toList();
+            List<Double> candidate = embeddingValues(share.getEmbeddingJson());
             if (candidate.size() != query.size()) return null;
             return new ExperienceMatchResponse(share.getId(), share.getGeneralTopic(), List.copyOf(share.getKeywords()), cosine(query, candidate));
         } catch (Exception exception) { return null; }
+    }
+
+    private ExperienceMatchQuery createOrFindActiveMatchQuery(Diary diary) {
+        Optional<ExperienceMatchQuery> existing = experienceMatchQueryRepository.findByDiaryId(diary.getId());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        ExperienceStructure structure = experienceStructureExtractor.extract(diary.getContent());
+        ExperienceEmbedding embedding = experienceEmbeddingGenerator.generate(structure.matchingText());
+        try {
+            ExperienceMatchQuery query = ExperienceMatchQuery.waiting(
+                    diary.getUser(),
+                    diary,
+                    structure.matchingText(),
+                    structure.keywords(),
+                    jsonMapper.writeValueAsString(embedding.values()),
+                    embedding.model(),
+                    LocalDateTime.now().plusDays(pendingQueryDays)
+            );
+            experienceMatchQueryRepository.save(query);
+            return query;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Experience match query could not be stored.", exception);
+        }
+    }
+
+    private void createInboxArrival(ExperienceMatchQuery query, DiaryShare share) {
+        Long receiverId = query.getReceiver().getId();
+        if (!query.isActiveAt(LocalDateTime.now())
+                || experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(receiverId, share.getId())) {
+            return;
+        }
+
+        ExperienceFragmentArrival arrival = ExperienceFragmentArrival.pending(
+                query.getReceiver(),
+                query.getDiary(),
+                share
+        );
+        experienceFragmentArrivalRepository.save(arrival);
+        query.markMatched();
+
+        eventPublisher.publishEvent(
+                InAppNotificationRequested.experienceFragmentArrived(receiverId, arrival.getId())
+        );
+    }
+
+    private boolean isEligible(DiaryShare share, List<Double> queryEmbedding) {
+        ExperienceMatchResponse response = scored(share, queryEmbedding);
+        return response != null && response.similarity() >= minimumSimilarity;
+    }
+
+    private List<Double> embeddingValues(String embeddingJson) {
+        try {
+            List<?> raw = jsonMapper.readValue(embeddingJson, List.class);
+            return raw.stream()
+                    .filter(Number.class::isInstance)
+                    .map(Number.class::cast)
+                    .map(Number::doubleValue)
+                    .toList();
+        } catch (Exception exception) {
+            throw new IllegalStateException("Experience embedding could not be read.", exception);
+        }
     }
 
     private RankedExperienceMatch ranked(
@@ -344,7 +439,9 @@ public class ExperienceFragmentService {
     private ExperienceFragmentResponse approveReviewRequiredShare(DiaryShare share, Long userId) {
         requireReviewRequired(share);
         ExperienceEmbedding embedding = experienceEmbeddingGenerator.generate(share.getMatchingText());
-        return approvalPersistenceService.approve(userId, share.getId(), embedding);
+        ExperienceFragmentResponse response = approvalPersistenceService.approve(userId, share.getId(), embedding);
+        eventPublisher.publishEvent(new ExperienceFragmentShareApproved(share.getId()));
+        return response;
     }
 
     private void autoApprove(Long shareId) {
