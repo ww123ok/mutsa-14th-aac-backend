@@ -16,13 +16,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -63,10 +67,20 @@ class DiaryDraftServiceTest {
                         diaryDraftRepository,
                         diaryRepository,
                         appUserRepository,
-                        userDayService
+                        userDayService,
+                        Clock.fixed(
+                                Instant.parse("2026-08-19T00:00:00Z"),
+                                ZoneId.of("Asia/Seoul")
+                        )
                 );
 
-        when(
+        ReflectionTestUtils.setField(
+                diaryDraftService,
+                "editingLeaseSeconds",
+                90L
+        );
+
+        lenient().when(
                 userDayService.currentDay(
                         1L
                 )
@@ -230,6 +244,99 @@ class DiaryDraftServiceTest {
                         .DIARY_ALREADY_WRITTEN_TODAY,
                 exception.getErrorCode()
         );
+    }
+
+    @Test
+    void draftId를_보내면_하루경계를_넘겨도_기존_recordedDate를_유지한다() {
+        LocalDate previousDay = USER_DAY.minusDays(1);
+        DiaryDraft existing = DiaryDraft.create(
+                user(),
+                previousDay,
+                "경계 전 내용",
+                true
+        );
+        ReflectionTestUtils.setField(existing, "id", 10L);
+
+        when(
+                diaryDraftRepository.findByIdAndUserId(
+                        10L,
+                        1L
+                )
+        ).thenReturn(Optional.of(existing));
+        when(
+                diaryRepository.existsByUserIdAndRecordedDate(
+                        1L,
+                        previousDay
+                )
+        ).thenReturn(false);
+        when(diaryDraftRepository.save(existing))
+                .thenReturn(existing);
+
+        DiaryDraftResponse response = diaryDraftService.saveCurrentDraft(
+                1L,
+                new DiaryDraftUpsertRequest(
+                        10L,
+                        "경계 후에도 계속 작성",
+                        true
+                )
+        );
+
+        assertEquals(previousDay, response.recordedDate());
+        assertEquals("경계 후에도 계속 작성", response.content());
+        verify(userDayService, never()).currentDay(1L);
+    }
+
+
+    @Test
+    void 완료준비는_draft의_기존날짜를_반환하고_작성lease를_연장한다() {
+        LocalDate previousDay = USER_DAY.minusDays(1);
+        DiaryDraft existing = DiaryDraft.create(
+                user(),
+                previousDay,
+                "경계 전 내용",
+                true
+        );
+        ReflectionTestUtils.setField(existing, "id", 10L);
+
+        when(
+                diaryDraftRepository.findByIdAndUserId(10L, 1L)
+        ).thenReturn(Optional.of(existing));
+        when(
+                diaryRepository.existsByUserIdAndRecordedDate(
+                        1L,
+                        previousDay
+                )
+        ).thenReturn(false);
+
+        LocalDate recordedDate = diaryDraftService.prepareForCompletion(
+                1L,
+                10L
+        );
+
+        assertEquals(previousDay, recordedDate);
+        assertTrue(existing.getEditingActiveUntil() != null);
+    }
+
+    @Test
+    void heartbeat는_작성중_lease를_연장한다() {
+        DiaryDraft existing = DiaryDraft.create(
+                user(),
+                USER_DAY,
+                "작성 중",
+                true
+        );
+        ReflectionTestUtils.setField(existing, "id", 10L);
+
+        when(
+                diaryDraftRepository.findByIdAndUserId(10L, 1L)
+        ).thenReturn(Optional.of(existing));
+
+        DiaryDraftResponse response = diaryDraftService.keepEditing(
+                1L,
+                10L
+        );
+
+        assertTrue(response.editingActiveUntil() != null);
     }
 
     private AppUser user() {

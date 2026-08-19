@@ -55,6 +55,10 @@ class DiaryServiceReflectionPreferenceTest {
     private UserDayService
             userDayService;
 
+    @Mock
+    private DiaryDraftService
+            diaryDraftService;
+
     @InjectMocks
     private DiaryService diaryService;
 
