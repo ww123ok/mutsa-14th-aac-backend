@@ -29,6 +29,7 @@ class ExperienceFragmentServiceTest {
     @Mock private DiaryRepository diaryRepository;
     @Mock private DiaryShareRepository diaryShareRepository;
     @Mock private ExperienceFragmentArrivalRepository experienceFragmentArrivalRepository;
+    @Mock private ExperienceMatchQueryRepository experienceMatchQueryRepository;
     @Mock private SharedDiaryLogRepository sharedDiaryLogRepository;
     @Mock private AppUserRepository appUserRepository;
     @Mock private CreditTransactionRepository creditTransactionRepository;
@@ -244,9 +245,7 @@ class ExperienceFragmentServiceTest {
         returnsDiaryAsStructure(queryDiary);
         DiaryShare matching = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("곤충"), "[1.0,0.0]");
 
-        when(diaryShareRepository.existsByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(true);
         when(diaryRepository.findByIdWithUser(10L)).thenReturn(Optional.of(queryDiary));
-        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
         when(experienceEmbeddingGenerator.generate(queryDiary.getContent()))
                 .thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
         when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(List.of(matching));
@@ -263,6 +262,44 @@ class ExperienceFragmentServiceTest {
         ));
         verify(appUserRepository, never()).findById(anyLong());
         verify(creditTransactionRepository, never()).save(any());
+    }
+
+    @Test
+    void matchesAWaitingDiaryWhenARelevantFragmentIsApprovedLater() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "처음 혼자 맡은 일에서 실수가 걱정돼 여러 번 확인했다.");
+        ExperienceMatchQuery query = ExperienceMatchQuery.waiting(
+                receiver,
+                queryDiary,
+                "상황: 처음 혼자 맡은 일 | 핵심 어려움: 실수 걱정 | 반응: 반복 확인 | 영향 또는 변화: 부담이 남음",
+                List.of("반복 확인"),
+                "[1.0,0.0]",
+                "test",
+                LocalDateTime.now().plusDays(7)
+        );
+        DiaryShare approvedLater = approvedShare(
+                20L,
+                diary(user(2L), 21L, "source"),
+                List.of("반복 확인"),
+                "[1.0,0.0]"
+        );
+
+        when(diaryShareRepository.findByIdWithDiaryAndUser(20L)).thenReturn(Optional.of(approvedLater));
+        when(experienceMatchQueryRepository.findAllByMatchedAtIsNullAndExpiresAtAfter(any()))
+                .thenReturn(List.of(query));
+        when(experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(1L, 20L)).thenReturn(false);
+
+        service.matchPendingQueriesForApprovedShare(20L);
+
+        verify(experienceFragmentArrivalRepository).save(argThat(arrival ->
+                arrival.getReceiver().getId().equals(1L)
+                        && arrival.getQueryDiary().getId().equals(10L)
+                        && arrival.getDiaryShare().getId().equals(20L)
+        ));
+        assertNotNull(query.getMatchedAt());
     }
 
     @Test

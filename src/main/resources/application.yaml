@@ -70,6 +70,9 @@ app:
 
   experience-sharing:
     minimum-similarity: ${EXPERIENCE_MATCH_MINIMUM_SIMILARITY:0.78}
+    # 새 일기의 내부 매칭 구조·임베딩을 보관하는 최대 기간
+    pending-query-days: ${EXPERIENCE_MATCH_PENDING_QUERY_DAYS:7}
+    pending-query-cleanup-cron: "${EXPERIENCE_MATCH_PENDING_QUERY_CLEANUP_CRON:0 10 * * * *}"
     auto-approval-enabled: ${EXPERIENCE_AUTO_APPROVAL_ENABLED:true}
     auto-approval-days: ${EXPERIENCE_AUTO_APPROVAL_DAYS:5}
     auto-approval-cron: "${EXPERIENCE_AUTO_APPROVAL_CRON:0 0 * * * *}"
