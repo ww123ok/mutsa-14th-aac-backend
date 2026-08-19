@@ -2,6 +2,7 @@ package mutsa.hackathon.presentation;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import mutsa.hackathon.dto.WritingHelpQuestionHistoryResponse;
 import mutsa.hackathon.dto.WritingHelpQuestionRequest;
 import mutsa.hackathon.dto.WritingHelpQuestionResponse;
 import mutsa.hackathon.dto.WritingHelpStatusResponse;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/ai/writing-help")
@@ -38,6 +41,30 @@ public class AiWritingHelpController {
                         user.getKakaoUserProfile()
                                 .id()
                 );
+
+        return ApiResponse.onSuccess(
+                response
+        );
+    }
+
+    /**
+     * 오늘 이미 생성된 작성 도움 질문 목록을 조회.
+     * 현재 인증된 사용자와 현재 DAYBIT 날짜를 기준으로만 조회하므로
+     * 다른 계정의 질문이 섞이지 않는다.
+     * 이 API는 질문 사용 횟수를 소모하지 않음.
+     */
+    @GetMapping("/questions")
+    public ApiResponse<List<WritingHelpQuestionHistoryResponse>>
+    getQuestions(
+            @AuthenticationPrincipal
+            CustomOAuth2User user
+    ) {
+        List<WritingHelpQuestionHistoryResponse> response =
+                aiWritingHelpService
+                        .getTodayQuestionHistory(
+                                user.getKakaoUserProfile()
+                                        .id()
+                        );
 
         return ApiResponse.onSuccess(
                 response
