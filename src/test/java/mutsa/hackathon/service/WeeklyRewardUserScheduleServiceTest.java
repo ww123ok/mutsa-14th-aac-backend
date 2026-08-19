@@ -309,6 +309,106 @@ class WeeklyRewardUserScheduleServiceTest {
         );
     }
 
+    @Test
+    void 전주_일기의_색보상이_늦게_완료되면_주간생성시각_이후_즉시_재시도한다() {
+        AppUser user = createUser(
+                "weekly-deferred",
+                LocalTime.of(1, 0),
+                51L
+        );
+
+        when(appUserRepository.findById(51L))
+                .thenReturn(java.util.Optional.of(user));
+        when(batchService.generateForUser(
+                51L,
+                LocalDate.of(2026, 8, 10)
+        )).thenReturn(
+                WeeklyRewardTriggerResponse.eligible(
+                        501L,
+                        LocalDate.of(2026, 8, 10)
+                )
+        );
+
+        Clock fixedClock = Clock.fixed(
+                java.time.Instant.parse("2026-08-16T16:10:00Z"),
+                SERVICE_ZONE
+        );
+        UserDayService fixedUserDayService = new UserDayService(
+                appUserRepository,
+                fixedClock
+        );
+        WeeklyRewardUserScheduleService fixedService =
+                new WeeklyRewardUserScheduleService(
+                        appUserRepository,
+                        batchService,
+                        fixedUserDayService,
+                        fixedClock
+                );
+        ReflectionTestUtils.setField(
+                fixedService,
+                "scheduleDelayMinutes",
+                5L
+        );
+
+        java.util.Optional<WeeklyRewardTriggerResponse> response =
+                fixedService.generateForCompletedDiaryIfDue(
+                        51L,
+                        LocalDate.of(2026, 8, 16)
+                );
+
+        assertEquals(true, response.isPresent());
+        verify(batchService).generateForUser(
+                51L,
+                LocalDate.of(2026, 8, 10)
+        );
+    }
+
+
+    @Test
+    void 전주_일기의_색보상이_완료되어도_주간생성시각_전이면_재시도하지_않는다() {
+        AppUser user = createUser(
+                "weekly-not-due",
+                LocalTime.of(1, 0),
+                52L
+        );
+
+        when(appUserRepository.findById(52L))
+                .thenReturn(java.util.Optional.of(user));
+
+        Clock fixedClock = Clock.fixed(
+                java.time.Instant.parse("2026-08-16T16:04:00Z"),
+                SERVICE_ZONE
+        );
+        UserDayService fixedUserDayService = new UserDayService(
+                appUserRepository,
+                fixedClock
+        );
+        WeeklyRewardUserScheduleService fixedService =
+                new WeeklyRewardUserScheduleService(
+                        appUserRepository,
+                        batchService,
+                        fixedUserDayService,
+                        fixedClock
+                );
+        ReflectionTestUtils.setField(
+                fixedService,
+                "scheduleDelayMinutes",
+                5L
+        );
+
+        java.util.Optional<WeeklyRewardTriggerResponse> response =
+                fixedService.generateForCompletedDiaryIfDue(
+                        52L,
+                        LocalDate.of(2026, 8, 16)
+                );
+
+        assertEquals(true, response.isEmpty());
+        verify(batchService, never()).generateForUser(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.any()
+        );
+    }
+
     private AppUser createUser(
             String providerId,
             LocalTime dayStartTime,

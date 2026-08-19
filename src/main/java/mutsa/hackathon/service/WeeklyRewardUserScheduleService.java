@@ -17,6 +17,7 @@ import java.time.LocalTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -93,6 +94,57 @@ public class WeeklyRewardUserScheduleService {
         return triggerUsers(
                 userIds,
                 rewardWeekStart
+        );
+    }
+
+    /**
+     * 하루 경계를 넘겨 작성하던 전주 일기의 색 보상이 늦게 완료된 경우,
+     * 정규 +5분 스케줄을 이미 지났다면 해당 사용자만 즉시 재검사한다.
+     */
+    public Optional<WeeklyRewardTriggerResponse>
+    generateForCompletedDiaryIfDue(
+            Long userId,
+            LocalDate diaryRecordedDate
+    ) {
+        validateDelay();
+
+        AppUser user = appUserRepository.findById(userId)
+                .orElse(null);
+        if (user == null || diaryRecordedDate == null) {
+            return Optional.empty();
+        }
+
+        LocalDateTime now = LocalDateTime.now(weeklyRewardClock);
+        LocalDate rewardWeekStart = diaryRecordedDate.with(
+                TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)
+        );
+        LocalDate currentLogicalWeekStart = userDayService.resolveDay(
+                        now,
+                        user.getDayStartTime()
+                )
+                .with(
+                        TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)
+                );
+
+        if (!rewardWeekStart.equals(currentLogicalWeekStart.minusWeeks(1))) {
+            return Optional.empty();
+        }
+
+        LocalDateTime generationDueAt = LocalDateTime.of(
+                        rewardWeekStart.plusWeeks(1),
+                        user.getDayStartTime()
+                )
+                .plusMinutes(scheduleDelayMinutes);
+
+        if (now.isBefore(generationDueAt)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(
+                batchService.generateForUser(
+                        userId,
+                        rewardWeekStart
+                )
         );
     }
 
