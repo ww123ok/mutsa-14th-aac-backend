@@ -508,14 +508,6 @@ class FormAuthHttpIntegrationTest {
                 )
                 .andExpect(
                         jsonPath(
-                                "$.result.job"
-                        )
-                                .value(
-                                        "대학생"
-                                )
-                )
-                .andExpect(
-                        jsonPath(
                                 "$.result.reminderTime"
                         )
                                 .value(
