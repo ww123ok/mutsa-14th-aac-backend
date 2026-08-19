@@ -39,6 +39,7 @@ public class WeeklyRewardCompletionService {
         reward.complete(
                 resultText.title(),
                 resultText.summary(),
+                resultText.categoryKeyword(),
                 resultText.keywords(),
                 storedImage.key(),
                 storedImage.contentType(),

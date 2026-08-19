@@ -8,12 +8,21 @@ import java.util.regex.Pattern;
 public record WeeklyRewardResultText(
         String title,
         String summary,
+        String categoryKeyword,
         List<String> keywords
 ) {
 
     private static final int MAX_TITLE_LENGTH = 100;
     private static final int MAX_SUMMARY_LENGTH = 1_000;
     private static final int MAX_KEYWORD_LENGTH = 30;
+    private static final List<String> ALLOWED_CATEGORY_KEYWORDS = List.of(
+            "그래픽 포스터",
+            "3D캐릭터",
+            "유화",
+            "LP커버",
+            "픽셀아트",
+            "실사 풍경"
+    );
     private static final Pattern HANGUL = Pattern.compile("[가-힣]");
     private static final Pattern SENTENCE_END =
             Pattern.compile("[.!?](?=\\s|$)");
@@ -31,6 +40,8 @@ public record WeeklyRewardResultText(
                 "주간 설명은 필수입니다."
         );
 
+        categoryKeyword = normalizeCategoryKeyword(categoryKeyword);
+
         int sentenceCount = countSentences(summary);
         if (sentenceCount < 2 || sentenceCount > 3) {
             throw new IllegalArgumentException(
@@ -39,6 +50,27 @@ public record WeeklyRewardResultText(
         }
 
         keywords = normalizeKeywords(keywords);
+    }
+
+    private static String normalizeCategoryKeyword(
+            String categoryKeyword
+    ) {
+        if (categoryKeyword == null || categoryKeyword.isBlank()) {
+            throw new IllegalArgumentException(
+                    "주간 이미지 카테고리 키워드는 필수입니다."
+            );
+        }
+
+        String normalized = categoryKeyword.trim()
+                .replaceAll("\\s+", " ");
+
+        if (!ALLOWED_CATEGORY_KEYWORDS.contains(normalized)) {
+            throw new IllegalArgumentException(
+                    "주간 이미지 카테고리 키워드는 그래픽 포스터, 3D캐릭터, 유화, LP커버, 픽셀아트, 실사 풍경 중 하나여야 합니다."
+            );
+        }
+
+        return normalized;
     }
 
     private static List<String> normalizeKeywords(
@@ -78,16 +110,16 @@ public record WeeklyRewardResultText(
 
             normalized.add(value);
 
-            if (normalized.size() > 3) {
+            if (normalized.size() > 5) {
                 throw new IllegalArgumentException(
-                        "주간 키워드는 1~3개여야 합니다."
+                        "주간 하단 키워드는 3~5개여야 합니다."
                 );
             }
         }
 
-        if (normalized.isEmpty()) {
+        if (normalized.size() < 3) {
             throw new IllegalArgumentException(
-                    "주간 키워드는 1개 이상 필요합니다."
+                    "주간 하단 키워드는 3개 이상 필요합니다."
             );
         }
 

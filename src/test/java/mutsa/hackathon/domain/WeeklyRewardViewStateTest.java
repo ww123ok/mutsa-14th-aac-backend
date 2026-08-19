@@ -26,7 +26,8 @@ class WeeklyRewardViewStateTest {
         reward.complete(
                 "이번 주의 기록",
                 "이번 주를 정리한 문장입니다.",
-                List.of("기록"),
+                "그래픽 포스터",
+                List.of("기록", "일상", "흐름"),
                 "weekly-rewards/test.png",
                 "image/png",
                 WeeklyRewardImageSource.FALLBACK,

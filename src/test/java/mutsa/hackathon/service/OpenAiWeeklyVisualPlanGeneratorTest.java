@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class OpenAiWeeklyVisualPlanGeneratorTest {
@@ -77,6 +78,13 @@ class OpenAiWeeklyVisualPlanGeneratorTest {
                 .get("schema");
 
         assertTrue(schema.get("properties").has("visualCategory"));
+        assertEquals(
+                6,
+                schema.get("properties")
+                        .get("visualCategory")
+                        .get("enum")
+                        .size()
+        );
         assertTrue(schema.get("properties").has("visualMotif"));
         assertFalse(schema.get("properties").has("title"));
         assertFalse(schema.get("properties").has("summary"));
@@ -99,12 +107,56 @@ class OpenAiWeeklyVisualPlanGeneratorTest {
                 "\\s+",
                 " "
         );
+        assertTrue(instructions.contains(
+                "# Revised Weekly Image Category Selection Criteria"
+        ));
+        assertTrue(instructions.contains(
+                "Weekly Image Category Selection — Compact Version"
+        ));
         assertTrue(normalizedInstructions.contains(
-                "do not erase them merely because the final rendering will be graphic"
+                "Do not force an unsuitable category solely to balance frequency."
         ));
         assertFalse(instructions.contains(
                 "Do not name or describe literal locations, buildings, concerts"
         ));
+    }
+
+    @Test
+    void 직전주_카테고리는_JSON_schema에서_제외한다()
+            throws Exception {
+        generator.generate(
+                context(),
+                WeeklyVisualCategory.PIXEL_ART
+        );
+
+        JsonNode request = jsonMapper.readTree(capturedRequest.get());
+        JsonNode categoryEnum = request.get("text")
+                .get("format")
+                .get("schema")
+                .get("properties")
+                .get("visualCategory")
+                .get("enum");
+
+        assertEquals(5, categoryEnum.size());
+        assertFalse(categoryEnum.toString().contains("PIXEL_ART"));
+        assertTrue(categoryEnum.toString().contains("PHOTO_LANDSCAPE"));
+        assertTrue(capturedRequest.get().contains(
+                "previousWeekCategory: PIXEL_ART"
+        ));
+        assertTrue(capturedRequest.get().contains(
+                "recentCategoryHistory: [PIXEL_ART]"
+        ));
+    }
+
+    @Test
+    void OpenAI가_직전주와_같은_카테고리를_반환하면_거부한다() {
+        assertThrows(
+                IllegalStateException.class,
+                () -> generator.generate(
+                        context(),
+                        WeeklyVisualCategory.GRAPHIC_POSTER
+                )
+        );
     }
 
     private WeeklyRewardGenerationContext context() {

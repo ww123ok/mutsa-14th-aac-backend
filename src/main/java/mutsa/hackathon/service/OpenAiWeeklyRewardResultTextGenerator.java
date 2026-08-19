@@ -47,8 +47,8 @@ public class OpenAiWeeklyRewardResultTextGenerator {
             - summary: exactly two or three short, complete Korean sentences explaining why the
               final image was generated this way, by connecting weekly diary content actually
               reflected in the image to visible visual choices in the final image
-            - keywords: one to three concise Korean context keywords without #, selected from
-              diary content that is visibly reflected in the final image
+            - keywords: three to five concise Korean keywords without # that represent the main
+              reasons this final image was generated this way
 
             TITLE RULES:
             - Represent the whole week, not one visually strong day.
@@ -79,13 +79,24 @@ public class OpenAiWeeklyRewardResultTextGenerator {
             - Do not explain color psychology and do not assign psychological meaning to a color.
 
             KEYWORD RULES:
-            - Return one to three Korean context keywords.
+            AUTHORITATIVE KEYWORD DISPLAY REQUIREMENTS (preserve exactly):
+            1. 키워드는 상단 1개, 하단 3~5개로
+            2. 상단 키워드는 이미지의 카테고리 (그래픽 포스터, 3D캐릭터, 유화, LP커버, 픽셀아트, 실사 풍경 중 1개)
+            3. 하단 키워드는 이미지생성 이유의 메인 키워드
+            4. 조용한, 신나는과 같은 관형사나 행복, 기쁨과 같은 추상적인 명사, 이미지에 주요한 역할을 한 일반적인 명사도 가능 (운동, 축구, 야근 등)
+
+            - Return three to five Korean keywords.
+            - These keywords must represent the main reasons the final image was generated this way,
+              grounded in diary content actually reflected in the final image.
             - Do not include # anywhere.
-            - Use concise nouns or short noun phrases taken from diary content that is actually
-              reflected in the final image.
-            - Prefer meaningful weekly activities, places, routines, objects, or time periods.
-            - Do not return an image style, category name, color code, or generic production term
-              unless that same concept is directly present in the diary records.
+            - Descriptive modifiers such as "조용한" and "신나는" are allowed.
+            - Abstract nouns such as "행복" and "기쁨" are allowed when they are supported by the
+              diary records and actually played a major role in the final image.
+            - Ordinary nouns that played a major role in the image, such as "운동", "축구",
+              and "야근", are allowed when they are supported by the diary records.
+            - Prefer keywords that directly explain the image-generation reason over merely copying
+              nouns from the diary.
+            - Do not return an image style, category name, color code, or generic production term.
             - Do not expose a name, school, company, club, exact address, contact, account,
               or identifying combination.
 
@@ -154,7 +165,10 @@ public class OpenAiWeeklyRewardResultTextGenerator {
                         .retrieve()
                         .body(OpenAiResponse.class);
 
-                return parse(response);
+                return parse(
+                        response,
+                        visualPlan.visualCategory()
+                );
             } catch (RestClientResponseException exception) {
                 lastException = new IllegalStateException(
                         "OpenAI 주간 결과 문구 요청에 실패했습니다.",
@@ -279,7 +293,7 @@ public class OpenAiWeeklyRewardResultTextGenerator {
                 .append(
                         "Write the final title, exactly two or three Korean sentences "
                                 + "explaining how diary content was reflected in the final image, "
-                                + "and one to three reflected Korean diary keywords without #."
+                                + "and three to five Korean keywords explaining the main image-generation reasons without #."
                 );
 
         return builder.toString();
@@ -300,8 +314,8 @@ public class OpenAiWeeklyRewardResultTextGenerator {
                                 "items", Map.of(
                                         "type", "string"
                                 ),
-                                "minItems", 1,
-                                "maxItems", 3
+                                "minItems", 3,
+                                "maxItems", 5
                         )
                 ),
                 "required", List.of(
@@ -324,7 +338,8 @@ public class OpenAiWeeklyRewardResultTextGenerator {
     }
 
     private WeeklyRewardResultText parse(
-            OpenAiResponse response
+            OpenAiResponse response,
+            WeeklyVisualCategory visualCategory
     ) {
         String outputText = extractOutputText(response);
 
@@ -344,6 +359,7 @@ public class OpenAiWeeklyRewardResultTextGenerator {
             return new WeeklyRewardResultText(
                     payload.title(),
                     payload.summary(),
+                    categoryKeyword(visualCategory),
                     payload.keywords()
             );
         } catch (JacksonException exception) {
@@ -395,6 +411,22 @@ public class OpenAiWeeklyRewardResultTextGenerator {
         return normalized.length() <= MAX_CONTENT_PER_DAY
                 ? normalized
                 : normalized.substring(0, MAX_CONTENT_PER_DAY);
+    }
+
+    private String categoryKeyword(
+            WeeklyVisualCategory category
+    ) {
+        return switch (category) {
+            case GRAPHIC_POSTER -> "그래픽 포스터";
+            case NON_HUMAN_CHARACTER -> "3D캐릭터";
+            case OIL_ACRYLIC -> "유화";
+            case ALBUM_COVER -> "LP커버";
+            case PIXEL_ART -> "픽셀아트";
+            case PHOTO_LANDSCAPE -> "실사 풍경";
+            default -> throw new IllegalArgumentException(
+                    "지원하지 않는 주간 이미지 카테고리입니다."
+            );
+        };
     }
 
     private String normalizeDetail(String value) {

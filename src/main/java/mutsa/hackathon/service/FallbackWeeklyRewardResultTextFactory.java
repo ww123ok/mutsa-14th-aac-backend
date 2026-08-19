@@ -32,7 +32,7 @@ public class FallbackWeeklyRewardResultTextFactory {
                 .map(value -> value.replace("#", "").trim())
                 .filter(value -> value.matches(".*[가-힣].*"))
                 .forEach(value -> {
-                    if (keywords.size() < 3) {
+                    if (keywords.size() < 5) {
                         keywords.add(
                                 value.length() <= 30
                                         ? value
@@ -41,9 +41,15 @@ public class FallbackWeeklyRewardResultTextFactory {
                     }
                 });
 
-        if (keywords.isEmpty()) {
-            keywords.add("주간 기록");
-            keywords.add("일상의 흐름");
+        for (String fallbackKeyword : List.of(
+                "주간 기록",
+                "일상의 흐름",
+                "색의 조합"
+        )) {
+            if (keywords.size() >= 3) {
+                break;
+            }
+            keywords.add(fallbackKeyword);
         }
 
         String title = "%s부터 이어진 한 주".formatted(
@@ -66,8 +72,25 @@ public class FallbackWeeklyRewardResultTextFactory {
         return new WeeklyRewardResultText(
                 title,
                 summary,
+                categoryKeyword(visualPlan.visualCategory()),
                 List.copyOf(keywords)
         );
+    }
+
+    private String categoryKeyword(
+            WeeklyVisualCategory category
+    ) {
+        return switch (category) {
+            case GRAPHIC_POSTER -> "그래픽 포스터";
+            case NON_HUMAN_CHARACTER -> "3D캐릭터";
+            case OIL_ACRYLIC -> "유화";
+            case ALBUM_COVER -> "LP커버";
+            case PIXEL_ART -> "픽셀아트";
+            case PHOTO_LANDSCAPE -> "실사 풍경";
+            default -> throw new IllegalArgumentException(
+                    "지원하지 않는 주간 이미지 카테고리입니다."
+            );
+        };
     }
 
     private String categoryName(

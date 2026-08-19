@@ -39,90 +39,117 @@ public final class WeeklyImagePromptFactory {
 
     private static final String GRAPHIC_POSTER = """
             # GRAPHIC DESIGN POSTER
-            Create a **portrait-oriented contemporary 2D graphic design poster**.
+            Create a polished vertical 2D graphic design poster based on `[VISUAL_MOTIF]`.
 
-            The result must immediately read as an **intentionally designed poster**, not a realistic scene, diary illustration, photo collage, mood board, infographic, or UI.
-            ## COMPOSITION
-            - Establish one dominant silhouette, form, or typographic mass.
-            - Support it with approximately 2–4 secondary forms and limited detail.
-            - Use strong scale differences, cropping, overlap, interruption, compression, asymmetry, collision, and repetition.
-            - Use one visually dense area together with a broadly empty area.
-            - Do not scatter similarly sized elements evenly across the canvas.
-            - Do not construct realistic perspective, environmental depth, or a believable physical space.
-            - Do not simply list the colors used today.
-            The factual visual cues contained in `VISUAL_MOTIF` may be transformed into graphic materials such as:
-            - silhouettes
-            - geometric color planes
-            - cropped image fragments
-            - lines
-            - grids
-            - dots
+            The result should feel like a contemporary editorial or cultural poster, not an illustration, infographic, presentation slide, UI, or data visualization.
+            ## Core Visual Direction
+            Use `[VISUAL_MOTIF]` as the main source of visual content.
+
+            Do not reduce the diary into generic geometric abstraction.
+
+            At least **two major visual elements** should originate from concrete cues in the diary, such as objects, architecture, transportation structures, windows, signs, stairs, paths, furniture, clothing, tools, or repeated actions.
+
+            These elements may be enlarged, cropped, fragmented, repeated, distorted, flattened, layered, or converted into silhouettes.
+
+            They do not need to remain realistic, but their connection to the diary should still be visually traceable.
+
+            The poster should feel specific to this week, not like an abstract composition that could represent any diary.
+            ## Composition
+            Build a strong editorial composition using:
+            - one dominant visual form or cluster
+            - 2–4 supporting elements
+            - clear differences in scale
+            - aggressive cropping and overlap
+            - asymmetry
+            - repetition and visual rhythm
+            - intentional tension between dense and empty areas
+            Avoid safe, centered, evenly spaced layouts.
+
+            Do not simply place several isolated shapes next to each other.
+
+            The result should have enough visual density and layering to feel intentionally art-directed.
+            ## Avoid Data Visualization
+            Do not create compositions resembling:
+            - bar charts
+            - pie charts
+            - graphs
+            - timelines
+            - dashboards
+            - diagrams
+            - infographics
+            - presentation graphics
+            - simple arrangements of rectangles and circles
+            A poster made only from geometric primitives and `[WEEKLY_COLOR_PALETTE]` is not sufficient.
+
+            Do not represent concepts such as repetition, comparison, change, sequence, or movement directly as graph-like shapes.
+
+            Instead, express these relationships through the **position, scale, repetition, cropping, overlap, direction, and transformation of diary-based visual elements**.
+            ## Graphic Treatment
+            Transform diary-based objects and structures into graphic forms rather than rendering them as complete literal illustrations.
+
+            However, their original identity or structural trace should remain visible.
+
+            Possible treatments include:
+            - silhouette
+            - oversized crop
             - halftone
-            - noise
             - grain
+            - noise
             - dithering
-            - scan texture
-            - paper texture
-            - print texture
-            - ink bleed
-            - print misregistration
             - photocopy texture
-            - high contrast
+            - screen-print texture
+            - ink bleed
+            - misregistration
             - posterization
             - duotone
-            - color overlay
-            - gradient
-            - gradient map
             - blur
-            - light bloom
-            - lens flare
-            - chromatic aberration
-            - distortion
-            - warp
             - pixelation
             - stamps
             - rough brush marks
-            - masking
-            - image overlap
-            - collage
-            - repeated patterns
-            - large-scale typography
-            - cropped typography
-            - vertical typography
-            - micro typography
-            - number and symbol graphics
-            - graphic marks suggesting movement
-            - print layers
-            - distorted traces of objects
-            - torn and worn traces
-            - scratches
-            - dust particles
-            - ink stains
-            - irregular edges
-            Objects must function as **graphic forms**, not as complete illustrations.
-            ## TYPOGRAPHY
-            Text is optional.
+            - collage-like layering
+            Use these effects selectively.
 
-            If used:
-            - use English only
-            - no DAYBIT
+            Do not rely on surface effects alone to create complexity. Composition and visual concept should remain dominant.
+            ## Spatial Style
+            Keep the result fundamentally flat and graphic.
+
+            Avoid realistic scene construction, natural perspective, or cinematic depth.
+
+            Depth may be implied through overlap, scale differences, transparency, cropping, or graphic shadows, but the image should still read primarily as a designed poster.
+            ## Color
+            Use `[WEEKLY_COLOR_PALETTE]` as the main color source.
+
+            The colors may be divided into dominant, supporting, and accent roles rather than being used equally.
+
+            Pure white `#FFFFFF` may be actively used as a background or large negative-space area.
+
+            Preserve the distinctive contrast and saturation of the weekly palette when appropriate.
+
+            Avoid automatically shifting the image toward beige, cream, ivory, muted gray, or generally low-saturation colors.
+            ## Typography
+            Typography is optional but may be used as a major visual element.
+
+            If typography is used:
+            - English only
             - no Korean
-            - no explanatory captions
-            - no checklist or UI text
-            - use short words, fragments, numbers, or partial strings
-            - prioritize form and rhythm over readability
-            - typography itself must become **one of the major graphic elements of the poster**
-            - always make it difficult to read through cropping, overlap, rotation, distortion, repetition, or partial obstruction
-            - avoid ordinary informational typography and clean, easily readable headlines
-            ## COLOR AND MATERIALITY
-            - Use the weekly palette mainly in major forms, typography, print layers, and accent elements.
-            - Prefer a clean pure-white `#FFFFFF` background with broad negative space, or a gradient background that primarily uses pure white.
-            - If white is not used, use one vivid color grounded in the weekly palette.
-            - Avoid ivory, cream, beige, warm white, and muddy gray.
-            - Use localized print textures such as halftone, silkscreen ink, paper grain, risograph misregistration, rough edges, photocopier noise, or ink bleed.
-            The first impression of the image should be:
+            - do not write DAYBIT
+            - no explanatory sentences
+            - no informational labels
+            - treat letters as graphic material rather than readable information
+            Typography may be cropped, repeated, stretched, rotated, overlapped, fragmented, partially hidden, or distorted.
 
-            **strong hierarchy, a memorable silhouette, graphic tension, rhythm, and editorial density.**
+            It should participate in the composition rather than sit neatly above or below the image.
+            ## Final Quality
+            The final image should feel like a professionally art-directed contemporary graphic poster with:
+            - a memorable dominant form
+            - diary-specific visual traces
+            - strong hierarchy
+            - rhythm and repetition
+            - visual tension
+            - asymmetry
+            - intentional negative space
+            - editorial density
+            Avoid generic abstract art, overly minimal compositions, or posters made only from a few clean geometric shapes.
             """;
 
     private static final String NON_HUMAN_CHARACTER = """
