@@ -59,7 +59,10 @@ public class ExperienceFragmentService {
         DiaryShare share = diaryShareRepository.findByIdWithDiaryAndUser(shareId).orElse(null);
         if (share == null || share.getShareStatus() != DiaryShareStatus.REQUESTED) return;
         try {
-            ExperienceFragmentDraft draft = experienceFragmentProcessor.createDraft(share.getDiary().getContent());
+            String timelineNormalizedContent = ExperienceFragmentTimelineFormatter.normalize(
+                    share.getDiary().getContent()
+            );
+            ExperienceFragmentDraft draft = experienceFragmentProcessor.createDraft(timelineNormalizedContent);
             draftPersistenceService.saveDraft(shareId, draft);
         } catch (RuntimeException exception) {
             log.warn("Experience fragment generation failed: shareId={}, reason={}", shareId,
