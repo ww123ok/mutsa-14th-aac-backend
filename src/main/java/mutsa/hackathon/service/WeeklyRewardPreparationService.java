@@ -40,6 +40,7 @@ public class WeeklyRewardPreparationService {
 
     private final AppUserRepository appUserRepository;
     private final DiaryRepository diaryRepository;
+    private final DiaryDraftService diaryDraftService;
     private final DiaryRewardRepository diaryRewardRepository;
     private final WeeklyRewardRepository weeklyRewardRepository;
     private final WeeklyRewardEntryRepository weeklyRewardEntryRepository;
@@ -63,6 +64,20 @@ public class WeeklyRewardPreparationService {
                 .findByUserIdAndWeekStartDate(userId, weekStartDate);
         if (existing.isPresent()) {
             return existing.map(WeeklyReward::getId);
+        }
+
+        /*
+         * 주차 마지막 DAYBIT 일기를 아직 편집 중이거나 자동완료 대기 중이면
+         * 해당 draft가 최종 일기/색 보상으로 확정되기 전에는 주간 보상을
+         * 만들지 않는다. 생성 후에는 entry 집합을 바꾸기 어렵기 때문에
+         * preparation 단계에서 선제적으로 보류한다.
+         */
+        if (diaryDraftService.hasUnfinishedDraftInPeriod(
+                userId,
+                period.startDate(),
+                period.endDate()
+        )) {
+            return Optional.empty();
         }
 
         List<Diary> diaries = diaryRepository

@@ -5,6 +5,7 @@ import mutsa.hackathon.domain.DiaryReward;
 import mutsa.hackathon.domain.DiaryRewardPolicy;
 import mutsa.hackathon.domain.RewardGenerationStatus;
 import mutsa.hackathon.repository.DiaryRewardRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,9 @@ public class DiaryRewardCompletionService {
 
     private final DiaryRewardRepository
             diaryRewardRepository;
+
+    private final ApplicationEventPublisher
+            eventPublisher;
 
     /**
      * 생성이 성공한 경우 PENDING 보상을 완료.
@@ -52,6 +56,15 @@ public class DiaryRewardCompletionService {
                 generatedReward.colorHex(),
                 generatedReward.keywords(),
                 colorComment
+        );
+
+        eventPublisher.publishEvent(
+                new DiaryRewardCompletedEvent(
+                        reward.getDiary().getUser().getId(),
+                        reward.getDiary().getId(),
+                        reward.getId(),
+                        reward.getDiary().getRecordedDate()
+                )
         );
     }
 
