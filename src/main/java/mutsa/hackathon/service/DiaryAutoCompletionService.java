@@ -59,6 +59,15 @@ public class DiaryAutoCompletionService {
                                 .getDayStartTime()
                 );
 
+        /*
+         * 사용자가 편집 화면을 계속 열어 둔 상태라면 DAYBIT 경계를
+         * 넘겨도 자동완료하지 않는다. heartbeat가 끊기면 lease가
+         * 짧게 만료되고 다음 scheduler 실행에서 catch-up
+         */
+        if (draft.isEditingActiveAt(now)) {
+            return AutoCompletionResult.notProcessed();
+        }
+
         if (
                 !draft.getRecordedDate()
                         .isBefore(

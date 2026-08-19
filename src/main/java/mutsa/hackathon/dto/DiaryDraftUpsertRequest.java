@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 
 public record DiaryDraftUpsertRequest(
 
+        Long draftId,
+
         @NotBlank(
                 message = "임시 저장할 일기 내용은 필수입니다."
         )
@@ -17,6 +19,17 @@ public record DiaryDraftUpsertRequest(
         )
         Boolean personalizationUsesDiaryContent
 ) {
+    public DiaryDraftUpsertRequest(
+            String content,
+            Boolean personalizationUsesDiaryContent
+    ) {
+        this(
+                null,
+                content,
+                personalizationUsesDiaryContent
+        );
+    }
+
     public boolean
     shouldUseDiaryContentForPersonalization() {
         return Boolean.TRUE.equals(

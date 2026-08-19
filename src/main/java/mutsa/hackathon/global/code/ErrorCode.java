@@ -105,6 +105,12 @@ public enum ErrorCode
             "확인할 자동 완료 안내가 없습니다."
     ),
 
+    DIARY_DRAFT_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "DIARY404_4",
+            "존재하지 않는 임시 저장 일기입니다."
+    ),
+
     TRASH_DIARY_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "DIARY404_2",
