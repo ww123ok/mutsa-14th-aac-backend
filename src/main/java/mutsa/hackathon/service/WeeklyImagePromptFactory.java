@@ -39,133 +39,174 @@ public final class WeeklyImagePromptFactory {
 
     private static final String GRAPHIC_POSTER = """
             # GRAPHIC DESIGN POSTER
-            Create a polished vertical 2D graphic design poster based on `[VISUAL_MOTIF]`.
 
-            The result should feel like a contemporary editorial or cultural poster, not an illustration, infographic, presentation slide, UI, or data visualization.
-            ## Core Visual Direction
-            Use `[VISUAL_MOTIF]` as the main source of visual content.
+            Create one polished **vertical 2D graphic design poster** based on `[VISUAL_MOTIF]`.
 
-            Do not reduce the diary into generic geometric abstraction.
+            ## HARD REQUIREMENTS
 
-            At least **two major visual elements** should originate from concrete cues in the diary, such as objects, architecture, transportation structures, windows, signs, stairs, paths, furniture, clothing, tools, or repeated actions.
+            - Always use a **portrait-oriented vertical poster composition**. Never square or landscape.
+            - Use at least **two concrete diary-derived visual cues** from `[VISUAL_MOTIF]`.
+            - At least two cues must remain visually recognizable after transformation.
+            - The main composition must be built from diary-derived forms, not generic geometry.
+            - Use **at least two clearly visible and different graphic texture treatments**.
+            - Do not create clean vector art, generic abstraction, infographic, UI, diagram, or data visualization.
 
-            These elements may be enlarged, cropped, fragmented, repeated, distorted, flattened, layered, or converted into silhouettes.
+            ## VISUAL DIRECTION
 
-            They do not need to remain realistic, but their connection to the diary should still be visually traceable.
+            Treat diary-derived objects, spaces, structures, paths, clothing, tools, transportation elements, or activity traces as the raw material of the poster.
 
-            The poster should feel specific to this week, not like an abstract composition that could represent any diary.
-            ## Composition
-            Build a strong editorial composition using:
-            - one dominant visual form or cluster
-            - 2–4 supporting elements
-            - clear differences in scale
-            - aggressive cropping and overlap
+            Transform them through enlargement, cropping, flattening, silhouette, fragmentation, repetition, distortion, layering, or partial obscuring.
+
+            Do not abstract them until their identity disappears.
+
+            The poster should feel specific to this week and difficult to reuse for an unrelated diary.
+
+            ## COMPOSITION
+
+            Build one **dominant diary-derived structure or interconnected cluster** with 2–4 supporting elements.
+
+            Use:
+
+            - strong scale contrast
+            - aggressive cropping
+            - overlap and interruption
             - asymmetry
-            - repetition and visual rhythm
-            - intentional tension between dense and empty areas
-            Avoid safe, centered, evenly spaced layouts.
+            - fragmentation
+            - repetition with variation
+            - directional movement
+            - contrast between dense and empty areas
 
-            Do not simply place several isolated shapes next to each other.
+            At least one major element must extend beyond or be cropped by the frame.
 
-            The result should have enough visual density and layering to feel intentionally art-directed.
-            ## Avoid Data Visualization
-            Do not create compositions resembling:
-            - bar charts
-            - pie charts
-            - graphs
-            - timelines
-            - dashboards
-            - diagrams
-            - infographics
-            - presentation graphics
-            - simple arrangements of rectangles and circles
-            A poster made only from geometric primitives and `[WEEKLY_COLOR_PALETTE]` is not sufficient.
+            Avoid centered, symmetrical, evenly spaced, icon-like layouts or isolated objects placed neatly side by side.
 
-            Do not represent concepts such as repetition, comparison, change, sequence, or movement directly as graph-like shapes.
+            Actively use the tall vertical canvas rather than placing a square composition inside it.
 
-            Instead, express these relationships through the **position, scale, repetition, cropping, overlap, direction, and transformation of diary-based visual elements**.
-            ## Graphic Treatment
-            Transform diary-based objects and structures into graphic forms rather than rendering them as complete literal illustrations.
+            ## NO GENERIC GEOMETRY OR DATA GRAPHICS
 
-            However, their original identity or structural trace should remain visible.
+            Do not let the main composition become:
 
-            Possible treatments include:
-            - silhouette
-            - oversized crop
+            - concentric circles or rings
+            - decorative arcs
+            - isolated circles
+            - rounded rectangles
+            - stacked bars
+            - simple grids
+            - evenly spaced blocks
+            - abstract color blocks
+            - charts, graphs, timelines, diagrams, dashboards, or infographics
+
+            Geometric primitives may appear only as minor supporting forms or when directly derived from a diary-supported object or structure.
+
+            Do not represent repetition, comparison, movement, sequence, accumulation, or change as graph-like symbols.
+
+            Express these relationships through the **actual diary-derived elements** using position, scale, repetition, cropping, overlap, direction, interruption, and transformation.
+
+            ## MANDATORY TEXTURE
+
+            Use **at least two visibly different texture treatments** in every poster.
+
+            Choose 2–3 compatible treatments such as:
+
             - halftone
-            - grain
-            - noise
+            - grain / noise
             - dithering
             - photocopy texture
             - screen-print texture
             - ink bleed
             - misregistration
+            - rough print texture
             - posterization
-            - duotone
-            - blur
             - pixelation
-            - stamps
-            - rough brush marks
-            - collage-like layering
-            Use these effects selectively.
+            - distortion
+            - rough brush or ink marks
 
-            Do not rely on surface effects alone to create complexity. Composition and visual concept should remain dominant.
-            ## Spatial Style
-            Keep the result fundamentally flat and graphic.
+            At least two treatments must be clearly noticeable, not nearly invisible overlays.
 
-            Avoid realistic scene construction, natural perspective, or cinematic depth.
+            Prefer combinations such as halftone + grain, photocopy + misregistration, or screen-print + ink bleed.
 
-            Depth may be implied through overlap, scale differences, transparency, cropping, or graphic shadows, but the image should still read primarily as a designed poster.
-            ## Color
+            Apply texture selectively rather than making every surface equally noisy.
+
+            Texture must support the composition, not replace it.
+
+            ## SPATIAL STYLE
+
+            Keep the image fundamentally **flat, graphic, and editorial**.
+
+            Avoid complete realistic scenes, cinematic depth, or natural perspective.
+
+            Recognizable architecture, transportation structures, furniture, routes, or objects may remain visible while being flattened, cropped, layered, and distorted.
+
+            Create depth mainly through overlap, scale, transparency, cropping, and graphic shadows.
+
+            ## COLOR
+
             Use `[WEEKLY_COLOR_PALETTE]` as the main color source.
 
-            The colors may be divided into dominant, supporting, and accent roles rather than being used equally.
+            Assign dominant, supporting, and accent roles rather than using every color equally.
 
-            Pure white `#FFFFFF` may be actively used as a background or large negative-space area.
+            `#FFFFFF` may be used actively as background or large negative space.
 
-            Preserve the distinctive contrast and saturation of the weekly palette when appropriate.
+            Preserve strong saturation and contrast when supported by the palette.
 
-            Avoid automatically shifting the image toward beige, cream, ivory, muted gray, or generally low-saturation colors.
-            ## Typography
-            Typography is optional but may be used as a major visual element.
+            Do not automatically shift toward beige, cream, ivory, muted gray, or generally desaturated colors.
 
-            If typography is used:
+            ## TYPOGRAPHY
+
+            Typography is optional.
+
+            If used:
+
             - English only
             - no Korean
-            - do not write DAYBIT
-            - no explanatory sentences
-            - no informational labels
-            - treat letters as graphic material rather than readable information
-            Typography may be cropped, repeated, stretched, rotated, overlapped, fragmented, partially hidden, or distorted.
+            - never write DAYBIT
+            - no explanatory sentences or informational labels
+            - use letters as graphic material
 
-            It should participate in the composition rather than sit neatly above or below the image.
-            ## Final Quality
-            The final image should feel like a professionally art-directed contemporary graphic poster with:
-            - a memorable dominant form
-            - diary-specific visual traces
-            - strong hierarchy
-            - rhythm and repetition
-            - visual tension
-            - asymmetry
-            - intentional negative space
-            - editorial density
-            Avoid generic abstract art, overly minimal compositions, or posters made only from a few clean geometric shapes.
+            Typography may be cropped, repeated, stretched, rotated, overlapped, fragmented, hidden, or distorted.
+
+            ## FINAL CHECK
+
+            The final poster must have:
+
+            1. a clearly vertical portrait composition,
+            2. at least two recognizable diary-derived visual cues,
+            3. one strong diary-derived dominant structure,
+            4. overlapping, cropped, asymmetric visual hierarchy,
+            5. at least **two clearly distinguishable texture treatments**,
+            6. no generic geometric abstraction or data-visualization appearance,
+            7. intentional density, rhythm, tension, and negative space.
+
+            If any requirement is missing, redesign the composition before finalizing.
             """;
+
 
     private static final String NON_HUMAN_CHARACTER = """
             # NON-HUMAN CHARACTER
+
             Create one polished **3D animal character**.
 
             Exactly one animal must be the visual focus of the image.
 
-            Do not create a human, humanoid character, object character, realistic animal portrait, or generic mascot.
+            Do not create a human, humanoid character, object character, or realistic animal portrait.
+
             ## CHARACTER
+
             Follow the animal, action, props, and design features specified in `VISUAL_MOTIF`.
+
             - Use only one clear main action or state.
             - Maintain 1–2 strong design features.
+            - Use an approximately **2.3-head-tall character proportion**.
+            - Favor a **stocky, rounded, compact silhouette** with a large head, broad torso, short thick limbs, and small feet.
+            - Avoid thin limbs, narrow waists, elongated bodies, or athletic human-like anatomy.
+            - Keep the proportions clearly non-human and stylized, while avoiding an excessively infantile or chibi-like appearance.
             - Instead of depicting the animal realistically, simplify and selectively exaggerate its physical characteristics.
-            - Do not follow normal human-like body proportions.
-            - Do not make the character excessively infantile or like a conventional mascot.
+            - The character's **face must always be clearly visible**.
+            - Use either a **front-facing or clear three-quarter view**.
+            - Both eyes and the main facial features should remain readable.
+            - Do not use back-facing, rear-view, full-profile, heavily side-facing, or face-obscured poses.
+            - Even during a dynamic action, orient the head and upper body enough toward the viewer to keep the face visible.
+            - The character may have **mascot-like simplicity**, but should feel **fashion-conscious, editorial, and individually designed rather than childish, corporate, or generic**.
             - Reflect a **lifestyle sensibility and fashion sense that can appeal to people in their 20s**.
             - Keep the face minimal and do not invent unsupported emotions through facial expressions.
             - A neutral or slightly indifferent expression is allowed.
@@ -178,7 +219,9 @@ public final class WeeklyImagePromptFactory {
               - silhouette suitability
               - compatibility with clothing and props
               - avoiding repetition of animals that have been used frequently in recent results
+
             The following tactile materials may be used:
+
             - short soft fur
             - plush
             - knit
@@ -187,27 +230,38 @@ public final class WeeklyImagePromptFactory {
             - clay
             - soft vinyl
             - rubber
+
             Avoid glossy toy-plastic textures and materials that resemble realistic human skin.
+
             ## CLOTHING AND PROPS
+
             - Use only diary-grounded clothing and props described in `VISUAL_MOTIF`.
             - Limit meaningful props to approximately 2–4 items at most.
             - Do not add meaningless accessories merely to make the character look trendy.
             - Lifestyle and fashion details may feel contemporary, but they must remain grounded in the approved motif.
+
             ## BACKGROUND AND COLOR
+
             - Use a **clean single-color studio background** selected from the weekly palette.
             - Use the most saturated color from this week's palette as the background color.
             - Do not add patterns, scenery, texture, or visual noise.
             - Distribute the weekly colors across the character body, clothing, props, and background as dominant / supporting / accent colors.
             - Use soft studio lighting that clearly reveals the character's silhouette and materials.
+
             Prefer a portrait-oriented composition.
 
-            The result should feel like a **designed contemporary character**, not simply a cute mascot.
+            Frame the character large enough that its **face, silhouette, clothing, and main action are immediately readable**.
+
+            Present the character like a **contemporary character-fashion editorial or premium studio character portrait**, with deliberate styling, clean art direction, and strong material detail.
+
             ## LIGHTING
+
             - Use soft and clean studio lighting.
             - Make the character's form and materials clearly visible.
             - Fur, knit, fabric, and clay textures should be clearly perceptible.
             - Avoid excessive HDR, neon lighting, or dramatic cinematic lighting.
             """;
+
 
     private static final String OIL_ACRYLIC = """
             # OIL PAINTING
