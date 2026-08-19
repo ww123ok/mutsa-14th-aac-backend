@@ -33,6 +33,7 @@ class ExperienceFragmentServiceTest {
     @Mock private AppUserRepository appUserRepository;
     @Mock private CreditTransactionRepository creditTransactionRepository;
     @Mock private ExperienceFragmentProcessor experienceFragmentProcessor;
+    @Mock private ExperienceStructureExtractor experienceStructureExtractor;
     @Mock private ExperienceEmbeddingGenerator experienceEmbeddingGenerator;
     @Mock private ExperienceFragmentDraftPersistenceService draftPersistenceService;
     @Mock private ExperienceFragmentApprovalPersistenceService approvalPersistenceService;
@@ -47,6 +48,7 @@ class ExperienceFragmentServiceTest {
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "알바에서 손님 응대 때문에 힘들었다.");
+        returnsDiaryAsStructure(queryDiary);
         DiaryShare matching = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("알바"), "[1.0,0.0]");
         DiaryShare unrelated = approvedShare(30L, diary(user(3L), 31L, "source"), List.of("운동"), "[1.0,0.0]");
 
@@ -69,6 +71,7 @@ class ExperienceFragmentServiceTest {
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "오늘 카페 알바에서 처음으로 혼자 마감을 했다.");
+        returnsDiaryAsStructure(queryDiary);
         DiaryShare matching = approvedShare(
                 20L,
                 diary(user(2L), 21L, "source"),
@@ -88,12 +91,70 @@ class ExperienceFragmentServiceTest {
     }
 
     @Test
+    void comparesTheReceiverStructureInsteadOfTheRawDiaryText() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "면접 결과가 언제 나올지 몰라 메일을 계속 확인했다.");
+        ExperienceStructure structure = new ExperienceStructure(
+                "상황: 중요한 결과를 기다리는 중 | 핵심 어려움: 불확실성 | 반응: 반복 확인 | 영향 또는 변화: 집중이 흐트러짐",
+                List.of("결과 기다림", "반복 확인")
+        );
+        DiaryShare matching = approvedShare(
+                20L,
+                diary(user(2L), 21L, "source"),
+                List.of("결과 기다림", "반복 확인"),
+                "[1.0,0.0]"
+        );
+
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
+        when(experienceStructureExtractor.extract(queryDiary.getContent())).thenReturn(structure);
+        when(experienceEmbeddingGenerator.generate(structure.matchingText()))
+                .thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
+        when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(List.of(matching));
+
+        Optional<ExperienceMatchResponse> result = service.findBestMatch(1L, 10L);
+
+        assertTrue(result.isPresent());
+        verify(experienceEmbeddingGenerator).generate(structure.matchingText());
+    }
+
+    @Test
+    void skipsPendingInboxCandidateAndSelectsTheNextEligibleMatch() {
+        ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
+        ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
+
+        AppUser receiver = user(1L);
+        Diary queryDiary = diary(receiver, 10L, "중요한 결과를 기다리며 계속 확인했다.");
+        returnsDiaryAsStructure(queryDiary);
+        DiaryShare pendingFirst = approvedShare(20L, diary(user(2L), 21L, "source"),
+                List.of("결과 기다림"), "[1.0,0.0]");
+        DiaryShare nextBest = approvedShare(30L, diary(user(3L), 31L, "source"),
+                List.of("결과 기다림"), "[0.9,0.1]");
+
+        when(diaryRepository.findByIdAndUserIdAndDeletedFalse(10L, 1L)).thenReturn(Optional.of(queryDiary));
+        when(experienceEmbeddingGenerator.generate(anyString()))
+                .thenReturn(new ExperienceEmbedding("test", List.of(1.0, 0.0)));
+        when(diaryShareRepository.findAllByShareStatus(DiaryShareStatus.APPROVED))
+                .thenReturn(List.of(pendingFirst, nextBest));
+        when(experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(1L, 20L)).thenReturn(true);
+        when(experienceFragmentArrivalRepository.existsByReceiverIdAndDiaryShareId(1L, 30L)).thenReturn(false);
+
+        Optional<ExperienceMatchResponse> result = service.findBestMatch(1L, 10L);
+
+        assertTrue(result.isPresent());
+        assertEquals(30L, result.get().shareId());
+    }
+
+    @Test
     void deletedSourceDiaryIsExcludedFromExperienceMatching() {
         ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
         ReflectionTestUtils.setField(service, "minimumSimilarity", 0.78d);
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "알바에서 손님 응대 때문에 힘들었다.");
+        returnsDiaryAsStructure(queryDiary);
         Diary deletedSource = diary(user(2L), 21L, "source");
         DiaryShare matching = approvedShare(20L, deletedSource, List.of("알바"), "[1.0,0.0]");
         deletedSource.softDelete();
@@ -180,6 +241,7 @@ class ExperienceFragmentServiceTest {
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "공원에서 곤충을 관찰했다.");
+        returnsDiaryAsStructure(queryDiary);
         DiaryShare matching = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("곤충"), "[1.0,0.0]");
 
         when(diaryShareRepository.existsByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(true);
@@ -326,5 +388,10 @@ class ExperienceFragmentServiceTest {
         share.requireReview("익명화된 경험", "일과 관계", keywords, "알바 경험");
         share.approve(embedding, "test");
         return share;
+    }
+
+    private void returnsDiaryAsStructure(Diary diary) {
+        when(experienceStructureExtractor.extract(diary.getContent()))
+                .thenReturn(new ExperienceStructure(diary.getContent(), List.of()));
     }
 }

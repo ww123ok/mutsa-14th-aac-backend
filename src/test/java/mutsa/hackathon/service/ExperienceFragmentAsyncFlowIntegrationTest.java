@@ -142,5 +142,14 @@ class ExperienceFragmentAsyncFlowIntegrationTest {
         ExperienceEmbeddingGenerator experienceEmbeddingGenerator() {
             return text -> new ExperienceEmbedding("test-embedding", List.of(1.0d, 0.0d));
         }
+
+        @Bean
+        @Primary
+        ExperienceStructureExtractor experienceStructureExtractor() {
+            return diaryContent -> new ExperienceStructure(
+                    "상황: 업무 부담 | 핵심 어려움: 일이 한꺼번에 몰림 | 반응: 역할을 나눔",
+                    List.of("업무 부담", "일이 한꺼번에 몰림")
+            );
+        }
     }
 }
