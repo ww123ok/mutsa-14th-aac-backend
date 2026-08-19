@@ -101,7 +101,7 @@ class WeeklyImagePromptFactoryTest {
     }
 
     @Test
-    void 그래픽포스터는_세로구도_일기단서_복수텍스처_하드규칙을_포함한다() {
+    void 그래픽포스터는_핵심하드제약과_유연한_에디토리얼가이드를_포함한다() {
         WeeklyVisualPlan visualPlan = visualPlan(
                 WeeklyVisualCategory.GRAPHIC_POSTER,
                 "Build one dominant diagonal silhouette, three supporting planes, "
@@ -115,34 +115,25 @@ class WeeklyImagePromptFactoryTest {
 
         assertTrue(prompt.contains("# DAYBIT FINAL WEEKLY IMAGE GENERATION PROMPT"));
         assertTrue(prompt.contains(
-                "Create one polished **vertical 2D graphic design poster** based on `[VISUAL_MOTIF]`."
+                "Create a **portrait-oriented contemporary 2D graphic design poster**."
+        ));
+        assertTrue(prompt.contains("## HARD CONSTRAINTS"));
+        assertTrue(prompt.contains(
+                "Do not turn the composition into a chart, dashboard, checklist, timeline, infographic, or software interface."
         ));
         assertTrue(prompt.contains(
-                "Always use a **portrait-oriented vertical poster composition**. Never square or landscape."
+                "When `VISUAL_MOTIF` contains multiple concrete diary-derived visual cues, preserve more than one where practical"
         ));
-        assertTrue(prompt.contains(
-                "Use at least **two concrete diary-derived visual cues** from `[VISUAL_MOTIF]`."
-        ));
-        assertTrue(prompt.contains(
-                "Build one **dominant diary-derived structure or interconnected cluster** with 2–4 supporting elements."
-        ));
-        assertTrue(prompt.contains(
-                "Use **at least two visibly different texture treatments** in every poster."
-        ));
-        assertTrue(prompt.contains("concentric circles or rings"));
-        assertTrue(prompt.contains(
-                "`#FFFFFF` may be used actively as background or large negative space."
-        ));
-        assertTrue(prompt.contains("never write DAYBIT"));
+        assertTrue(prompt.contains("halftone + grain"));
+        assertTrue(prompt.contains("pure white `#FFFFFF` with broad negative space"));
+        assertTrue(prompt.contains("never write `DAYBIT`"));
         assertTrue(prompt.contains("no Korean"));
-        assertTrue(prompt.contains(
-                "If any requirement is missing, redesign the composition before finalizing."
-        ));
+        assertFalse(prompt.contains("If any requirement is missing, redesign"));
         assertTrue(prompt.length() < 30_000);
     }
 
     @Test
-    void 비인간캐릭터는_체형과_얼굴가시성_에디토리얼연출_규칙을_포함한다() {
+    void 비인간캐릭터는_동물얼굴을_허용하고_핵심제약과_유연한_스타일가이드를_분리한다() {
         WeeklyVisualPlan visualPlan = visualPlan(
                 WeeklyVisualCategory.NON_HUMAN_CHARACTER,
                 "Create one compact animal character wearing diary-grounded clothing and holding a diary-grounded prop."
@@ -153,14 +144,21 @@ class WeeklyImagePromptFactoryTest {
                 "#7D2B22, #9463B7, #8A20E8"
         );
 
-        assertTrue(prompt.contains("approximately **2.3-head-tall character proportion**"));
-        assertTrue(prompt.contains("**stocky, rounded, compact silhouette**"));
-        assertTrue(prompt.contains("The character's **face must always be clearly visible**."));
-        assertTrue(prompt.contains("**front-facing or clear three-quarter view**"));
-        assertTrue(prompt.contains("Both eyes and the main facial features should remain readable."));
+        assertTrue(prompt.contains("Exactly one animal must be the clear visual focus of the image."));
+        assertTrue(prompt.contains("Create an animal character, not a human or humanoid character."));
+        assertTrue(prompt.contains(
+                "A visible **animal face is allowed and expected** when appropriate for the selected pose."
+        ));
+        assertTrue(prompt.contains("Prefer a front-facing or clear three-quarter orientation"));
         assertTrue(prompt.contains("clean single-color studio background"));
-        assertTrue(prompt.contains("Use the most saturated color from this week's palette as the background color."));
-        assertTrue(prompt.contains("**contemporary character-fashion editorial or premium studio character portrait**"));
+        assertTrue(prompt.contains(
+                "Do **not** require exact pixel-level reproduction of a specific hexadecimal color."
+        ));
+        assertTrue(prompt.contains(
+                "**designed contemporary character or premium character-fashion editorial**"
+        ));
+        assertFalse(prompt.contains("face must always be clearly visible"));
+        assertFalse(prompt.contains("Use the most saturated color from this week's palette as the background color."));
         assertTrue(prompt.length() < 30_000);
     }
 
@@ -168,8 +166,8 @@ class WeeklyImagePromptFactoryTest {
     void 모든_신규_카테고리에_최신_스타일_원문을_포함한다() {
         assertCategoryPromptContains(
                 WeeklyVisualCategory.NON_HUMAN_CHARACTER,
-                "Exactly one animal must be the visual focus of the image.",
-                "clean single-color studio background"
+                "Exactly one animal must be the clear visual focus of the image.",
+                "A visible **animal face is allowed and expected**"
         );
         assertCategoryPromptContains(
                 WeeklyVisualCategory.OIL_ACRYLIC,
@@ -193,8 +191,8 @@ class WeeklyImagePromptFactoryTest {
         );
         assertCategoryPromptContains(
                 WeeklyVisualCategory.GRAPHIC_POSTER,
-                "at least **two concrete diary-derived visual cues**",
-                "at least **two clearly distinguishable texture treatments**"
+                "one dominant visual structure, silhouette, cluster, or typographic mass",
+                "localized print texture"
         );
     }
 
