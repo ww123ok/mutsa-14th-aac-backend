@@ -88,6 +88,9 @@ public class WeeklyReward extends BaseEntity {
     @Column(length = MAX_SUMMARY_LENGTH)
     private String summary;
 
+    @Column(name = "category_keyword", length = MAX_KEYWORD_LENGTH)
+    private String categoryKeyword;
+
     @Column(name = "keyword_1", length = MAX_KEYWORD_LENGTH)
     private String keyword1;
 
@@ -96,6 +99,12 @@ public class WeeklyReward extends BaseEntity {
 
     @Column(name = "keyword_3", length = MAX_KEYWORD_LENGTH)
     private String keyword3;
+
+    @Column(name = "keyword_4", length = MAX_KEYWORD_LENGTH)
+    private String keyword4;
+
+    @Column(name = "keyword_5", length = MAX_KEYWORD_LENGTH)
+    private String keyword5;
 
     @Column(name = "image_key", length = 500)
     private String imageKey;
@@ -173,6 +182,7 @@ public class WeeklyReward extends BaseEntity {
     public void complete(
             String title,
             String summary,
+            String categoryKeyword,
             List<String> keywords,
             String imageKey,
             String imageContentType,
@@ -185,10 +195,17 @@ public class WeeklyReward extends BaseEntity {
 
         this.title = normalizeRequired(title, MAX_TITLE_LENGTH, "주간 보상 제목은 필수입니다.");
         this.summary = normalizeRequired(summary, MAX_SUMMARY_LENGTH, "주간 보상 설명은 필수입니다.");
+        this.categoryKeyword = normalizeRequired(
+                categoryKeyword,
+                MAX_KEYWORD_LENGTH,
+                "주간 이미지 카테고리 키워드는 필수입니다."
+        );
         List<String> normalizedKeywords = normalizeKeywords(keywords);
         this.keyword1 = normalizedKeywords.get(0);
-        this.keyword2 = normalizedKeywords.size() > 1 ? normalizedKeywords.get(1) : null;
-        this.keyword3 = normalizedKeywords.size() > 2 ? normalizedKeywords.get(2) : null;
+        this.keyword2 = normalizedKeywords.get(1);
+        this.keyword3 = normalizedKeywords.get(2);
+        this.keyword4 = normalizedKeywords.size() > 3 ? normalizedKeywords.get(3) : null;
+        this.keyword5 = normalizedKeywords.size() > 4 ? normalizedKeywords.get(4) : null;
         this.imageKey = normalizeRequired(imageKey, 500, "주간 보상 이미지 키는 필수입니다.");
         this.imageContentType = normalizeRequired(
                 imageContentType,
@@ -225,7 +242,13 @@ public class WeeklyReward extends BaseEntity {
     }
 
     public List<String> getKeywords() {
-        return java.util.stream.Stream.of(keyword1, keyword2, keyword3)
+        return java.util.stream.Stream.of(
+                        keyword1,
+                        keyword2,
+                        keyword3,
+                        keyword4,
+                        keyword5
+                )
                 .filter(value -> value != null && !value.isBlank())
                 .toList();
     }
@@ -258,12 +281,12 @@ public class WeeklyReward extends BaseEntity {
             if (!value.isBlank()) {
                 normalized.add(value);
             }
-            if (normalized.size() == 3) {
+            if (normalized.size() == 5) {
                 break;
             }
         }
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("주간 키워드는 한 개 이상 필요합니다.");
+        if (normalized.size() < 3) {
+            throw new IllegalArgumentException("주간 하단 키워드는 3개 이상 필요합니다.");
         }
         return List.copyOf(normalized);
     }

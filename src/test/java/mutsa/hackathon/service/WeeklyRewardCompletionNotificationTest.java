@@ -107,7 +107,8 @@ class WeeklyRewardCompletionNotificationTest {
                 new WeeklyRewardResultText(
                         "이번 주의 기록",
                         "이번 주의 기록을 한 장의 이미지로 정리했습니다. 주요 순간을 이미지에 담았습니다.",
-                        List.of("기록")
+                        "그래픽 포스터",
+                        List.of("기록", "일상", "흐름")
                 ),
                 new GeneratedWeeklyImage(
                         new byte[]{1},

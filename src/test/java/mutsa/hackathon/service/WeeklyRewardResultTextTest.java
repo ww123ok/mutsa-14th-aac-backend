@@ -15,11 +15,13 @@ class WeeklyRewardResultTextTest {
                 "작업과 산책이 이어진 한 주",
                 "이번 주에는 작업을 정리하는 날이 있었습니다. "
                         + "저녁에는 동네를 걷거나 집에서 쉬었습니다.",
-                List.of("작업 정리", "저녁 산책")
+                "그래픽 포스터",
+                List.of("조용한", "행복", "운동", "작업 정리", "저녁 산책")
         );
 
-        assertEquals(2, result.keywords().size());
-        assertEquals("저녁 산책", result.keywords().get(1));
+        assertEquals("그래픽 포스터", result.categoryKeyword());
+        assertEquals(5, result.keywords().size());
+        assertEquals("저녁 산책", result.keywords().get(4));
     }
 
     @Test
@@ -29,7 +31,8 @@ class WeeklyRewardResultTextTest {
                 () -> new WeeklyRewardResultText(
                         "한 주의 기록",
                         "이번 주에는 세 개의 기록을 작성했습니다.",
-                        List.of("주간 기록")
+                        "유화",
+                        List.of("주간 기록", "일상", "기록")
                 )
         );
     }
@@ -42,7 +45,50 @@ class WeeklyRewardResultTextTest {
                         "한 주의 기록",
                         "이번 주에는 세 개의 기록을 작성했습니다. "
                                 + "각 기록은 서로 다른 일상을 담았습니다.",
-                        List.of("#주간 기록")
+                        "LP커버",
+                        List.of("#주간 기록", "일상", "기록")
+                )
+        );
+    }
+
+    @Test
+    void 하단_키워드가_두개면_거부한다() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new WeeklyRewardResultText(
+                        "한 주의 기록",
+                        "이번 주에는 여러 기록이 담겼습니다. "
+                                + "이미지에는 그 기록의 흐름이 반영되었습니다.",
+                        "3D캐릭터",
+                        List.of("조용한", "운동")
+                )
+        );
+    }
+
+    @Test
+    void 하단_키워드가_여섯개면_거부한다() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new WeeklyRewardResultText(
+                        "한 주의 기록",
+                        "이번 주에는 여러 기록이 담겼습니다. "
+                                + "이미지에는 그 기록의 흐름이 반영되었습니다.",
+                        "유화",
+                        List.of("조용한", "행복", "운동", "축구", "야근", "휴식")
+                )
+        );
+    }
+
+    @Test
+    void 허용되지_않은_상단_카테고리는_거부한다() {
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new WeeklyRewardResultText(
+                        "한 주의 기록",
+                        "이번 주에는 여러 기록이 담겼습니다. "
+                                + "이미지에는 그 기록의 흐름이 반영되었습니다.",
+                        "픽셀아트",
+                        List.of("조용한", "운동", "휴식")
                 )
         );
     }

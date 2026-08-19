@@ -11,19 +11,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class WeeklyVisualCategorySelectionPolicyTest {
 
     @Test
-    void newly_generated_weekly_images_select_only_the_six_specified_categories() {
+    void newly_generated_weekly_images_select_only_the_four_specified_categories() {
         assertEquals(
                 List.of(
                         WeeklyVisualCategory.NON_HUMAN_CHARACTER,
                         WeeklyVisualCategory.GRAPHIC_POSTER,
                         WeeklyVisualCategory.OIL_ACRYLIC,
-                        WeeklyVisualCategory.ALBUM_COVER,
-                        WeeklyVisualCategory.PIXEL_ART,
-                        WeeklyVisualCategory.PHOTO_LANDSCAPE
+                        WeeklyVisualCategory.ALBUM_COVER
                 ),
                 WeeklyVisualCategorySelectionPolicy.SELECTABLE_CATEGORIES
         );
 
+        assertFalse(
+                WeeklyVisualCategorySelectionPolicy.SELECTABLE_CATEGORIES
+                        .contains(WeeklyVisualCategory.PIXEL_ART)
+        );
+        assertFalse(
+                WeeklyVisualCategorySelectionPolicy.SELECTABLE_CATEGORIES
+                        .contains(WeeklyVisualCategory.PHOTO_LANDSCAPE)
+        );
         assertFalse(
                 WeeklyVisualCategorySelectionPolicy.SELECTABLE_CATEGORIES
                         .contains(WeeklyVisualCategory.FIRST_PERSON_ANIME)
@@ -39,9 +45,9 @@ class WeeklyVisualCategorySelectionPolicyTest {
         ));
         assertTrue(rules.contains("### 1. Pattern-Centered"));
         assertTrue(rules.contains("### 2. Atmosphere-Centered"));
-        assertTrue(rules.contains("### 3. Space-Centered"));
+        assertFalse(rules.contains("### 3. Space-Centered"));
         assertTrue(rules.contains(
-                "First select one central group among `Pattern / Atmosphere / Space`, "
+                "First select one central group among `Pattern / Atmosphere`, "
                         + "then choose the detailed category within that group."
         ));
         assertTrue(rules.contains(
@@ -70,7 +76,7 @@ class WeeklyVisualCategorySelectionPolicyTest {
         assertTrue(rules.contains(
                 "the week's colors are generally medium- or high-saturation"
         ));
-        assertTrue(rules.contains("the experience of using a space"));
-        assertTrue(rules.contains("the experience of seeing a space"));
+        assertFalse(rules.contains("the experience of using a space"));
+        assertFalse(rules.contains("the experience of seeing a space"));
     }
 }
