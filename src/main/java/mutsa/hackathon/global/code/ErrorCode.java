@@ -99,6 +99,12 @@ public enum ErrorCode
             "일기 내용은 필수입니다."
     ),
 
+    DIARY_AUTO_COMPLETION_NOTICE_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "DIARY404_3",
+            "확인할 자동 완료 안내가 없습니다."
+    ),
+
     TRASH_DIARY_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "DIARY404_2",

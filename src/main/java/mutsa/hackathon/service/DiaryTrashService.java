@@ -13,6 +13,7 @@ import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.AiQuestionRepository;
 import mutsa.hackathon.repository.DiaryRepository;
+import mutsa.hackathon.repository.DiaryCommentRepository;
 import mutsa.hackathon.repository.DiaryRewardRepository;
 import mutsa.hackathon.repository.DiaryShareRepository;
 import mutsa.hackathon.repository.ExperienceFragmentArrivalRepository;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 public class DiaryTrashService {
 
     private final DiaryRepository diaryRepository;
+    private final DiaryCommentRepository diaryCommentRepository;
     private final DiaryRewardRepository diaryRewardRepository;
     private final AiQuestionRepository aiQuestionRepository;
     private final UserMemoryItemRepository userMemoryItemRepository;
@@ -144,6 +146,11 @@ public class DiaryTrashService {
         userMemoryItemRepository
                 .deleteAllByUserIdAndSourceDiaryId(
                         userId,
+                        diaryId
+                );
+
+        diaryCommentRepository
+                .deleteAllByDiaryId(
                         diaryId
                 );
 
