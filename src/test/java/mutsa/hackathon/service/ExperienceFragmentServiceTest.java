@@ -8,7 +8,6 @@ import mutsa.hackathon.global.code.ErrorCode;
 import mutsa.hackathon.global.exception.ProjectException;
 import mutsa.hackathon.repository.*;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -42,15 +41,6 @@ class ExperienceFragmentServiceTest {
 
     @InjectMocks private ExperienceFragmentService service;
 
-    @BeforeEach
-    void setUpExperienceStructureExtractor() {
-        when(experienceStructureExtractor.extract(anyString()))
-                .thenAnswer(invocation -> new ExperienceStructure(
-                        invocation.getArgument(0),
-                        List.of()
-                ));
-    }
-
     @Test
     void prioritizesKeywordOverlapAfterSemanticSimilarityPassesThreshold() {
         ReflectionTestUtils.setField(service, "jsonMapper", JsonMapper.builder().build());
@@ -58,6 +48,7 @@ class ExperienceFragmentServiceTest {
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "알바에서 손님 응대 때문에 힘들었다.");
+        returnsDiaryAsStructure(queryDiary);
         DiaryShare matching = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("알바"), "[1.0,0.0]");
         DiaryShare unrelated = approvedShare(30L, diary(user(3L), 31L, "source"), List.of("운동"), "[1.0,0.0]");
 
@@ -80,6 +71,7 @@ class ExperienceFragmentServiceTest {
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "오늘 카페 알바에서 처음으로 혼자 마감을 했다.");
+        returnsDiaryAsStructure(queryDiary);
         DiaryShare matching = approvedShare(
                 20L,
                 diary(user(2L), 21L, "source"),
@@ -135,6 +127,7 @@ class ExperienceFragmentServiceTest {
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "중요한 결과를 기다리며 계속 확인했다.");
+        returnsDiaryAsStructure(queryDiary);
         DiaryShare pendingFirst = approvedShare(20L, diary(user(2L), 21L, "source"),
                 List.of("결과 기다림"), "[1.0,0.0]");
         DiaryShare nextBest = approvedShare(30L, diary(user(3L), 31L, "source"),
@@ -161,6 +154,7 @@ class ExperienceFragmentServiceTest {
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "알바에서 손님 응대 때문에 힘들었다.");
+        returnsDiaryAsStructure(queryDiary);
         Diary deletedSource = diary(user(2L), 21L, "source");
         DiaryShare matching = approvedShare(20L, deletedSource, List.of("알바"), "[1.0,0.0]");
         deletedSource.softDelete();
@@ -247,6 +241,7 @@ class ExperienceFragmentServiceTest {
 
         AppUser receiver = user(1L);
         Diary queryDiary = diary(receiver, 10L, "공원에서 곤충을 관찰했다.");
+        returnsDiaryAsStructure(queryDiary);
         DiaryShare matching = approvedShare(20L, diary(user(2L), 21L, "source"), List.of("곤충"), "[1.0,0.0]");
 
         when(diaryShareRepository.existsByShareStatus(DiaryShareStatus.APPROVED)).thenReturn(true);
@@ -393,5 +388,10 @@ class ExperienceFragmentServiceTest {
         share.requireReview("익명화된 경험", "일과 관계", keywords, "알바 경험");
         share.approve(embedding, "test");
         return share;
+    }
+
+    private void returnsDiaryAsStructure(Diary diary) {
+        when(experienceStructureExtractor.extract(diary.getContent()))
+                .thenReturn(new ExperienceStructure(diary.getContent(), List.of()));
     }
 }
