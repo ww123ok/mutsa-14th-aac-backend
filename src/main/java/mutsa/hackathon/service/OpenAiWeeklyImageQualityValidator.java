@@ -31,27 +31,57 @@ public class OpenAiWeeklyImageQualityValidator {
     private static final int MAX_OUTPUT_TOKENS = 700;
 
     private static final String INSTRUCTIONS = """
-            You are the strict visual-quality gate for DAYBIT weekly reward images.
+            You are the visual-quality gate for DAYBIT weekly reward images.
 
-            Review only the supplied generated image against:
+            Review the supplied generated image against:
             1. the selected category,
             2. the expected canvas orientation,
-            3. the supplied hard checklist.
+            3. the explicit HARD CONSTRAINTS and clear prohibitions in the generation brief.
 
-            Do not infer missing diary facts. Do not reward generic beauty.
-            Reject an image when a hard checklist item is visibly violated.
-            A visually attractive image still fails when it uses the wrong category,
-            wrong orientation, a collage, several literal scenes, a visible face,
-            UI, explanatory text, a weak focal hierarchy, or prohibited style.
+            The generation brief also contains visual guidance, preferences, examples, and approximate targets.
+            Treat those as strong creative direction, not automatic failure conditions.
+
+            Approve an image when it clearly belongs to the selected category, preserves the core approved visual motif,
+            uses the expected orientation, and has no clear material hard-rule violation.
+
+            Reject only clear and material failures such as:
+            - the wrong visual category or clearly wrong orientation,
+            - recognizable human faces when prohibited,
+            - a human or humanoid subject in NON_HUMAN_CHARACTER,
+            - major unsupported clothing, props, events, people, brands, or identifying information,
+            - dashboards, software UI, charts, checklists, or readable explanatory copy where prohibited,
+            - severe malformed anatomy, broken objects, meaningless pseudo-text, or major visual artifacts,
+            - loss of the core diary-derived visual identity required by the generation brief.
+
+            Do NOT reject solely because:
+            - a preferred composition, texture, material, camera angle, or styling choice was interpreted differently,
+            - an approximate target such as proportion, prop count, or pose is not exact,
+            - one secondary motif cue is absent while the core diary-derived identity remains clear,
+            - a weekly-palette color is not an exact pixel-level hexadecimal match,
+            - an optional or preference word such as "prefer", "approximately", "may", "can", or "when practical" was not followed,
+            - the image differs from a subjective aesthetic preference while remaining coherent and category-correct.
+
+            For NON_HUMAN_CHARACTER:
+            - a clearly visible ANIMAL face is allowed and often desirable;
+            - the recognizable-human-face privacy rule does not apply to the animal;
+            - do not require an exact frontal pose or exact head-to-body ratio;
+            - intentional stylized animal anatomy is acceptable when coherent and clearly non-human.
+
+            For GRAPHIC_POSTER:
+            - typography may appear as graphic material;
+            - reject readable explanatory copy, fake UI text, checklist text, dashboards, or software-interface layouts;
+            - supporting geometry is allowed when it does not replace the diary-derived visual identity.
+
+            Treat palette requirements perceptually rather than as exact pixel-level color matching.
 
             Return:
             - reviewed: always true
-            - approved: true only when every visible hard rule passes
-            - violations: short English descriptions of visible failures, at most eight
-            - correctionPrompt: concise English imperatives that correct only those failures
+            - approved: true when there is no clear material hard-rule violation
+            - violations: short English descriptions of clear material failures, at most eight
+            - correctionPrompt: concise English imperatives correcting only those failures
 
-            The correction prompt must preserve the selected category and expected orientation.
-            Never introduce a new event, place, person, brand, artist, franchise, or story.
+            The correction prompt must preserve the selected category, expected orientation, weekly palette direction,
+            and approved visual motif. Never introduce a new event, place, person, brand, artist, franchise, or story.
             """;
 
     private final RestClient.Builder restClientBuilder;
@@ -101,19 +131,9 @@ public class OpenAiWeeklyImageQualityValidator {
                 + ";base64,"
                 + Base64.getEncoder().encodeToString(image.bytes());
 
-        String reviewInput = """
-                SELECTED CATEGORY: %s
-                EXPECTED IMAGE SIZE: %s
-                EXPECTED ORIENTATION: %s
-
-                HARD CHECKLIST:
-                %s
-
-                Inspect the image now. Approve it only when all visible hard rules pass.
-                """.formatted(
-                category.name(),
+        String reviewInput = buildReviewInput(
+                category,
                 expectedSize,
-                category.imageAspect().name(),
                 generationPrompt
         );
 
@@ -174,6 +194,29 @@ public class OpenAiWeeklyImageQualityValidator {
             );
             return WeeklyImageQualityReview.skipped();
         }
+    }
+
+    static String buildReviewInput(
+            WeeklyVisualCategory category,
+            String expectedSize,
+            String generationPrompt
+    ) {
+        return """
+                SELECTED CATEGORY: %s
+                EXPECTED IMAGE SIZE: %s
+                EXPECTED ORIENTATION: %s
+
+                GENERATION BRIEF:
+                %s
+
+                Inspect the image now. Extract only explicit HARD CONSTRAINTS and clear prohibitions as rejection criteria.
+                Treat the remaining creative directions as guidance rather than automatic failure conditions.
+                """.formatted(
+                category.name(),
+                expectedSize,
+                category.imageAspect().name(),
+                generationPrompt
+        );
     }
 
     private WeeklyImageQualityReview parse(OpenAiResponse response) {

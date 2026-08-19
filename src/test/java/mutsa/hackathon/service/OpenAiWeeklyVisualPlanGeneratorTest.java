@@ -119,6 +119,8 @@ class OpenAiWeeklyVisualPlanGeneratorTest {
         assertFalse(instructions.contains(
                 "Do not name or describe literal locations, buildings, concerts"
         ));
+        assertTrue(instructions.contains("Avoid recognizable human faces"));
+        assertFalse(instructions.contains("Avoid visible faces"));
     }
 
     @Test

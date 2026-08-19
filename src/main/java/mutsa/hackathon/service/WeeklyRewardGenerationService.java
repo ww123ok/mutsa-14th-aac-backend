@@ -25,7 +25,6 @@ public class WeeklyRewardGenerationService {
     private final OpenAiWeeklyVisualPlanGenerator visualPlanGenerator;
     private final FallbackWeeklyVisualPlanFactory fallbackVisualPlanFactory;
     private final OpenAiWeeklyImageGenerator imageGenerator;
-    private final FallbackWeeklyPosterGenerator fallbackPosterGenerator;
     private final OpenAiWeeklyRewardResultTextGenerator resultTextGenerator;
     private final FallbackWeeklyRewardResultTextFactory fallbackResultTextFactory;
     private final WeeklyImageStorage imageStorage;
@@ -135,16 +134,7 @@ public class WeeklyRewardGenerationService {
             WeeklyRewardGenerationContext context,
             WeeklyVisualPlan visualPlan
     ) {
-        try {
-            return imageGenerator.generate(context, visualPlan);
-        } catch (RuntimeException exception) {
-            log.warn(
-                    "Weekly poster fallback used: weeklyRewardId={}, reason={}",
-                    context.weeklyRewardId(),
-                    exception.getClass().getSimpleName()
-            );
-            return fallbackPosterGenerator.generate(context, visualPlan);
-        }
+        return imageGenerator.generate(context, visualPlan);
     }
 
     private WeeklyRewardResultText createResultText(

@@ -90,7 +90,7 @@ public class OpenAiWeeklyVisualPlanGenerator
               styling to the category-specific prompt that will be applied later.
             - Use only content directly supported by the records. Do not invent emotions,
               relationships, events, symbolic meanings, dramatic plots, or positive resolutions.
-            - Avoid visible faces, private identifiers, logos, brands, named artists or studios,
+            - Avoid recognizable human faces, private identifiers, logos, brands, named artists or studios,
               existing posters or covers, copyrighted characters, and franchise imitation.
             - Do not quote diary sentences and do not include user-facing Korean copy.
 

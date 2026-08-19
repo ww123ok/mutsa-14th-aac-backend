@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -35,8 +36,6 @@ class WeeklyRewardGenerationServiceTest {
     @Mock
     private OpenAiWeeklyImageGenerator imageGenerator;
     @Mock
-    private FallbackWeeklyPosterGenerator fallbackPosterGenerator;
-    @Mock
     private OpenAiWeeklyRewardResultTextGenerator resultTextGenerator;
     @Mock
     private FallbackWeeklyRewardResultTextFactory fallbackResultTextFactory;
@@ -55,7 +54,6 @@ class WeeklyRewardGenerationServiceTest {
                 visualPlanGenerator,
                 fallbackVisualPlanFactory,
                 imageGenerator,
-                fallbackPosterGenerator,
                 resultTextGenerator,
                 fallbackResultTextFactory,
                 imageStorage,
@@ -111,7 +109,41 @@ class WeeklyRewardGenerationServiceTest {
         );
 
         verify(fallbackVisualPlanFactory, never()).create(context, null);
-        verify(fallbackPosterGenerator, never()).generate(context, visualPlan);
+        verify(fallbackResultTextFactory, never()).create(
+                context,
+                visualPlan
+        );
+    }
+
+
+    @Test
+    void 이미지_생성_실패시_generic_fallback없이_FAILED로_처리한다() {
+        WeeklyRewardGenerationContext context = context();
+        WeeklyVisualPlan visualPlan = visualPlan();
+
+        when(claimService.claim(10L)).thenReturn(
+                WeeklyRewardClaimService.ClaimResult.claimed(context)
+        );
+        when(weeklyRewardRepository.findByUserIdAndWeekStartDate(
+                20L,
+                LocalDate.of(2026, 7, 27)
+        )).thenReturn(Optional.empty());
+        when(visualPlanGenerator.generate(context, null)).thenReturn(visualPlan);
+        when(imageGenerator.generate(context, visualPlan)).thenThrow(
+                new IllegalStateException("quality gate exhausted")
+        );
+
+        service.generate(10L);
+
+        verify(completionService).fail(
+                10L,
+                "WEEKLY_REWARD_GENERATION_FAILED"
+        );
+        verify(resultTextGenerator, never()).generate(
+                any(WeeklyRewardGenerationContext.class),
+                any(WeeklyVisualPlan.class),
+                any(GeneratedWeeklyImage.class)
+        );
         verify(fallbackResultTextFactory, never()).create(
                 context,
                 visualPlan
