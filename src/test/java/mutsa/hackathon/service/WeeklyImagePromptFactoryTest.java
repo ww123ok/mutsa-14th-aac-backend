@@ -101,7 +101,7 @@ class WeeklyImagePromptFactoryTest {
     }
 
     @Test
-    void 그래픽포스터는_콜라주와_현실장면을_금지하는_하드규칙을_포함한다() {
+    void 그래픽포스터는_세로구도_일기단서_복수텍스처_하드규칙을_포함한다() {
         WeeklyVisualPlan visualPlan = visualPlan(
                 WeeklyVisualCategory.GRAPHIC_POSTER,
                 "Build one dominant diagonal silhouette, three supporting planes, "
@@ -115,18 +115,52 @@ class WeeklyImagePromptFactoryTest {
 
         assertTrue(prompt.contains("# DAYBIT FINAL WEEKLY IMAGE GENERATION PROMPT"));
         assertTrue(prompt.contains(
-                "Create a polished vertical 2D graphic design poster based on `[VISUAL_MOTIF]`."
-        ));
-        assertTrue(prompt.contains("one dominant visual form or cluster"));
-        assertTrue(prompt.contains("2–4 supporting elements"));
-        assertTrue(prompt.contains(
-                "A poster made only from geometric primitives and `[WEEKLY_COLOR_PALETTE]` is not sufficient."
+                "Create one polished **vertical 2D graphic design poster** based on `[VISUAL_MOTIF]`."
         ));
         assertTrue(prompt.contains(
-                "Pure white `#FFFFFF` may be actively used as a background or large negative-space area."
+                "Always use a **portrait-oriented vertical poster composition**. Never square or landscape."
         ));
-        assertTrue(prompt.contains("do not write DAYBIT"));
+        assertTrue(prompt.contains(
+                "Use at least **two concrete diary-derived visual cues** from `[VISUAL_MOTIF]`."
+        ));
+        assertTrue(prompt.contains(
+                "Build one **dominant diary-derived structure or interconnected cluster** with 2–4 supporting elements."
+        ));
+        assertTrue(prompt.contains(
+                "Use **at least two visibly different texture treatments** in every poster."
+        ));
+        assertTrue(prompt.contains("concentric circles or rings"));
+        assertTrue(prompt.contains(
+                "`#FFFFFF` may be used actively as background or large negative space."
+        ));
+        assertTrue(prompt.contains("never write DAYBIT"));
         assertTrue(prompt.contains("no Korean"));
+        assertTrue(prompt.contains(
+                "If any requirement is missing, redesign the composition before finalizing."
+        ));
+        assertTrue(prompt.length() < 30_000);
+    }
+
+    @Test
+    void 비인간캐릭터는_체형과_얼굴가시성_에디토리얼연출_규칙을_포함한다() {
+        WeeklyVisualPlan visualPlan = visualPlan(
+                WeeklyVisualCategory.NON_HUMAN_CHARACTER,
+                "Create one compact animal character wearing diary-grounded clothing and holding a diary-grounded prop."
+        );
+
+        String prompt = WeeklyImagePromptFactory.buildPrompt(
+                visualPlan,
+                "#7D2B22, #9463B7, #8A20E8"
+        );
+
+        assertTrue(prompt.contains("approximately **2.3-head-tall character proportion**"));
+        assertTrue(prompt.contains("**stocky, rounded, compact silhouette**"));
+        assertTrue(prompt.contains("The character's **face must always be clearly visible**."));
+        assertTrue(prompt.contains("**front-facing or clear three-quarter view**"));
+        assertTrue(prompt.contains("Both eyes and the main facial features should remain readable."));
+        assertTrue(prompt.contains("clean single-color studio background"));
+        assertTrue(prompt.contains("Use the most saturated color from this week's palette as the background color."));
+        assertTrue(prompt.contains("**contemporary character-fashion editorial or premium studio character portrait**"));
         assertTrue(prompt.length() < 30_000);
     }
 
@@ -159,8 +193,8 @@ class WeeklyImagePromptFactoryTest {
         );
         assertCategoryPromptContains(
                 WeeklyVisualCategory.GRAPHIC_POSTER,
-                "contemporary editorial or cultural poster",
-                "professionally art-directed contemporary graphic poster"
+                "at least **two concrete diary-derived visual cues**",
+                "at least **two clearly distinguishable texture treatments**"
         );
     }
 
