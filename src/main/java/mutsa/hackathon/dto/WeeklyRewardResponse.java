@@ -21,6 +21,7 @@ public record WeeklyRewardResponse(
         Instant imageUrlExpiresAt,
         String title,
         String summary,
+        String categoryKeyword,
         List<String> keywords,
         List<DailyColor> dailyColors,
 
@@ -56,6 +57,7 @@ public record WeeklyRewardResponse(
                 completed ? imageUrlExpiresAt : null,
                 reward.getTitle(),
                 reward.getSummary(),
+                reward.getCategoryKeyword(),
                 reward.getKeywords(),
                 entries.stream().map(DailyColor::from).toList(),
                 reward.isViewed(),

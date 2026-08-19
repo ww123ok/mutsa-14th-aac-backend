@@ -44,7 +44,7 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
                 "작업과 산책이 이어진 한 주",
                 "이번 주 기록에는 팀 작업을 정리하고 저녁에 동네를 걸은 내용이 담겼습니다. "
                         + "이미지에는 작업의 구조적인 흐름과 산책에서 본 저녁빛이 주요 형태와 색으로 반영되었습니다.",
-                List.of("작업 정리", "저녁 산책")
+                List.of("조용한", "작업 정리", "저녁 산책", "휴식")
         ));
 
         server = HttpServer.create(
@@ -87,7 +87,11 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
         );
 
         assertEquals("작업과 산책이 이어진 한 주", result.title());
-        assertEquals(List.of("작업 정리", "저녁 산책"), result.keywords());
+        assertEquals("그래픽 포스터", result.categoryKeyword());
+        assertEquals(
+                List.of("조용한", "작업 정리", "저녁 산책", "휴식"),
+                result.keywords()
+        );
         assertEquals(1, requestCount.get());
 
         JsonNode request = jsonMapper.readTree(capturedRequest.get());
@@ -115,7 +119,7 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
                 "exactly two or three short, complete Korean sentences"
         ));
         assertTrue(normalizedInstructions.contains(
-                "one to three concise Korean context keywords without #"
+                "three to five concise Korean keywords without #"
         ));
         assertTrue(normalizedInstructions.contains(
                 "Explain why this final image represents the whole week"
@@ -129,6 +133,14 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
         assertTrue(schema.get("properties").has("title"));
         assertTrue(schema.get("properties").has("summary"));
         assertTrue(schema.get("properties").has("keywords"));
+        assertEquals(
+                3,
+                schema.get("properties").get("keywords").get("minItems").asInt()
+        );
+        assertEquals(
+                5,
+                schema.get("properties").get("keywords").get("maxItems").asInt()
+        );
         assertFalse(schema.get("properties").has("visualCategory"));
         assertFalse(schema.get("properties").has("visualMotif"));
     }
@@ -145,7 +157,7 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
                 "한 주의 기록",
                 "이번 주 기록에는 작업과 산책에 관한 내용이 담겼습니다. "
                         + "이미지에는 두 활동의 흐름이 주요 형태와 저녁빛 색으로 반영되었습니다.",
-                List.of("주간 기록", "작업과 산책")
+                List.of("주간 기록", "작업과 산책", "휴식")
         ));
 
         WeeklyRewardResultText result = generator.generate(

@@ -8,9 +8,7 @@ final class WeeklyVisualCategorySelectionPolicy {
             WeeklyVisualCategory.NON_HUMAN_CHARACTER,
             WeeklyVisualCategory.GRAPHIC_POSTER,
             WeeklyVisualCategory.OIL_ACRYLIC,
-            WeeklyVisualCategory.ALBUM_COVER,
-            WeeklyVisualCategory.PIXEL_ART,
-            WeeklyVisualCategory.PHOTO_LANDSCAPE
+            WeeklyVisualCategory.ALBUM_COVER
     );
 
     static final String EXACT_SELECTION_RULES = """
@@ -56,29 +54,9 @@ final class WeeklyVisualCategorySelectionPolicy {
 
             ---
 
-            ### 3. Space-Centered
-
-            Use this group when experiences related to specific places or spaces form the main characteristic of the week.
-
-            #### Pixel Art / Game Scene Image
-
-            - Select this category when **the experience of using a space** is central.
-            - It is suitable when not only the place itself, but also what the user did there, which objects they used, and what kind of routines or everyday activities took place within that space are important.
-
-            Examples: working and resting in a room, repeatedly studying at a cafe, or moving through school spaces while carrying out different activities.
-
-            #### Photographic Landscape / Space Image
-
-            - Select this category when **the experience of seeing a space** is central.
-            - It is suitable when the appearance of the place itself—such as scenery, light, weather, buildings, streets, or natural surroundings—is more important than the user's actions.
-
-            Examples: a rainy street, a city at dawn, a sunset landscape, the ocean, or the appearance of a particular place.
-
-            ---
-
             ## Decision Principles
 
-            - First select one central group among `Pattern / Atmosphere / Space`, then choose the detailed category within that group.
+            - First select one central group among `Pattern / Atmosphere`, then choose the detailed category within that group.
             - Do not select a category simply because a certain element appears in the records.
             - When multiple conditions apply at the same time, prioritize **the axis whose removal would cause the greatest loss of the week's distinctive character**.
             - Prioritize the structure of the user's actual records and the week's colors over the attractiveness or stylistic preference of the image category.

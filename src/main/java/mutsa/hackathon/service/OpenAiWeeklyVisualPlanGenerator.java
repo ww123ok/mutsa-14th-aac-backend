@@ -48,10 +48,8 @@ public class OpenAiWeeklyVisualPlanGenerator
             - Graphic design poster image = GRAPHIC_POSTER
             - Oil-painting-style image = OIL_ACRYLIC
             - Album cover image = ALBUM_COVER
-            - Pixel-art / game-scene image = PIXEL_ART
-            - Photorealistic landscape / space image = PHOTO_LANDSCAPE
 
-            Only the six enum values above may be selected for a newly generated visual plan.
+            Only the four enum values above may be selected for a newly generated visual plan.
             FIRST_PERSON_ANIME remains supported only for backward compatibility and must not be selected.
 
             The following category-selection policy is authoritative.
@@ -98,12 +96,6 @@ public class OpenAiWeeklyVisualPlanGenerator
               including supported light, space, objects, and palette roles.
             - ALBUM_COVER: identify the repeated weekly atmosphere and one strong, diary-supported
               central motif capable of carrying that atmosphere without inventing symbolism.
-            - PIXEL_ART: identify the one space that was used, the activities and routines performed
-              there, the objects that were used, meaningful zones or routes, and supported time or
-              lighting conditions.
-            - PHOTO_LANDSCAPE: identify the one space that was seen, its scenery, light, weather,
-              buildings, streets, natural surroundings, depth, and everyday traces supported across
-              the records. The user's actions must remain secondary to the appearance of the space.
             """.formatted(
             WeeklyVisualCategorySelectionPolicy.EXACT_SELECTION_RULES
     );

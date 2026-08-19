@@ -23,6 +23,7 @@ class FallbackWeeklyRewardResultTextFactoryTest {
         assertTrue(result.summary().contains("작업과 산책"));
         assertTrue(result.summary().contains("그래픽 디자인 포스터"));
         assertTrue(result.summary().contains("주간 이미지가 구성되었습니다"));
+        assertEquals("그래픽 포스터", result.categoryKeyword());
         assertEquals(List.of("작업", "산책", "휴식"), result.keywords());
         assertFalse(result.keywords().stream().anyMatch(value -> value.contains("#")));
     }

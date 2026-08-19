@@ -77,6 +77,13 @@ class OpenAiWeeklyVisualPlanGeneratorTest {
                 .get("schema");
 
         assertTrue(schema.get("properties").has("visualCategory"));
+        assertEquals(
+                4,
+                schema.get("properties")
+                        .get("visualCategory")
+                        .get("enum")
+                        .size()
+        );
         assertTrue(schema.get("properties").has("visualMotif"));
         assertFalse(schema.get("properties").has("title"));
         assertFalse(schema.get("properties").has("summary"));
