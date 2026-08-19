@@ -550,6 +550,124 @@ class AiWritingHelpServiceTest {
     }
 
     @Test
+    void 현재본문의_편집기_타임스탬프를_제거한_뒤_AI에_전달한다() {
+        AppUser user = createUser(false);
+        prepareGeneration(6L, user, 0L, List.of(), List.of());
+
+        when(
+                writingHelpQuestionGenerator
+                        .generate(any(WritingHelpPrompt.class))
+        ).thenReturn(
+                "카페에서 가장 기억에 남는 장면은 무엇이었나요?"
+        );
+
+        aiWritingHelpService.generateQuestion(
+                6L,
+                new WritingHelpQuestionRequest(
+                        "AM 5:11\n친구와 카페에 갔다.\nPM 8:53\n창가에 앉았다."
+                )
+        );
+
+        ArgumentCaptor<WritingHelpPrompt> promptCaptor =
+                ArgumentCaptor.forClass(
+                        WritingHelpPrompt.class
+                );
+
+        verify(
+                writingHelpQuestionGenerator
+        ).generate(promptCaptor.capture());
+
+        assertEquals(
+                "친구와 카페에 갔다.\n창가에 앉았다.",
+                promptCaptor.getValue()
+                        .currentContent()
+        );
+    }
+
+    @Test
+    void 현재본문이_타임스탬프뿐이면_작성중본문으로_판단하지_않는다() {
+        AppUser user = createUser(false);
+        prepareGeneration(7L, user, 0L, List.of(), List.of());
+
+        when(
+                writingHelpGenericQuestionProvider
+                        .nextQuestion(any(), any())
+        ).thenReturn(
+                "오늘 가장 기억에 남는 순간은 언제였나요?"
+        );
+
+        WritingHelpQuestionResponse response =
+                aiWritingHelpService.generateQuestion(
+                        7L,
+                        new WritingHelpQuestionRequest(
+                                "AM 5:11\nPM 8:53"
+                        )
+                );
+
+        assertEquals(
+                "GENERIC",
+                response.contextType()
+        );
+
+        verify(
+                writingHelpQuestionGenerator,
+                never()
+        ).generate(any());
+    }
+
+    @Test
+    void 최근맥락_일기의_편집기_타임스탬프도_AI_전달전에_제거한다() {
+        AppUser user = createUser(true);
+        prepareGeneration(8L, user, 0L, List.of(), List.of());
+
+        Diary recentDiary =
+                Diary.create(
+                        user,
+                        "PM 8:53\n최근에 팀 프로젝트 첫 회의를 했다.",
+                        USER_DAY.minusDays(1)
+                );
+
+        when(
+                writingHelpRecentDiaryRepository
+                        .findRecentPersonalizationDiaries(
+                                eq(8L),
+                                eq(USER_DAY.minusDays(7)),
+                                eq(USER_DAY.minusDays(1)),
+                                any()
+                        )
+        ).thenReturn(List.of(recentDiary));
+
+        when(
+                writingHelpQuestionGenerator
+                        .generate(any(WritingHelpPrompt.class))
+        ).thenReturn(
+                "그 뒤로 팀 프로젝트는 어떻게 진행되고 있나요?"
+        );
+
+        aiWritingHelpService.generateQuestion(
+                8L,
+                null
+        );
+
+        ArgumentCaptor<WritingHelpPrompt> promptCaptor =
+                ArgumentCaptor.forClass(
+                        WritingHelpPrompt.class
+                );
+
+        verify(
+                writingHelpQuestionGenerator
+        ).generate(promptCaptor.capture());
+
+        assertEquals(
+                "최근에 팀 프로젝트 첫 회의를 했다.",
+                promptCaptor.getValue()
+                        .recentDiaries()
+                        .get(0)
+                        .content()
+        );
+    }
+
+    @Test
     void 일일제한에_도달하면_AI와_범용질문을_모두_호출하지_않는다() {
         when(
                 aiQuestionRepository

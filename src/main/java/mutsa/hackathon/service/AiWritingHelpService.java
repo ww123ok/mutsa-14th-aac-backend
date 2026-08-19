@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -188,8 +189,11 @@ public class AiWritingHelpService {
         String currentContent =
                 request == null
                         ? null
-                        : request
-                        .normalizedCurrentContent();
+                        : WritingHelpContentSanitizer
+                        .sanitize(
+                                request
+                                        .normalizedCurrentContent()
+                        );
 
         /*
          * 사용자가 실제로 쓰기 시작한 순간부터는 사전 배분보다 현재 초안이 우선.
@@ -426,15 +430,28 @@ public class AiWritingHelpService {
                 )
                 .stream()
                 .map(this::toRecentDiary)
+                .flatMap(Optional::stream)
                 .toList();
     }
 
-    private WritingHelpRecentDiary toRecentDiary(
+    private Optional<WritingHelpRecentDiary> toRecentDiary(
             Diary diary
     ) {
-        return new WritingHelpRecentDiary(
-                diary.getRecordedDate(),
-                diary.getContent()
+        String content =
+                WritingHelpContentSanitizer
+                        .sanitize(
+                                diary.getContent()
+                        );
+
+        if (content.isBlank()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(
+                new WritingHelpRecentDiary(
+                        diary.getRecordedDate(),
+                        content
+                )
         );
     }
 

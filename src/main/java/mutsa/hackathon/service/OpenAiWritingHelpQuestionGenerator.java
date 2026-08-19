@@ -41,6 +41,16 @@ public class OpenAiWritingHelpQuestionGenerator
             - Previous questions are diversity references only. Never treat facts mentioned only in a previous
               question as facts about the user.
 
+            EDITOR TIMESTAMP METADATA RULE:
+            DAYBIT may place editor-generated timestamp lines such as "AM 5:11", "PM 8:53",
+            "오전 5:11", or "오후 8:53" next to diary text. These labels indicate only when
+            the user typed or resumed writing. They do NOT indicate when the described event happened.
+            - Never use an editor timestamp as evidence for event time, chronology, duration, scene lighting,
+              day/night state, location, mood, or atmosphere.
+            - Never mention or paraphrase an editor timestamp in the generated question.
+            - Time-of-day is valid context only when the user explicitly wrote it as part of the diary prose,
+              for example "점심에 카페에 갔다", "밤늦게 작업했다", or "오전 11시에 친구를 만났다".
+
             There are two AI generation modes.
 
             MODE 1 - CURRENT_DRAFT
@@ -183,11 +193,28 @@ public class OpenAiWritingHelpQuestionGenerator
                         prompt.previousQuestions()
                 );
 
+        String currentContent =
+                WritingHelpContentSanitizer
+                        .sanitize(
+                                prompt.currentContent()
+                        );
+
+        if (
+                prompt.contextType()
+                        == WritingHelpQuestionContextType.CURRENT_DRAFT
+                        && currentContent.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "타임스탬프를 제외한 작성 중 일기 내용이 필요합니다."
+            );
+        }
+
         return switch (prompt.contextType()) {
             case CURRENT_DRAFT -> """
                     MODE: CURRENT_DRAFT
 
                     Current unfinished diary draft:
+                    Known editor-generated timestamp-only lines have already been removed.
                     <current_draft>
                     %s
                     </current_draft>
@@ -201,7 +228,7 @@ public class OpenAiWritingHelpQuestionGenerator
                     to this unfinished draft. If previous questions exist, choose a different detail
                     or angle that is still grounded in the current draft.
                     """.formatted(
-                    prompt.currentContent(),
+                    currentContent,
                     prompt.questionOrder(),
                     previousQuestions
             );
@@ -211,6 +238,7 @@ public class OpenAiWritingHelpQuestionGenerator
 
                     Recent prior diary entries in priority order.
                     Entry 1 is the focal recent context for this request.
+                    Known editor-generated timestamp-only lines have already been removed.
                     These entries describe the recent past, not today:
                     %s
 
@@ -334,6 +362,16 @@ public class OpenAiWritingHelpQuestionGenerator
             WritingHelpRecentDiary diary =
                     recentDiaries.get(index);
 
+            String content =
+                    WritingHelpContentSanitizer
+                            .sanitize(
+                                    diary.content()
+                            );
+
+            if (content.isBlank()) {
+                continue;
+            }
+
             builder.append("priority ")
                     .append(index + 1)
                     .append(
@@ -347,7 +385,7 @@ public class OpenAiWritingHelpQuestionGenerator
                     .append('\n')
                     .append(
                             truncateRecentContent(
-                                    diary.content()
+                                    content
                             )
                     )
                     .append('\n')
@@ -355,8 +393,17 @@ public class OpenAiWritingHelpQuestionGenerator
                     .append('\n');
         }
 
-        return builder.toString()
-                .trim();
+        String result =
+                builder.toString()
+                        .trim();
+
+        if (result.isBlank()) {
+            throw new IllegalArgumentException(
+                    "타임스탬프를 제외한 최근 일기 내용이 필요합니다."
+            );
+        }
+
+        return result;
     }
 
     private String truncateRecentContent(
