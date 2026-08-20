@@ -19,6 +19,10 @@ import org.springframework.stereotype.Service;
 public class WeeklyRewardGenerationService {
 
     private static final String FAILURE_REASON = "WEEKLY_REWARD_GENERATION_FAILED";
+    private static final String IMAGE_FAILURE_REASON = "WEEKLY_REWARD_IMAGE_GENERATION_FAILED";
+    private static final String RESULT_TEXT_FAILURE_REASON = "WEEKLY_REWARD_RESULT_TEXT_GENERATION_FAILED";
+    private static final String STORAGE_FAILURE_REASON = "WEEKLY_REWARD_IMAGE_STORAGE_FAILED";
+    private static final String COMPLETION_FAILURE_REASON = "WEEKLY_REWARD_COMPLETION_FAILED";
 
     private final WeeklyRewardClaimService claimService;
     private final WeeklyRewardRepository weeklyRewardRepository;
@@ -38,6 +42,7 @@ public class WeeklyRewardGenerationService {
 
         WeeklyRewardGenerationContext context = claim.context();
         StoredWeeklyImage storedImage = null;
+        GenerationStage stage = GenerationStage.VISUAL_PLAN;
 
         try {
             WeeklyVisualCategory previousWeekCategory =
@@ -46,14 +51,28 @@ public class WeeklyRewardGenerationService {
                     context,
                     previousWeekCategory
             );
+
+            log.info(
+                    "Weekly visual plan selected: weeklyRewardId={}, category={}, motifLength={}",
+                    weeklyRewardId,
+                    visualPlan.visualCategory(),
+                    visualPlan.visualMotif().length()
+            );
+
+            stage = GenerationStage.IMAGE;
             GeneratedWeeklyImage image = createImage(context, visualPlan);
+
+            stage = GenerationStage.RESULT_TEXT;
             WeeklyRewardResultText resultText = createResultText(
                     context,
                     visualPlan,
                     image
             );
+
+            stage = GenerationStage.STORAGE;
             storedImage = imageStorage.store(context, image);
 
+            stage = GenerationStage.COMPLETION;
             completionService.complete(
                     weeklyRewardId,
                     resultText,
@@ -64,12 +83,19 @@ public class WeeklyRewardGenerationService {
             if (storedImage != null) {
                 deleteQuietly(storedImage.key());
             }
-            log.warn(
-                    "Weekly reward generation failed: weeklyRewardId={}, reason={}",
+
+            String failureReason = failureReason(stage);
+            log.error(
+                    "Weekly reward generation failed: weeklyRewardId={}, stage={}, "
+                            + "failureReason={}, exceptionType={}, message={}",
                     weeklyRewardId,
-                    exception.getClass().getSimpleName()
+                    stage,
+                    failureReason,
+                    exception.getClass().getSimpleName(),
+                    exception.getMessage(),
+                    exception
             );
-            completionService.fail(weeklyRewardId, FAILURE_REASON);
+            completionService.fail(weeklyRewardId, failureReason);
         }
     }
 
@@ -171,4 +197,22 @@ public class WeeklyRewardGenerationService {
             );
         }
     }
+    private String failureReason(GenerationStage stage) {
+        return switch (stage) {
+            case IMAGE -> IMAGE_FAILURE_REASON;
+            case RESULT_TEXT -> RESULT_TEXT_FAILURE_REASON;
+            case STORAGE -> STORAGE_FAILURE_REASON;
+            case COMPLETION -> COMPLETION_FAILURE_REASON;
+            case VISUAL_PLAN -> FAILURE_REASON;
+        };
+    }
+
+    private enum GenerationStage {
+        VISUAL_PLAN,
+        IMAGE,
+        RESULT_TEXT,
+        STORAGE,
+        COMPLETION
+    }
+
 }

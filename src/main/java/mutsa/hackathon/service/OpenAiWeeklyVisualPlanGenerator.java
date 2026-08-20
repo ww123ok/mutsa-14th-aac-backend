@@ -107,9 +107,11 @@ public class OpenAiWeeklyVisualPlanGenerator
               including supported light, space, objects, and palette roles.
             - ALBUM_COVER: identify the repeated weekly atmosphere and one strong, diary-supported
               central motif capable of carrying that atmosphere without inventing symbolism.
-            - PIXEL_ART: identify the one space that was used, the activities and routines performed
-              there, the objects that were used, meaningful zones or routes, and supported time or
-              lighting conditions.
+            - PIXEL_ART: identify the coherent lived-in spatial system supported by the records.
+              It may combine one or more related everyday spaces when they form a real weekly route or
+              activity structure. Preserve the activities and routines performed there, the objects that
+              were used, meaningful zones or routes, and supported time or lighting conditions. Do not
+              invent a connection between unrelated places merely to force them into one map.
             - PHOTO_LANDSCAPE: identify the one space that was seen, its scenery, light, weather,
               buildings, streets, natural surroundings, depth, and everyday traces supported across
               the records. The user's actions must remain secondary to the appearance of the space.
