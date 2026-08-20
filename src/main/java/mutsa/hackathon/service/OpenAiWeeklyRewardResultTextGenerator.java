@@ -96,7 +96,16 @@ public class OpenAiWeeklyRewardResultTextGenerator {
             SUMMARY RULES:
             - Write exactly two or three short Korean sentences.
             - Every sentence must be complete and end with a period.
-            - Write like a polished description shown beneath an artwork, not like a generation log.
+            - Write like a polished comment shown beneath the weekly image, not like a generation log.
+            - The summary must always do both of the following:
+              1) explain the diary content or situation that was reflected
+              2) explain how that diary content appears in the final image
+            - Use the returned bottom keywords only as supporting clues.
+              Do not build the summary by simply listing, connecting, or paraphrasing the keywords.
+            - The first sentence should explain one or two diary-grounded events, actions, objects,
+              places, moods, atmospheres, or situations that actually appeared in the records.
+            - The next sentence or sentences should explain how those diary elements were translated
+              into visible elements of the final image.
             - Describe what a person can actually see in the final image in concrete detail.
             - Use descriptive Korean modifiers naturally when visually supported, for example
               "어두운 실내", "붉은 무대 조명", "부드러운 베이지 셔츠",
@@ -104,22 +113,25 @@ public class OpenAiWeeklyRewardResultTextGenerator {
             - Mention two or more concrete visible details when available, such as objects, light,
               color relationships, background, foreground, texture, weather, clothing, furniture,
               street elements, plants, tables, cups, notebooks, signs, or spatial arrangement.
-            - Connect those visible details to activities, places, objects, routines, or situations
-              that are directly supported by the supplied diaries.
-            - The first sentence may briefly establish the diary-supported scene or situation.
-            - The following sentence or sentences should focus on the final image itself:
-              what is visible, how the elements are arranged, and what colors or light define it.
+            - Explain the reflection concretely: what diary-grounded object or action became the
+              central subject, what background or surrounding traces were added, and how visible
+              light, weather, color, texture, or composition represents the recorded scene.
             - Every diary claim must be supported by the records, and every claimed visual feature
               must be clearly visible in the supplied final image.
             - Prefer specific sentences such as
               "이미지에는 어두운 나무 테이블 위의 노트와 머그컵, 청록빛 실내 조명이 담겼습니다."
               over abstract sentences such as
               "이 내용과 각 날의 색을 바탕으로 이미지가 구성되었습니다."
+            - Good style example:
+              "발표 자료를 마무리한 일과 이어폰을 끼고 동네를 걸은 저녁, 비에 젖은 귀갓길이 기록에 담겼습니다.
+              이미지에는 손에 든 닫힌 자료철과 이어폰을 중심에 두고, 물웅덩이가 남은 보도와 옅은 노을빛 거리로 반영되었습니다.
+              빈 의자와 사진 같은 작은 흔적은 마지막 모임 뒤의 거리 모습을 함께 담았습니다."
             - Do not merely enumerate each date or connect the returned keywords into a sentence.
             - Do not use boilerplate openings such as "이번 주 기록에는 ...".
             - Do not write system-like production language such as "주간 이미지가 구성되었습니다",
               "이미지가 생성되었습니다", "이 내용을 바탕으로 만들었습니다",
               or category-format explanations.
+            - Do not mention that keywords were used to write the summary.
             - Do not mention the image category name in the summary.
             - Do not say that a visual element proves an event, feeling, relationship, or pattern.
             - If a diary-to-image connection is uncertain, mention only the clearest supported
@@ -343,9 +355,10 @@ public class OpenAiWeeklyRewardResultTextGenerator {
         builder.append("</weekly_context>\n")
                 .append(
                         "Write one short Korean title that captions the final image itself, "
-                                + "exactly two or three Korean sentences describing the image in concrete visual detail "
-                                + "while staying grounded in the diary records, and three to five Korean keywords "
-                                + "explaining the main image-generation reasons without #."
+                                + "exactly two or three Korean sentences that explain both what diary content was reflected "
+                                + "and how it appears in the final image with concrete visible details, without turning "
+                                + "the summary into a keyword list, and three to five Korean keywords explaining the "
+                                + "main image-generation reasons without #."
                 );
 
         return builder.toString();
