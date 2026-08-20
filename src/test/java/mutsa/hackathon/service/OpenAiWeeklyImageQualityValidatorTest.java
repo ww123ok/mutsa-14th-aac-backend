@@ -32,6 +32,13 @@ class OpenAiWeeklyImageQualityValidatorTest {
         assertTrue(instructions.contains(
                 "one secondary motif cue is absent"
         ));
+        assertTrue(instructions.contains("For PIXEL_ART:"));
+        assertTrue(instructions.contains(
+                "hearts, gauges, counters, item icons, and small inventory-like elements are allowed"
+        ));
+        assertTrue(instructions.contains(
+                "must not be rejected merely as software UI"
+        ));
         assertFalse(instructions.contains(
                 "a visible face, UI, explanatory text"
         ));

@@ -121,6 +121,15 @@ class OpenAiWeeklyVisualPlanGeneratorTest {
         ));
         assertTrue(instructions.contains("Avoid recognizable human faces"));
         assertFalse(instructions.contains("Avoid visible faces"));
+        assertTrue(instructions.contains(
+                "PIXEL_ART: identify the coherent lived-in spatial system supported by the records"
+        ));
+        assertTrue(instructions.contains(
+                "It may combine one or more related everyday spaces"
+        ));
+        assertFalse(instructions.contains(
+                "PIXEL_ART: identify the one space that was used"
+        ));
     }
 
     @Test
