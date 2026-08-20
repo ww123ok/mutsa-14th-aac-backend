@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class FallbackWeeklyRewardResultTextFactoryTest {
 
     @Test
-    void 대체문구도_반영된_일기내용과_이미지형식을_두문장으로_설명한다() {
+    void 대체문구도_날짜형제목이나_생성과정문구없이_이미지장면을_설명한다() {
         WeeklyRewardResultText result =
                 new FallbackWeeklyRewardResultTextFactory()
                         .create(
@@ -20,9 +20,12 @@ class FallbackWeeklyRewardResultTextFactoryTest {
                                 visualPlan()
                         );
 
-        assertTrue(result.summary().contains("작업과 산책"));
-        assertTrue(result.summary().contains("그래픽 디자인 포스터"));
-        assertTrue(result.summary().contains("주간 이미지가 구성되었습니다"));
+        assertEquals("겹쳐진 장면과 선명한 색면", result.title());
+        assertTrue(result.summary().contains("선명한 색면"));
+        assertTrue(result.summary().contains("작은 포인트"));
+        assertFalse(result.title().contains("한 주"));
+        assertFalse(result.summary().contains("이번 주 기록에는"));
+        assertFalse(result.summary().contains("주간 이미지가 구성되었습니다"));
         assertEquals("그래픽 포스터", result.categoryKeyword());
         assertEquals(List.of("작업", "산책", "휴식"), result.keywords());
         assertFalse(result.keywords().stream().anyMatch(value -> value.contains("#")));

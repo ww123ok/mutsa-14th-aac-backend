@@ -2,15 +2,11 @@ package mutsa.hackathon.service;
 
 import org.springframework.stereotype.Component;
 
-import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
 import java.util.List;
 
 @Component
 public class FallbackWeeklyRewardResultTextFactory {
-
-    private static final DateTimeFormatter DATE_FORMAT =
-            DateTimeFormatter.ofPattern("M월 d일");
 
     public WeeklyRewardResultText create(
             WeeklyRewardGenerationContext context,
@@ -56,21 +52,11 @@ public class FallbackWeeklyRewardResultTextFactory {
             keywords.add(fallbackKeyword);
         }
 
-        String title = "%s부터 이어진 한 주".formatted(
-                context.weekStartDate().format(DATE_FORMAT)
+        String title = fallbackTitle(
+                visualPlan.visualCategory()
         );
-
-        String reflectedContext = keywords.stream()
-                .limit(2)
-                .reduce((left, right) -> left + "과 " + right)
-                .orElse("주간 기록");
-
-        String summary = (
-                "이번 주 기록에는 %s와 관련된 내용이 담겼습니다. "
-                        + "이 내용과 각 날의 색을 바탕으로 %s 형식의 주간 이미지가 구성되었습니다."
-        ).formatted(
-                reflectedContext,
-                categoryName(visualPlan.visualCategory())
+        String summary = fallbackSummary(
+                visualPlan.visualCategory()
         );
 
         return new WeeklyRewardResultText(
@@ -79,6 +65,55 @@ public class FallbackWeeklyRewardResultTextFactory {
                 categoryKeyword(visualPlan.visualCategory()),
                 List.copyOf(keywords)
         );
+    }
+
+    private String fallbackTitle(
+            WeeklyVisualCategory category
+    ) {
+        return switch (category) {
+            case GRAPHIC_POSTER ->
+                    "겹쳐진 장면과 선명한 색면";
+            case NON_HUMAN_CHARACTER ->
+                    "작은 캐릭터가 머문 생활 장면";
+            case OIL_ACRYLIC ->
+                    "부드러운 붓결이 남은 풍경";
+            case ALBUM_COVER ->
+                    "빛과 장면이 겹친 한 컷";
+            case PIXEL_ART ->
+                    "작은 픽셀로 이어진 생활 장면";
+            case PHOTO_LANDSCAPE ->
+                    "빛이 머문 생활의 풍경";
+            case FIRST_PERSON_ANIME ->
+                    "눈앞에 펼쳐진 생활 장면";
+        };
+    }
+
+    private String fallbackSummary(
+            WeeklyVisualCategory category
+    ) {
+        return switch (category) {
+            case GRAPHIC_POSTER -> """
+                    이미지에는 기록에서 가져온 주요 사물과 장면이 선명한 색면과 겹쳐진 형태로 배치되었습니다. 서로 다른 날의 색은 큰 면과 작은 포인트로 나뉘어 한눈에 흐름이 보이도록 이어집니다.
+                    """.trim();
+            case NON_HUMAN_CHARACTER -> """
+                    이미지에는 기록 속 행동을 떠올릴 수 있는 작은 비인간 캐릭터와 주변 사물이 중심 장면으로 배치되었습니다. 부드러운 입체 질감과 또렷한 색 대비가 캐릭터의 행동과 생활 공간을 자연스럽게 드러냅니다.
+                    """.trim();
+            case OIL_ACRYLIC -> """
+                    이미지에는 기록에서 가져온 생활 공간과 사물이 부드러운 붓결과 겹친 색으로 표현되었습니다. 은은하게 번지는 빛과 표면의 질감이 가까운 사물과 주변 공간의 깊이를 천천히 드러냅니다.
+                    """.trim();
+            case ALBUM_COVER -> """
+                    이미지에는 기록에서 가져온 중심 장면이 한 장의 커버처럼 압축되어 배치되었습니다. 강한 빛과 어두운 면의 대비, 선명한 포인트 색이 시선을 한곳으로 모으도록 표현되었습니다.
+                    """.trim();
+            case PIXEL_ART -> """
+                    이미지에는 기록 속 생활 공간과 작은 사물이 또렷한 픽셀 단위로 정리되어 있습니다. 여러 공간의 흔적은 하나의 장면처럼 이어지고, 각 날의 색이 작은 조명과 오브젝트에 나뉘어 들어갑니다.
+                    """.trim();
+            case PHOTO_LANDSCAPE -> """
+                    이미지에는 기록에서 가져온 공간의 빛과 날씨, 주변 사물이 실제 풍경처럼 구체적으로 담겨 있습니다. 자연스러운 원근과 빛의 방향, 각 날의 색이 섞인 톤이 장면의 분위기를 또렷하게 보여줍니다.
+                    """.trim();
+            case FIRST_PERSON_ANIME -> """
+                    이미지에는 기록에서 가져온 공간과 사물이 눈앞에서 바라보는 구도로 펼쳐집니다. 가까운 물체와 멀리 이어지는 배경, 각 날의 색이 자연스러운 시선 흐름을 만듭니다.
+                    """.trim();
+        };
     }
 
     private String categoryKeyword(

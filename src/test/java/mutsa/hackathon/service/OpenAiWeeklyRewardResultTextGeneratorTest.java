@@ -41,9 +41,9 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
         requestCount.set(0);
         responses.clear();
         responses.add(successResponse(
-                "작업과 산책이 이어진 한 주",
-                "이번 주 기록에는 팀 작업을 정리하고 저녁에 동네를 걸은 내용이 담겼습니다. "
-                        + "이미지에는 작업의 구조적인 흐름과 산책에서 본 저녁빛이 주요 형태와 색으로 반영되었습니다.",
+                "작업 노트와 저녁빛 사이",
+                "팀 작업을 정리하고 저녁에 동네를 걸은 장면이 기록에 남았습니다. "
+                        + "이미지에는 각진 노트 형태와 넓은 색면, 산책길을 떠올리게 하는 부드러운 저녁빛이 겹쳐 배치되었습니다.",
                 List.of("조용한", "작업 정리", "저녁 산책", "휴식")
         ));
 
@@ -86,7 +86,7 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
                 image()
         );
 
-        assertEquals("작업과 산책이 이어진 한 주", result.title());
+        assertEquals("작업 노트와 저녁빛 사이", result.title());
         assertEquals("그래픽 포스터", result.categoryKeyword());
         assertEquals(
                 List.of("조용한", "작업 정리", "저녁 산책", "휴식"),
@@ -116,16 +116,22 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
                 instructions.replaceAll("\\s+", " ");
 
         assertTrue(normalizedInstructions.contains(
-                "exactly two or three short, complete Korean sentences"
+                "Korean image-caption-like title"
         ));
         assertTrue(normalizedInstructions.contains(
                 "three to five concise Korean keywords without #"
         ));
         assertTrue(normalizedInstructions.contains(
-                "Explain why this final image represents the whole week"
+                "Do not frame the title as a date range"
         ));
         assertTrue(normalizedInstructions.contains(
-                "actually reflected in the final image"
+                "Use descriptive Korean modifiers naturally"
+        ));
+        assertTrue(normalizedInstructions.contains(
+                "concrete visible details"
+        ));
+        assertTrue(normalizedInstructions.contains(
+                "Do not write system-like production language"
         ));
         JsonNode schema = request.get("text")
                 .get("format")
@@ -166,15 +172,15 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
     void 요약이_한문장이면_재요청한뒤_두문장을_사용한다() {
         responses.clear();
         responses.add(successResponse(
-                "한 주의 기록",
-                "이번 주 기록에는 여러 활동이 담겼습니다.",
-                List.of("주간 기록")
+                "작업 노트와 저녁빛 사이",
+                "작업을 정리하고 산책한 장면이 기록에 남았습니다.",
+                List.of("작업", "산책", "휴식")
         ));
         responses.add(successResponse(
-                "한 주의 기록",
-                "이번 주 기록에는 작업과 산책에 관한 내용이 담겼습니다. "
-                        + "이미지에는 두 활동의 흐름이 주요 형태와 저녁빛 색으로 반영되었습니다.",
-                List.of("주간 기록", "작업과 산책", "휴식")
+                "작업 노트와 저녁빛 사이",
+                "작업을 정리하고 저녁에 산책한 장면이 기록에 남았습니다. "
+                        + "이미지에는 각진 노트 형태와 부드러운 저녁빛이 넓은 색면 사이에 구체적으로 배치되었습니다.",
+                List.of("작업", "산책", "휴식")
         ));
 
         WeeklyRewardResultText result = generator.generate(
@@ -184,22 +190,75 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
         );
 
         assertEquals(2, requestCount.get());
-        assertTrue(result.summary().contains("작업과 산책"));
+        assertTrue(result.summary().contains("작업을 정리하고"));
+    }
+
+    @Test
+    void 날짜범위나_한주형_제목이면_재요청한다() {
+        responses.clear();
+        responses.add(successResponse(
+                "8월 3일부터 이어진 한 주",
+                "작업을 정리하고 저녁에 산책한 장면이 기록에 남았습니다. "
+                        + "이미지에는 각진 노트와 부드러운 저녁빛이 넓은 색면 사이에 배치되었습니다.",
+                List.of("작업", "산책", "휴식")
+        ));
+        responses.add(successResponse(
+                "작업 노트와 저녁빛 사이",
+                "작업을 정리하고 저녁에 산책한 장면이 기록에 남았습니다. "
+                        + "이미지에는 각진 노트와 부드러운 저녁빛이 넓은 색면 사이에 배치되었습니다.",
+                List.of("작업", "산책", "휴식")
+        ));
+
+        WeeklyRewardResultText result = generator.generate(
+                context(),
+                visualPlan(),
+                image()
+        );
+
+        assertEquals(2, requestCount.get());
+        assertEquals("작업 노트와 저녁빛 사이", result.title());
+    }
+
+    @Test
+    void 생성과정형_요약이면_재요청한다() {
+        responses.clear();
+        responses.add(successResponse(
+                "작업 노트와 저녁빛 사이",
+                "이번 주 기록에는 작업과 산책이 담겼습니다. "
+                        + "이 내용과 각 날의 색을 바탕으로 주간 이미지가 구성되었습니다.",
+                List.of("작업", "산책", "휴식")
+        ));
+        responses.add(successResponse(
+                "작업 노트와 저녁빛 사이",
+                "작업을 정리하고 저녁에 산책한 장면이 기록에 남았습니다. "
+                        + "이미지에는 각진 노트와 부드러운 저녁빛, 넓은 색면이 층을 이루며 배치되었습니다.",
+                List.of("작업", "산책", "휴식")
+        ));
+
+        WeeklyRewardResultText result = generator.generate(
+                context(),
+                visualPlan(),
+                image()
+        );
+
+        assertEquals(2, requestCount.get());
+        assertTrue(result.summary().contains("각진 노트"));
+        assertFalse(result.summary().contains("주간 이미지가 구성되었습니다"));
     }
 
     @Test
     void 하단_키워드에_카테고리가_오면_재요청한다() {
         responses.clear();
         responses.add(successResponse(
-                "늦은 귀가가 이어진 한 주",
-                "이번 주에는 친구를 만나고 늦게 귀가한 기록이 담겼습니다. "
-                        + "이미지에는 밤거리와 이동의 흔적이 주요 장면으로 반영되었습니다.",
+                "밤거리와 늦은 귀가",
+                "친구를 만나고 늦게 귀가한 장면이 기록에 남았습니다. "
+                        + "이미지에는 어두운 밤거리와 길게 이어진 이동의 흔적, 작은 불빛이 주요 장면으로 배치되었습니다.",
                 List.of("그래픽 포스터", "친구 만남", "밤거리", "늦은 귀가")
         ));
         responses.add(successResponse(
-                "늦은 귀가가 이어진 한 주",
-                "이번 주에는 친구를 만나고 늦게 귀가한 기록이 담겼습니다. "
-                        + "이미지에는 밤거리와 이동의 흔적이 주요 장면으로 반영되었습니다.",
+                "밤거리와 늦은 귀가",
+                "친구를 만나고 늦게 귀가한 장면이 기록에 남았습니다. "
+                        + "이미지에는 어두운 밤거리와 길게 이어진 이동의 흔적, 작은 불빛이 주요 장면으로 배치되었습니다.",
                 List.of("친구 만남", "밤거리", "늦은 귀가", "동네 산책")
         ));
 
