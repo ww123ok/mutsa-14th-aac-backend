@@ -17,6 +17,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 @Component
 @ConditionalOnProperty(
@@ -32,6 +33,30 @@ public class OpenAiWeeklyRewardResultTextGenerator {
     private static final int MAX_CONTENT_PER_DAY = 2_000;
     private static final int MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 
+    private static final Pattern CALENDAR_STYLE_TITLE =
+            Pattern.compile(
+                    "\\d{1,2}\\s*월\\s*\\d{1,2}\\s*일"
+            );
+    private static final List<String> GENERIC_TITLE_PHRASES =
+            List.of(
+                    "이번 주",
+                    "이번주",
+                    "한 주",
+                    "한주",
+                    "주간 기록"
+            );
+    private static final List<String> GENERIC_SUMMARY_PHRASES =
+            List.of(
+                    "이번 주 기록에는",
+                    "이번주 기록에는",
+                    "이 내용과 각 날의 색을 바탕으로",
+                    "주간 이미지",
+                    "이미지가 생성",
+                    "이미지가 구성",
+                    "이미지를 생성",
+                    "이미지를 구성"
+            );
+
     private static final String INSTRUCTIONS = """
             You write the final user-facing Korean text for one completed DAYBIT weekly reward.
             The final accepted weekly image has already been generated and is supplied with the
@@ -43,36 +68,62 @@ public class OpenAiWeeklyRewardResultTextGenerator {
             visual references only and must never be treated as evidence for a new event or emotion.
 
             Return exactly these fields and nothing else:
-            - title: one concise Korean title representing the whole week
-            - summary: exactly two or three short, complete Korean sentences explaining why the
-              final image was generated this way, by connecting weekly diary content actually
-              reflected in the image to visible visual choices in the final image
+            - title: one concise Korean image-caption-like title that expresses the final image
+              itself in one line
+            - summary: exactly two or three complete Korean sentences that describe the final image
+              in concrete visual detail while connecting only diary-supported context
             - keywords: three to five concise Korean keywords without # that represent the main
               reasons this final image was generated this way
 
             TITLE RULES:
-            - Represent the whole week, not one visually strong day.
-            - Keep it concise, concrete, and natural in Korean.
-            - Do not use a generic sentimental phrase when supported weekly context is available.
+            - Write the title like a short caption placed directly under the final image.
+            - Summarize the image itself, not the calendar period in which the diaries were written.
+            - Prefer a concrete noun phrase with a natural Korean modifier when the image supports it.
+            - Ground the title in the clearest diary-supported subject and clearly visible scene,
+              object, light, color, place type, or activity represented in the final image.
+            - Keep it short, vivid, concrete, and natural in Korean.
+            - Good style examples:
+              "베이지 셔츠와 정돈한 방"
+              "일과 작업 사이의 밤"
+              "무대 불빛 아래의 주말"
+              "친구들과 마주한 저녁 하늘"
+              "맑은 여름날의 강변 피크닉"
+            - Do not frame the title as a date range, weekly period, or report heading.
+            - Never use title forms such as "8월 10일부터 이어진 한 주",
+              "이번 주의 기록", "한 주의 기록", or similar calendar-summary wording.
+            - Do not merely concatenate or enumerate the returned keywords.
 
             SUMMARY RULES:
             - Write exactly two or three short Korean sentences.
             - Every sentence must be complete and end with a period.
-            - Explain why this final image represents the whole week.
-            - First identify one or two activities, places, routines, objects, contrasts, changes,
-              time periods, or colors that are directly supported across the supplied diaries.
-            - Then explain how those supported diary elements are visibly reflected in the final
-              image through its main scene or motif, composition, object traces, light, texture,
-              density, or primary/supporting/accent colors.
+            - Write like a polished description shown beneath an artwork, not like a generation log.
+            - Describe what a person can actually see in the final image in concrete detail.
+            - Use descriptive Korean modifiers naturally when visually supported, for example
+              "어두운 실내", "붉은 무대 조명", "부드러운 베이지 셔츠",
+              "노을빛 하늘", "작은 머그컵", or "정돈된 침대 옆 공간".
+            - Mention two or more concrete visible details when available, such as objects, light,
+              color relationships, background, foreground, texture, weather, clothing, furniture,
+              street elements, plants, tables, cups, notebooks, signs, or spatial arrangement.
+            - Connect those visible details to activities, places, objects, routines, or situations
+              that are directly supported by the supplied diaries.
+            - The first sentence may briefly establish the diary-supported scene or situation.
+            - The following sentence or sentences should focus on the final image itself:
+              what is visible, how the elements are arranged, and what colors or light define it.
             - Every diary claim must be supported by the records, and every claimed visual feature
               must be clearly visible in the supplied final image.
-            - Use natural Korean expressions such as "기록에 담겼습니다" and
-              "이미지에는 ... 반영되었습니다" rather than exposing hidden model reasoning.
-            - Do not merely enumerate each date. Do not provide a generic weekly recap that fails
-              to explain the connection between the diaries and the final image.
+            - Prefer specific sentences such as
+              "이미지에는 어두운 나무 테이블 위의 노트와 머그컵, 청록빛 실내 조명이 담겼습니다."
+              over abstract sentences such as
+              "이 내용과 각 날의 색을 바탕으로 이미지가 구성되었습니다."
+            - Do not merely enumerate each date or connect the returned keywords into a sentence.
+            - Do not use boilerplate openings such as "이번 주 기록에는 ...".
+            - Do not write system-like production language such as "주간 이미지가 구성되었습니다",
+              "이미지가 생성되었습니다", "이 내용을 바탕으로 만들었습니다",
+              or category-format explanations.
+            - Do not mention the image category name in the summary.
             - Do not say that a visual element proves an event, feeling, relationship, or pattern.
             - If a diary-to-image connection is uncertain, mention only the clearest supported
-              weekly element and the visible image choice that safely corresponds to it.
+              diary element and the visible image detail that safely corresponds to it.
             - Do not invent emotions, relationships, causes, events, repetition, progress,
               resolutions, or positive meaning.
             - Do not diagnose, evaluate, advise, praise, comfort, or force positivity.
@@ -291,9 +342,10 @@ public class OpenAiWeeklyRewardResultTextGenerator {
 
         builder.append("</weekly_context>\n")
                 .append(
-                        "Write the final title, exactly two or three Korean sentences "
-                                + "explaining how diary content was reflected in the final image, "
-                                + "and three to five Korean keywords explaining the main image-generation reasons without #."
+                        "Write one short Korean title that captions the final image itself, "
+                                + "exactly two or three Korean sentences describing the image in concrete visual detail "
+                                + "while staying grounded in the diary records, and three to five Korean keywords "
+                                + "explaining the main image-generation reasons without #."
                 );
 
         return builder.toString();
@@ -356,11 +408,13 @@ public class OpenAiWeeklyRewardResultTextGenerator {
                 );
             }
 
-            return new WeeklyRewardResultText(
-                    payload.title(),
-                    payload.summary(),
-                    categoryKeyword(visualCategory),
-                    payload.keywords()
+            return validatePresentationStyle(
+                    new WeeklyRewardResultText(
+                            payload.title(),
+                            payload.summary(),
+                            categoryKeyword(visualCategory),
+                            payload.keywords()
+                    )
             );
         } catch (JacksonException exception) {
             throw new IllegalStateException(
@@ -368,6 +422,34 @@ public class OpenAiWeeklyRewardResultTextGenerator {
                     exception
             );
         }
+    }
+
+    private WeeklyRewardResultText validatePresentationStyle(
+            WeeklyRewardResultText result
+    ) {
+        if (
+                CALENDAR_STYLE_TITLE.matcher(result.title()).find()
+                        || containsAny(result.title(), GENERIC_TITLE_PHRASES)
+        ) {
+            throw new IllegalArgumentException(
+                    "주간 제목은 날짜나 한 주 설명이 아니라 이미지 장면을 표현해야 합니다."
+            );
+        }
+
+        if (containsAny(result.summary(), GENERIC_SUMMARY_PHRASES)) {
+            throw new IllegalArgumentException(
+                    "주간 설명은 이미지 생성 과정이 아니라 실제 이미지 장면을 설명해야 합니다."
+            );
+        }
+
+        return result;
+    }
+
+    private boolean containsAny(
+            String value,
+            List<String> phrases
+    ) {
+        return phrases.stream().anyMatch(value::contains);
     }
 
     private String extractOutputText(
