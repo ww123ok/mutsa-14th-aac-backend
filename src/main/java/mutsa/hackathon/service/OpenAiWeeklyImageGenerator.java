@@ -13,8 +13,14 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @ConditionalOnProperty(
@@ -28,6 +34,12 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
 
     private static final int MAX_IMAGE_BYTES =
             25 * 1024 * 1024;
+    private static final Pattern ERROR_CODE_PATTERN = Pattern.compile(
+            "\"code\"\\s*:\\s*\"([^\"]+)\""
+    );
+    private static final Pattern ERROR_TYPE_PATTERN = Pattern.compile(
+            "\"type\"\\s*:\\s*\"([^\"]+)\""
+    );
 
     private final RestClient.Builder restClientBuilder;
     private final OpenAiWeeklyImageQualityValidator qualityValidator;
@@ -58,6 +70,15 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
 
     @Value("${app.weekly-reward.openai.image-validation-strict:true}")
     private boolean strictValidation;
+
+    @Value("${app.weekly-reward.openai.image-request-max-attempts:3}")
+    private int maxRequestAttempts;
+
+    @Value("${app.weekly-reward.openai.image-request-base-backoff-millis:750}")
+    private long requestBaseBackoffMillis;
+
+    @Value("${app.weekly-reward.openai.image-request-max-backoff-millis:5000}")
+    private long requestMaxBackoffMillis;
 
     @Override
     public GeneratedWeeklyImage generate(
@@ -166,49 +187,246 @@ public class OpenAiWeeklyImageGenerator implements WeeklyImageGenerator {
                 "daybit-user-" + context.userId()
         );
 
+        int requestAttempts = normalizeRequestAttempts(maxRequestAttempts);
+
+        for (int requestAttempt = 1; requestAttempt <= requestAttempts; requestAttempt++) {
+            try {
+                OpenAiImageResponse response =
+                        restClientBuilder
+                                .baseUrl(baseUrl)
+                                .defaultHeader(
+                                        HttpHeaders.AUTHORIZATION,
+                                        "Bearer " + apiKey
+                                )
+                                .build()
+                                .post()
+                                .uri("/images/generations")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .body(request)
+                                .retrieve()
+                                .body(OpenAiImageResponse.class);
+
+                return parse(response);
+
+            } catch (RestClientResponseException exception) {
+                String requestId = responseHeader(
+                        exception,
+                        "x-request-id"
+                );
+                String responseBody = exception.getResponseBodyAsString();
+                String errorCode = extractJsonString(
+                        ERROR_CODE_PATTERN,
+                        responseBody
+                );
+                String errorType = extractJsonString(
+                        ERROR_TYPE_PATTERN,
+                        responseBody
+                );
+                boolean retryable = isRetryableStatus(
+                        exception.getStatusCode().value()
+                ) && !"image_generation_user_error".equals(errorType);
+
+                log.warn(
+                        "OpenAI weekly image failed: status={}, model={}, "
+                                + "requestAttempt={}/{}, requestId={}, errorType={}, "
+                                + "errorCode={}, retryable={}",
+                        exception.getStatusCode(),
+                        model,
+                        requestAttempt,
+                        requestAttempts,
+                        requestId,
+                        errorType,
+                        errorCode,
+                        retryable
+                );
+
+                if (!retryable || requestAttempt == requestAttempts) {
+                    throw new IllegalStateException(
+                            "OpenAI 주간 이미지 요청에 실패했습니다. "
+                                    + "status=" + exception.getStatusCode().value()
+                                    + ", errorCode=" + errorCode
+                                    + ", requestId=" + requestId,
+                            exception
+                    );
+                }
+
+                sleepBeforeRetry(exception, requestAttempt);
+
+            } catch (RestClientException exception) {
+                log.warn(
+                        "OpenAI weekly image could not be completed: model={}, "
+                                + "requestAttempt={}/{}, reason={}, retryable=true",
+                        model,
+                        requestAttempt,
+                        requestAttempts,
+                        exception.getClass().getSimpleName()
+                );
+
+                if (requestAttempt == requestAttempts) {
+                    throw new IllegalStateException(
+                            "OpenAI 주간 이미지 요청을 완료하지 못했습니다.",
+                            exception
+                    );
+                }
+
+                sleepBeforeRetry(null, requestAttempt);
+            }
+        }
+
+        throw new IllegalStateException(
+                "OpenAI 주간 이미지 요청 재시도 횟수가 올바르지 않습니다."
+        );
+    }
+
+    private boolean isRetryableStatus(int status) {
+        return status == 429 || status >= 500;
+    }
+
+    private int normalizeRequestAttempts(int value) {
+        if (value < 1) {
+            return 1;
+        }
+        return Math.min(value, 5);
+    }
+
+    private void sleepBeforeRetry(
+            RestClientResponseException exception,
+            int failedAttempt
+    ) {
+        long delayMillis = resolveRetryDelayMillis(
+                exception,
+                failedAttempt
+        );
+
+        if (delayMillis <= 0) {
+            return;
+        }
+
+        log.info(
+                "Retrying OpenAI weekly image request after {}ms: failedAttempt={}",
+                delayMillis,
+                failedAttempt
+        );
+
         try {
-            OpenAiImageResponse response =
-                    restClientBuilder
-                            .baseUrl(baseUrl)
-                            .defaultHeader(
-                                    HttpHeaders.AUTHORIZATION,
-                                    "Bearer " + apiKey
-                            )
-                            .build()
-                            .post()
-                            .uri("/images/generations")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .body(request)
-                            .retrieve()
-                            .body(OpenAiImageResponse.class);
-
-            return parse(response);
-
-        } catch (RestClientResponseException exception) {
-            log.warn(
-                    "OpenAI weekly image failed: status={}, model={}",
-                    exception.getStatusCode(),
-                    model
-            );
-
+            Thread.sleep(delayMillis);
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
             throw new IllegalStateException(
-                    "OpenAI 주간 이미지 요청에 실패했습니다.",
-                    exception
-            );
-
-        } catch (RestClientException exception) {
-            log.warn(
-                    "OpenAI weekly image could not be completed: "
-                            + "model={}, reason={}",
-                    model,
-                    exception.getClass().getSimpleName()
-            );
-
-            throw new IllegalStateException(
-                    "OpenAI 주간 이미지 요청을 완료하지 못했습니다.",
-                    exception
+                    "OpenAI 주간 이미지 재시도 대기 중 인터럽트되었습니다.",
+                    interruptedException
             );
         }
+    }
+
+    private long resolveRetryDelayMillis(
+            RestClientResponseException exception,
+            int failedAttempt
+    ) {
+        long maxBackoff = Math.max(
+                0L,
+                requestMaxBackoffMillis
+        );
+
+        long retryAfter = retryAfterMillis(exception);
+        if (retryAfter >= 0) {
+            return maxBackoff == 0
+                    ? retryAfter
+                    : Math.min(retryAfter, maxBackoff);
+        }
+
+        long baseBackoff = Math.max(
+                0L,
+                requestBaseBackoffMillis
+        );
+        if (baseBackoff == 0) {
+            return 0L;
+        }
+
+        int exponent = Math.max(
+                0,
+                Math.min(failedAttempt - 1, 4)
+        );
+        long multiplier = 1L << exponent;
+        long calculated;
+
+        if (baseBackoff > Long.MAX_VALUE / multiplier) {
+            calculated = Long.MAX_VALUE;
+        } else {
+            calculated = baseBackoff * multiplier;
+        }
+
+        return maxBackoff == 0
+                ? calculated
+                : Math.min(calculated, maxBackoff);
+    }
+
+    private long retryAfterMillis(
+            RestClientResponseException exception
+    ) {
+        if (exception == null || exception.getResponseHeaders() == null) {
+            return -1L;
+        }
+
+        String value = exception.getResponseHeaders().getFirst(
+                HttpHeaders.RETRY_AFTER
+        );
+        if (value == null || value.isBlank()) {
+            return -1L;
+        }
+
+        String trimmed = value.trim();
+
+        try {
+            long seconds = Long.parseLong(trimmed);
+            return Math.max(0L, seconds) * 1_000L;
+        } catch (NumberFormatException ignored) {
+            // Retry-After can also be an RFC 1123 date.
+        }
+
+        try {
+            ZonedDateTime retryAt = ZonedDateTime.parse(
+                    trimmed,
+                    DateTimeFormatter.RFC_1123_DATE_TIME
+            );
+            long millis = Duration.between(
+                    ZonedDateTime.now(retryAt.getZone()),
+                    retryAt
+            ).toMillis();
+            return Math.max(0L, millis);
+        } catch (DateTimeParseException ignored) {
+            return -1L;
+        }
+    }
+
+    private String responseHeader(
+            RestClientResponseException exception,
+            String headerName
+    ) {
+        if (exception.getResponseHeaders() == null) {
+            return "unknown";
+        }
+
+        String value = exception.getResponseHeaders().getFirst(headerName);
+        if (value == null || value.isBlank()) {
+            return "unknown";
+        }
+        return value.trim();
+    }
+
+    private String extractJsonString(
+            Pattern pattern,
+            String body
+    ) {
+        if (body == null || body.isBlank()) {
+            return "unknown";
+        }
+
+        Matcher matcher = pattern.matcher(body);
+        if (!matcher.find()) {
+            return "unknown";
+        }
+        return matcher.group(1);
     }
 
     private int normalizeAttempts(int value) {

@@ -137,7 +137,7 @@ class WeeklyRewardGenerationServiceTest {
 
         verify(completionService).fail(
                 10L,
-                "WEEKLY_REWARD_GENERATION_FAILED"
+                "WEEKLY_REWARD_IMAGE_GENERATION_FAILED"
         );
         verify(resultTextGenerator, never()).generate(
                 any(WeeklyRewardGenerationContext.class),

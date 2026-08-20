@@ -72,6 +72,11 @@ public class OpenAiWeeklyImageQualityValidator {
             - reject readable explanatory copy, fake UI text, checklist text, dashboards, or software-interface layouts;
             - supporting geometry is allowed when it does not replace the diary-derived visual identity.
 
+            For PIXEL_ART:
+            - the generation brief intentionally permits a small decorative retro-game HUD along an edge;
+            - hearts, gauges, counters, item icons, and small inventory-like elements are allowed and must not be rejected merely as software UI;
+            - reject interface elements only when they become a dominant dashboard, checklist, large readable interface, or explanatory copy that violates the generation brief.
+
             Treat palette requirements perceptually rather than as exact pixel-level color matching.
 
             Return:

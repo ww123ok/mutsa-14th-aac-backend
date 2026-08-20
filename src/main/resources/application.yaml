@@ -131,6 +131,11 @@ app:
       image-max-generation-attempts: ${OPENAI_WEEKLY_IMAGE_MAX_GENERATION_ATTEMPTS:2}
       image-validation-strict: ${OPENAI_WEEKLY_IMAGE_VALIDATION_STRICT:true}
 
+      # 이미지 API 자체의 429/5xx/네트워크 오류 재시도. 품질 검수 재생성 횟수와는 별개다.
+      image-request-max-attempts: ${OPENAI_WEEKLY_IMAGE_REQUEST_MAX_ATTEMPTS:3}
+      image-request-base-backoff-millis: ${OPENAI_WEEKLY_IMAGE_REQUEST_BASE_BACKOFF_MILLIS:750}
+      image-request-max-backoff-millis: ${OPENAI_WEEKLY_IMAGE_REQUEST_MAX_BACKOFF_MILLIS:5000}
+
       # 최종 이미지가 확정된 뒤 사용자에게 보여줄 제목·요약·키워드 생성
       result-text-model: ${OPENAI_WEEKLY_RESULT_TEXT_MODEL:${OPENAI_WEEKLY_TEXT_MODEL:gpt-5.6-terra}}
       result-text-image-detail: ${OPENAI_WEEKLY_RESULT_TEXT_IMAGE_DETAIL:low}
