@@ -128,6 +128,15 @@ class OpenAiWeeklyRewardResultTextGeneratorTest {
                 "Use descriptive Korean modifiers naturally"
         ));
         assertTrue(normalizedInstructions.contains(
+                "The summary must always do both of the following"
+        ));
+        assertTrue(normalizedInstructions.contains(
+                "Use the returned bottom keywords only as supporting clues"
+        ));
+        assertTrue(normalizedInstructions.contains(
+                "how those diary elements were translated into visible elements"
+        ));
+        assertTrue(normalizedInstructions.contains(
                 "concrete visible details"
         ));
         assertTrue(normalizedInstructions.contains(
